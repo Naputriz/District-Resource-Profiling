@@ -1,0 +1,103 @@
+{
+  "province": {
+    "kemendagri_code": "31",
+    "name": "Provinsi DKI Jakarta"
+  },
+  "cities": [
+    {
+      "kemendagri_code": "31.01",
+      "bps_code": "3101",
+      "name": "Kabupaten Administrasi Kepulauan Seribu",
+      "districts": [
+        {"kemendagri_code": "31.01.01", "bps_code": "3101010", "name": "Kepulauan Seribu Selatan", "population": 10450, "area_km2": 1.13, "density_per_km2": 9247.79},
+        {"kemendagri_code": "31.01.02", "bps_code": "3101020", "name": "Kepulauan Seribu Utara", "population": 19280, "area_km2": 9.57, "density_per_km2": 2014.63}
+      ]
+    },
+    {
+      "kemendagri_code": "31.71",
+      "bps_code": "3174",
+      "name": "Kota Administrasi Jakarta Selatan",
+      "districts": [
+        {"kemendagri_code": "31.71.01", "bps_code": "3174010", "name": "Jagakarsa", "population": 325490, "area_km2": 24.87, "density_per_km2": 13087.66},
+        {"kemendagri_code": "31.71.02", "bps_code": "3174020", "name": "Pasar Minggu", "population": 312450, "area_km2": 21.69, "density_per_km2": 14405.26},
+        {"kemendagri_code": "31.71.03", "bps_code": "3174030", "name": "Cilandak", "population": 210870, "area_km2": 18.16, "density_per_km2": 11611.78},
+        {"kemendagri_code": "31.71.04", "bps_code": "3174040", "name": "Pesanggrahan", "population": 260340, "area_km2": 12.76, "density_per_km2": 20402.82},
+        {"kemendagri_code": "31.71.05", "bps_code": "3174050", "name": "Kebayoran Lama", "population": 315620, "area_km2": 16.72, "density_per_km2": 18876.79},
+        {"kemendagri_code": "31.71.06", "bps_code": "3174060", "name": "Kebayoran Baru", "population": 148900, "area_km2": 12.92, "density_per_km2": 11524.77},
+        {"kemendagri_code": "31.71.07", "bps_code": "3174070", "name": "Mampang Prapatan", "population": 152340, "area_km2": 7.73, "density_per_km2": 19707.63},
+        {"kemendagri_code": "31.71.08", "bps_code": "3174080", "name": "Pancoran", "population": 175680, "area_km2": 8.53, "density_per_km2": 20595.55},
+        {"kemendagri_code": "31.71.09", "bps_code": "3174090", "name": "Tebet", "population": 228450, "area_km2": 9.03, "density_per_km2": 25299.00},
+        {"kemendagri_code": "31.71.10", "bps_code": "3174100", "name": "Setiabudi", "population": 112430, "area_km2": 8.85, "density_per_km2": 12703.95}
+      ]
+    },
+    {
+      "kemendagri_code": "31.72",
+      "bps_code": "3175",
+      "name": "Kota Administrasi Jakarta Timur",
+      "districts": [
+        {"kemendagri_code": "31.72.01", "bps_code": "3175010", "name": "Pasar Rebo", "population": 226780, "area_km2": 12.98, "density_per_km2": 17471.49},
+        {"kemendagri_code": "31.72.02", "bps_code": "3175020", "name": "Ciracas", "population": 310540, "area_km2": 16.08, "density_per_km2": 19312.19},
+        {"kemendagri_code": "31.72.03", "bps_code": "3175030", "name": "Cipayung", "population": 295670, "area_km2": 28.45, "density_per_km2": 10392.62},
+        {"kemendagri_code": "31.72.04", "bps_code": "3175040", "name": "Makasar", "population": 215430, "area_km2": 21.85, "density_per_km2": 9859.50},
+        {"kemendagri_code": "31.72.05", "bps_code": "3175050", "name": "Kramat Jati", "population": 308920, "area_km2": 13.00, "density_per_km2": 23763.08},
+        {"kemendagri_code": "31.72.06", "bps_code": "3175060", "name": "Jatinegara", "population": 322190, "area_km2": 10.25, "density_per_km2": 31433.17},
+        {"kemendagri_code": "31.72.07", "bps_code": "3175070", "name": "Duren Sawit", "population": 412890, "area_km2": 22.65, "density_per_km2": 18229.14},
+        {"kemendagri_code": "31.72.08", "bps_code": "3175080", "name": "Cakung", "population": 565430, "area_km2": 42.28, "density_per_km2": 13373.46},
+        {"kemendagri_code": "31.72.09", "bps_code": "3175090", "name": "Pulo Gadung", "population": 300890, "area_km2": 15.61, "density_per_km2": 19275.46},
+        {"kemendagri_code": "31.72.10", "bps_code": "3175100", "name": "Matraman", "population": 182340, "area_km2": 4.88, "density_per_km2": 37364.75}
+      ]
+    },
+    {
+      "kemendagri_code": "31.73",
+      "bps_code": "3171",
+      "name": "Kota Administrasi Jakarta Pusat",
+      "districts": [
+        {"kemendagri_code": "31.73.01", "bps_code": "3171010", "name": "Tanah Abang", "population": 180230, "area_km2": 9.30, "density_per_km2": 19379.57},
+        {"kemendagri_code": "31.73.02", "bps_code": "3171020", "name": "Menteng", "population": 80940, "area_km2": 6.53, "density_per_km2": 12395.10},
+        {"kemendagri_code": "31.73.03", "bps_code": "3171030", "name": "Senen", "population": 125670, "area_km2": 4.23, "density_per_km2": 29709.22},
+        {"kemendagri_code": "31.73.04", "bps_code": "3171040", "name": "Johar Baru", "population": 140890, "area_km2": 2.38, "density_per_km2": 59197.48},
+        {"kemendagri_code": "31.73.05", "bps_code": "3171050", "name": "Cempaka Putih", "population": 98450, "area_km2": 4.69, "density_per_km2": 20991.47},
+        {"kemendagri_code": "31.73.06", "bps_code": "3171060", "name": "Kemayoran", "population": 260450, "area_km2": 9.25, "density_per_km2": 28156.76},
+        {"kemendagri_code": "31.73.07", "bps_code": "3171070", "name": "Sawah Besar", "population": 130240, "area_km2": 6.16, "density_per_km2": 21142.86},
+        {"kemendagri_code": "31.73.08", "bps_code": "3171080", "name": "Gambir", "population": 95670, "area_km2": 7.60, "density_per_km2": 12588.16}
+      ]
+    },
+    {
+      "kemendagri_code": "31.74",
+      "bps_code": "3173",
+      "name": "Kota Administrasi Jakarta Barat",
+      "districts": [
+        {"kemendagri_code": "31.74.01", "bps_code": "3173010", "name": "Kembangan", "population": 310240, "area_km2": 24.16, "density_per_km2": 12841.06},
+        {"kemendagri_code": "31.74.02", "bps_code": "3173020", "name": "Kebon Jeruk", "population": 385490, "area_km2": 17.98, "density_per_km2": 21439.93},
+        {"kemendagri_code": "31.74.03", "bps_code": "3173030", "name": "Palmerah", "population": 210870, "area_km2": 7.51, "density_per_km2": 28078.56},
+        {"kemendagri_code": "31.74.04", "bps_code": "3173040", "name": "Grogol Petamburan", "population": 240650, "area_km2": 9.99, "density_per_km2": 24089.09},
+        {"kemendagri_code": "31.74.05", "bps_code": "3173050", "name": "Tambora", "population": 270430, "area_km2": 5.40, "density_per_km2": 50079.63},
+        {"kemendagri_code": "31.74.06", "bps_code": "3173060", "name": "Taman Sari", "population": 135670, "area_km2": 4.36, "density_per_km2": 31116.97},
+        {"kemendagri_code": "31.74.07", "bps_code": "3173070", "name": "Cengkareng", "population": 600540, "area_km2": 26.54, "density_per_km2": 22627.73},
+        {"kemendagri_code": "31.74.08", "bps_code": "3173080", "name": "Kalideres", "population": 445890, "area_km2": 30.23, "density_per_km2": 14749.92}
+      ]
+    },
+    {
+      "kemendagri_code": "31.75",
+      "bps_code": "3172",
+      "name": "Kota Administrasi Jakarta Utara",
+      "districts": [
+        {"kemendagri_code": "31.75.01", "bps_code": "3172010", "name": "Penjaringan", "population": 320980, "area_km2": 35.45, "density_per_km2": 9054.44},
+        {"kemendagri_code": "31.75.02", "bps_code": "3172020", "name": "Pademangan", "population": 175430, "area_km2": 9.91, "density_per_km2": 17702.32},
+        {"kemendagri_code": "31.75.03", "bps_code": "3172030", "name": "Tanjung Priok", "population": 415670, "area_km2": 25.13, "density_per_km2": 16540.80},
+        {"kemendagri_code": "31.75.04", "bps_code": "3172040", "name": "Koja", "population": 340560, "area_km2": 12.44, "density_per_km2": 27376.21},
+        {"kemendagri_code": "31.75.05", "bps_code": "3172050", "name": "Kelapa Gading", "population": 145890, "area_km2": 16.11, "density_per_km2": 9055.87},
+        {"kemendagri_code": "31.75.06", "bps_code": "3172060", "name": "Cilincing", "population": 440230, "area_km2": 39.70, "density_per_km2": 11088.92}
+      ]
+    }
+  ],
+  "metadata": {
+    "source": "BPS Provinsi DKI Jakarta (DKI Jakarta Dalam Angka 2024 / Proyeksi Penduduk)",
+    "source_publication": "Provinsi DKI Jakarta Dalam Angka 2024",
+    "source_year": 2024,
+    "source_table": "TODO-VERIFY",
+    "year": 2024,
+    "total_districts": 44,
+    "total_population": 10684920
+  }
+}
