@@ -1,0 +1,114 @@
+services:
+  # ============================================================================
+  # 1. SPATIAL DATABASE: PostgreSQL 16 + PostGIS 3.4 + pgvector
+  # ============================================================================
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    image: drp_spatial_db:16-3.4
+    container_name: ${CONTAINER_PREFIX:-drp}_postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-district_profiling}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_spatial_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_spatial_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-district_profiling}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 2. CACHING & BROKER: Redis 7 (Scorecard Cache)
+  # ============================================================================
+  cache:
+    image: redis:7-alpine
+    container_name: ${CONTAINER_PREFIX:-drp}_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_cache_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 3. SPATIAL BACKEND & DUAL-SYNC FRONTEND
+  # ============================================================================
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    image: drp_backend:1.0.0
+    container_name: ${CONTAINER_PREFIX:-drp}_backend
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-district_profiling}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_spatial_dev}
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      PYTHONPATH: /app
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ============================================================================
+  # 4. HEALTH CHECK & WATCHDOG
+  # ============================================================================
+  watchdog:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    image: drp_watchdog:1.0.0
+    container_name: ${CONTAINER_PREFIX:-drp}_watchdog
+    restart: unless-stopped
+    command: ["python", "watchdog/agent.py"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-district_profiling}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_spatial_dev}
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      PYTHONPATH: /app
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres_spatial_data:
+    driver: local
+  redis_cache_data:
+    driver: local
