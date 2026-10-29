@@ -1,0 +1,38 @@
+{
+  "dataset": "DKI Jakarta 4 Pillars Public Amenities",
+  "version": "1.0.0",
+  "generated_at": "2026-10-08T08:15:00Z",
+  "geographic_scope": "Provinsi DKI Jakarta (44 Kecamatan, 5 Kota Administrasi & 1 Kabupaten)",
+  "pillars": {
+    "lifeline_health": {
+      "title": "Pilar 1: Ketahanan Hidup & Kesehatan",
+      "regulatory_bases": ["SNI 03-1733-2004 Bab 5.3", "Permenkes 43/2019", "Permendagri 114/2018"],
+      "facility_types": ["rumah_sakit", "puskesmas_kecamatan", "puskesmas_kelurahan", "pos_damkar"]
+    },
+    "education": {
+      "title": "Pilar 2: Human Capital & Pendidikan",
+      "regulatory_bases": ["SNI 03-1733-2004 Bab 5.2", "SPM Pendidikan", "Permendikbud 24/2007"],
+      "facility_types": ["sekolah_dasar", "sekolah_menengah_pertama", "sekolah_menengah_atas", "perpustakaan_wilayah"]
+    },
+    "urban_livability": {
+      "title": "Pilar 3: Kualitas Hidup, Lingkungan & Rekreasi Publik",
+      "regulatory_bases": ["SNI 03-1733-2004 Bab 5.5", "Pergub DKI 196/2015", "Permen ATR/BPN 14/2022"],
+      "facility_types": ["taman_rptra", "taman_kecamatan", "hutan_kota", "gelanggang_olahraga"]
+    },
+    "mobility_connectivity": {
+      "title": "Pilar 4: Aksesibilitas Transit & Katalis Ekonomi Komersial",
+      "regulatory_bases": ["Standar TOD DKI Jakarta (Pergub 67/2019)", "SNI 03-1733-2004 Bab 5.4.1", "Perda RDTR 31/2022"],
+      "facility_types": ["stasiun_transit", "halte_transjakarta", "pasar_tradisional", "sentra_niaga_umkm"]
+    }
+  },
+  "compliance_scoring_model": {
+    "scale": "0 - 100",
+    "formula": "Score = (N_existing / ceil(Population / Threshold)) * 100",
+    "weighted_composite": {
+      "lifeline_health": 0.30,
+      "education": 0.25,
+      "urban_livability": 0.25,
+      "mobility_connectivity": 0.20
+    }
+  }
+}

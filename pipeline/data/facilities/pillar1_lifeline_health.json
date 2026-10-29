@@ -1,0 +1,469 @@
+[
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUPN Dr. Cipto Mangunkusumo (RSCM)",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. Diponegoro No. 71, Kenari, Senen",
+    "contact": "+62-21-1500135",
+    "website": "https://rscm.co.id",
+    "capacity": 1000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8483,
+        -6.1969
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "A",
+      "bed_capacity": 1000,
+      "emergency_unit": true,
+      "operator": "Kemenkes RI"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUD Pasar Minggu",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. TB Simatupang No. 1, Ragunan, Pasar Minggu",
+    "contact": "+62-21-29555555",
+    "website": "https://rsudpasarminggu.jakarta.go.id",
+    "capacity": 450,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8242,
+        -6.2995
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "B",
+      "bed_capacity": 450,
+      "emergency_unit": true,
+      "operator": "Dinkes DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUD Tarakan",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. Kyai Caringin No. 7, Cideng, Gambir",
+    "contact": "+62-21-3842952",
+    "website": "https://rsudtarakan.jakarta.go.id",
+    "capacity": 550,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8122,
+        -6.1724
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "A",
+      "bed_capacity": 550,
+      "operator": "Dinkes DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUD Koja",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. Deli No. 4, Koja",
+    "contact": "+62-21-43934480",
+    "capacity": 500,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8995,
+        -6.1185
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "B",
+      "bed_capacity": 500,
+      "operator": "Dinkes DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUD Cengkareng",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. Bumi Cengkareng Indah, Cengkareng Timur",
+    "contact": "+62-21-54372874",
+    "capacity": 480,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7295,
+        -6.1425
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "B",
+      "bed_capacity": 480,
+      "operator": "Dinkes DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RSUD Budhi Asih",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "rumah_sakit",
+    "address": "Jl. Dewi Sartika No. 200, Cawang, Kramat Jati",
+    "contact": "+62-21-8092440",
+    "capacity": 400,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8645,
+        -6.2525
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "hospital_class": "B",
+      "bed_capacity": 400,
+      "operator": "Dinkes DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Tebet",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Prof. Dr. Soepomo No. 54, Tebet Barat",
+    "contact": "+62-21-8295055",
+    "capacity": 30,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8485,
+        -6.2345
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true,
+      "maternal_care": true,
+      "24h_emergency": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kelurahan Tebet Timur",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kelurahan",
+    "address": "Jl. Tebet Timur Dalam VI, Tebet Timur",
+    "contact": "+62-21-8301122",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8562,
+        -6.2312
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "general_clinic": true,
+      "dental": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kelurahan Menteng Dalam",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kelurahan",
+    "address": "Jl. Menteng Pulo No. 12, Menteng Dalam, Tebet",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8415,
+        -6.2255
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "immunization": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Cilandak",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Cilandak I No. 4, Cilandak Barat",
+    "contact": "+62-21-7694142",
+    "capacity": 25,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7995,
+        -6.2945
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true,
+      "24h_emergency": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Kebayoran Baru",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Iskandarsyah No. 103, Melawai",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8015,
+        -6.2445
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "general_clinic": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Tanah Abang",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Danau Toba No. 1, Bendungan Hilir",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8125,
+        -6.2105
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Jatinegara",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Otista Raya No. 129, Bidara Cina",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8695,
+        -6.2345
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Kebon Jeruk",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Raya Kebon Jeruk No. 2, Kebon Jeruk",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7685,
+        -6.1945
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Puskesmas Kecamatan Tanjung Priok",
+    "pillar": "lifeline_health",
+    "category": "healthcare",
+    "facility_type": "puskesmas_kecamatan",
+    "address": "Jl. Bugis No. 1, Kebon Bawang",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8795,
+        -6.1245
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "inpatient": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pos Pemadam Kebakaran Sektor Tebet",
+    "pillar": "lifeline_health",
+    "category": "emergency_fire",
+    "facility_type": "pos_damkar",
+    "address": "Jl. Prof. Dr. Soepomo No. 12, Tebet",
+    "contact": "+62-21-8294433",
+    "capacity": 4,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8455,
+        -6.2285
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "firetruck_count": 4,
+      "quick_response_unit": true,
+      "operator": "Disgulkarmat DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pos Pemadam Kebakaran Sektor Cilandak",
+    "pillar": "lifeline_health",
+    "category": "emergency_fire",
+    "facility_type": "pos_damkar",
+    "address": "Jl. TB Simatupang, Cilandak Barat",
+    "contact": "+62-21-7590113",
+    "capacity": 3,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7925,
+        -6.2915
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "firetruck_count": 3,
+      "operator": "Disgulkarmat DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pos Pemadam Kebakaran Sektor Gambir",
+    "pillar": "lifeline_health",
+    "category": "emergency_fire",
+    "facility_type": "pos_damkar",
+    "address": "Jl. KH Zainul Arifin No. 1, Petojo Utara",
+    "capacity": 5,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8145,
+        -6.1665
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "firetruck_count": 5,
+      "operator": "Disgulkarmat DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pos Pemadam Kebakaran Sektor Jatinegara",
+    "pillar": "lifeline_health",
+    "category": "emergency_fire",
+    "facility_type": "pos_damkar",
+    "address": "Jl. Matraman Raya No. 140, Jatinegara",
+    "capacity": 3,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8625,
+        -6.2195
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "firetruck_count": 3,
+      "operator": "Disgulkarmat DKI Jakarta"
+    }
+  }
+]
