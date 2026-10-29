@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "district": "Tebet",
+    "district_code": "31.71.09",
+    "category": "scorecard",
+    "question": "Berapa skor kelayakan hidup Tebet?"
+  },
+  {
+    "id": 2,
+    "district": "Tebet",
+    "district_code": "31.71.09",
+    "category": "pillar",
+    "question": "Bagaimana skor pilar kesehatan dan keselamatan di Tebet?"
+  },
+  {
+    "id": 3,
+    "district": "Tebet",
+    "district_code": "31.71.09",
+    "category": "blank_spot",
+    "question": "Berapa persentase cakupan puskesmas kelurahan di Tebet?"
+  },
+  {
+    "id": 4,
+    "district": "Tebet",
+    "district_code": "31.71.09",
+    "category": "what_if",
+    "question": "Bagaimana dampak lonjakan 10000 penduduk di Tebet terhadap skor fasilitas?"
+  },
+  {
+    "id": 5,
+    "district": "Setiabudi",
+    "district_code": "31.71.10",
+    "category": "scorecard",
+    "question": "Berapa skor kelayakan hidup di Kecamatan Setiabudi?"
+  },
+  {
+    "id": 6,
+    "district": "Setiabudi",
+    "district_code": "31.71.10",
+    "category": "pillar",
+    "question": "Bagaimana kondisi fasilitas pendidikan di Setiabudi?"
+  },
+  {
+    "id": 7,
+    "district": "Setiabudi",
+    "district_code": "31.71.10",
+    "category": "blank_spot",
+    "question": "Apakah ada blank spot pos damkar di Setiabudi?"
+  },
+  {
+    "id": 8,
+    "district": "Cilandak",
+    "district_code": "31.71.03",
+    "category": "scorecard",
+    "question": "Berapa skor komposit Kecamatan Cilandak?"
+  },
+  {
+    "id": 9,
+    "district": "Cilandak",
+    "district_code": "31.71.03",
+    "category": "blank_spot",
+    "question": "Berapa cakupan layanan puskesmas kelurahan di Cilandak?"
+  },
+  {
+    "id": 10,
+    "district": "Cilandak",
+    "district_code": "31.71.03",
+    "category": "what_if",
+    "question": "Simulasikan penambahan 5000 jiwa di Cilandak."
+  }
+]
