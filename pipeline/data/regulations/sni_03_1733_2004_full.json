@@ -1,0 +1,250 @@
+{
+  "code": "SNI 03-1733-2004",
+  "title": "Tata Cara Perencanaan Lingkungan Perumahan di Perkotaan",
+  "issuing_body": "Badan Standardisasi Nasional (BSN)",
+  "year": 2004,
+  "scope": "Nasional - Standar Teknis Perencanaan Sarana dan Prasarana Lingkungan Perumahan Perkotaan",
+  "chapters": [
+    {
+      "chapter": "Bagian 4",
+      "title": "Ketentuan Teknis Kepadatan dan Kebutuhan Lahan Perumahan",
+      "articles": [
+        {
+          "article_number": "Bagian 4.2.1",
+          "title": "Klasifikasi Kepadatan Penduduk Perkotaan",
+          "content": "Kepadatan penduduk lingkungan perumahan diklasifikasikan menjadi: (1) Kepadatan Rendah (<150 jiwa/ha), (2) Kepadatan Sedang (151 - 200 jiwa/ha), (3) Kepadatan Tinggi (201 - 400 jiwa/ha), dan (4) Kepadatan Sangat Tinggi (>400 jiwa/ha). DKI Jakarta mayoritas berkategori Tinggi hingga Sangat Tinggi sehingga memerlukan alokasi ruang vertikal dan efisiensi radius fasilitas.",
+          "pillar": "urban_livability",
+          "facility_type": "densitas_wilayah",
+          "standard_metric": "jiwa_per_ha",
+          "threshold": 400,
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.1",
+      "title": "Sarana Pemerintahan dan Pelayanan Umum",
+      "articles": [
+        {
+          "article_number": "Tabel 6 hal. 23-24 (Pos Pemadam Kebakaran)",
+          "title": "Pos Pemadam Kebakaran Tingkat Kecamatan",
+          "facility_type": "pos_damkar",
+          "pillar": "lifeline_health",
+          "population_threshold": 120000,
+          "service_radius_meters": null,
+          "min_land_area_m2": null,
+          "min_building_area_m2": null,
+          "ratio": "1 unit per 120.000 jiwa",
+          "summary": "Pos pemadam kebakaran tingkat kecamatan untuk 120.000 jiwa tanpa batasan radius dalam SNI (Tabel 6 hal. 23-24).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Pos Polisi",
+          "title": "Pos Polisi Lingkungan",
+          "facility_type": "pos_polisi",
+          "pillar": "lifeline_health",
+          "population_threshold": 30000,
+          "service_radius_meters": 1500,
+          "min_land_area_m2": 200,
+          "min_building_area_m2": 100,
+          "ratio": "1 unit per 30.000 jiwa",
+          "summary": "SNI 03-1733-2004 hanya menyebut pos kamtib dan kantor polisi. Tag OSM amenity=police mencampur keduanya sehingga dihapus dari standar dinilai.",
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.2",
+      "title": "Sarana Pendidikan dan Pembelajaran",
+      "articles": [
+        {
+          "article_number": "Tabel 8 hal. 26 (Taman Kanak-kanak)",
+          "title": "Taman Kanak-Kanak (TK)",
+          "facility_type": "taman_kanak_kanak",
+          "pillar": "education",
+          "population_threshold": 1250,
+          "service_radius_meters": 500,
+          "min_land_area_m2": 500,
+          "min_building_area_m2": 216,
+          "ratio": "1 unit per 1.250 jiwa (2 rombel @ 60 murid)",
+          "summary": "Taman Kanak-kanak: 1 unit per 1.250 jiwa, radius pencapaian 500 m (SNI 03-1733-2004 Tabel 8 hal. 26).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (Sekolah Dasar)",
+          "title": "Sekolah Dasar (SD)",
+          "facility_type": "sekolah_dasar",
+          "pillar": "education",
+          "population_threshold": 1600,
+          "service_radius_meters": 1000,
+          "min_land_area_m2": 2000,
+          "min_building_area_m2": 633,
+          "ratio": "1 unit per 1.600 jiwa",
+          "summary": "Sekolah Dasar (SD): 1 unit per 1.600 jiwa, radius pencapaian 1.000 m (SNI 03-1733-2004 Tabel 8 hal. 26).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (SLTP)",
+          "title": "Sekolah Menengah Pertama (SMP / SLTP)",
+          "facility_type": "sekolah_menengah_pertama",
+          "pillar": "education",
+          "population_threshold": 4800,
+          "service_radius_meters": 1000,
+          "min_land_area_m2": 9000,
+          "min_building_area_m2": 2282,
+          "ratio": "1 unit per 4.800 jiwa",
+          "summary": "SMP (SNI: SLTP): 1 unit per 4.800 jiwa, radius pencapaian 1.000 m (SNI 03-1733-2004 Tabel 8 hal. 26).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (SMU)",
+          "title": "Sekolah Menengah Atas/Kejuruan (SMA/SMK / SMU)",
+          "facility_type": "sekolah_menengah_atas",
+          "pillar": "education",
+          "population_threshold": 4800,
+          "service_radius_meters": 3000,
+          "min_land_area_m2": 12500,
+          "min_building_area_m2": 3835,
+          "ratio": "1 unit per 4.800 jiwa",
+          "summary": "SMA/SMK (SNI: SMU): 1 unit per 4.800 jiwa, radius pencapaian 3.000 m (SNI 03-1733-2004 Tabel 8 hal. 26).",
+          "verification": "pdf_matched"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.3",
+      "title": "Sarana Kesehatan",
+      "articles": [
+        {
+          "article_number": "Tabel 12 hal. 29 (Posyandu)",
+          "title": "Pos Pelayanan Terpadu (Posyandu)",
+          "facility_type": "posyandu",
+          "pillar": "lifeline_health",
+          "population_threshold": 1250,
+          "service_radius_meters": 500,
+          "min_land_area_m2": 60,
+          "min_building_area_m2": 36,
+          "ratio": "1 unit per 1.250 jiwa",
+          "summary": "Posyandu untuk 1.250 jiwa dengan radius pencapaian 500 m (SNI 03-1733-2004 Tabel 12 hal. 29).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 12 hal. 29 (Puskesmas Pembantu)",
+          "title": "Puskesmas Pembantu dan Balai Pengobatan Lingkungan (Puskesmas Kelurahan)",
+          "facility_type": "puskesmas_kelurahan",
+          "pillar": "lifeline_health",
+          "population_threshold": 30000,
+          "service_radius_meters": 1500,
+          "min_land_area_m2": 300,
+          "min_building_area_m2": 150,
+          "ratio": "1 unit per 30.000 jiwa",
+          "summary": "Puskesmas Pembantu dan Balai Pengobatan Lingkungan melayani 30.000 jiwa dengan radius pencapaian 1.500 m (SNI 03-1733-2004 Tabel 12 hal. 29).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 12 hal. 29 (Puskesmas)",
+          "title": "Puskesmas dan Balai Pengobatan (Puskesmas Kecamatan)",
+          "facility_type": "puskesmas_kecamatan",
+          "pillar": "lifeline_health",
+          "population_threshold": 120000,
+          "service_radius_meters": 3000,
+          "min_land_area_m2": 1000,
+          "min_building_area_m2": 420,
+          "ratio": "1 unit per 120.000 jiwa",
+          "summary": "Puskesmas dan Balai Pengobatan melayani 120.000 jiwa dengan radius pencapaian 3.000 m (SNI 03-1733-2004 Tabel 12 hal. 29).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Rumah Sakit",
+          "title": "Rumah Sakit Umum",
+          "facility_type": "rumah_sakit",
+          "pillar": "lifeline_health",
+          "population_threshold": null,
+          "service_radius_meters": null,
+          "min_land_area_m2": null,
+          "min_building_area_m2": null,
+          "ratio": null,
+          "summary": "Tidak ada di SNI 03-1733-2004, melayani rujukan lintas kecamatan sehingga berstatus informasi saja.",
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.5",
+      "title": "Sarana Perdagangan dan Niaga",
+      "articles": [
+        {
+          "article_number": "Tabel 14 hal. 33 (Pertokoan / Pasar)",
+          "title": "Pertokoan dan Pasar Lingkungan",
+          "facility_type": "pasar_tradisional",
+          "pillar": "mobility_connectivity",
+          "population_threshold": 30000,
+          "service_radius_meters": null,
+          "min_land_area_m2": 10000,
+          "min_building_area_m2": 3000,
+          "ratio": "1 unit per 30.000 jiwa",
+          "summary": "Pertokoan dan pasar lingkungan untuk 30.000 jiwa (SNI 03-1733-2004 Bagian 7.5 Tabel 14 hal. 33).",
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.7",
+      "title": "Ruang Terbuka, Taman dan Lapangan Olah Raga",
+      "articles": [
+        {
+          "article_number": "Tabel 16 hal. 36 (Taman RT)",
+          "title": "Taman Tingkat Rukun Tetangga (RT)",
+          "facility_type": "taman_rt",
+          "pillar": "urban_livability",
+          "population_threshold": 250,
+          "service_radius_meters": null,
+          "min_land_area_m2": 250,
+          "min_building_area_m2": 0,
+          "ratio": "1 m² per jiwa (min 250 m² per 250 jiwa)",
+          "summary": "Taman RT rasio 1.0 m²/jiwa luas minimal 250 m² (SNI 03-1733-2004 Bagian 7.7 Tabel 16 hal. 36).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 16 hal. 36 (Taman Kelurahan)",
+          "title": "Taman Kelurahan",
+          "facility_type": "taman_kelurahan",
+          "pillar": "urban_livability",
+          "population_threshold": 30000,
+          "service_radius_meters": null,
+          "min_land_area_m2": 9000,
+          "min_building_area_m2": 0,
+          "ratio": "0.3 m² per jiwa (min 9.000 m² per 30.000 jiwa)",
+          "summary": "Taman kelurahan rasio 0.3 m²/jiwa luas minimal 9.000 m² (SNI 03-1733-2004 Bagian 7.7 Tabel 16 hal. 36).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 16 hal. 36 (Taman Kecamatan)",
+          "title": "Taman Kecamatan",
+          "facility_type": "taman_kecamatan",
+          "pillar": "urban_livability",
+          "population_threshold": 120000,
+          "service_radius_meters": null,
+          "min_land_area_m2": 24000,
+          "min_building_area_m2": 0,
+          "ratio": "0.2 m² per jiwa (min 24.000 m² per 120.000 jiwa)",
+          "summary": "Taman kecamatan rasio 0.2 m²/jiwa luas minimal 24.000 m² (SNI 03-1733-2004 Bagian 7.7 Tabel 16 hal. 36).",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "RPTRA",
+          "title": "Ruang Publik Terpadu Ramah Anak (RPTRA)",
+          "facility_type": "taman_rptra",
+          "pillar": "urban_livability",
+          "population_threshold": null,
+          "service_radius_meters": null,
+          "min_land_area_m2": null,
+          "min_building_area_m2": null,
+          "ratio": null,
+          "summary": "Fasilitas RPTRA berdasarkan Pergub DKI 196/2015, tidak memiliki angka rasio per penduduk di SNI 2004.",
+          "verification": "unverified"
+        }
+      ]
+    }
+  ]
+}

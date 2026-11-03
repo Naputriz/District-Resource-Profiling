@@ -1,0 +1,131 @@
+{
+  "code": "SNI 03-1733-2004",
+  "title": "Tata Cara Perencanaan Lingkungan Perumahan di Perkotaan",
+  "issuing_body": "Badan Standardisasi Nasional (BSN)",
+  "chapters": [
+    {
+      "chapter": "Bagian 7.3",
+      "title": "Sarana Kesehatan Lingkungan Perumahan",
+      "articles": [
+        {
+          "article_number": "Tabel 12 hal. 29 (Puskesmas Pembantu)",
+          "facility_type": "puskesmas_kelurahan",
+          "pillar": "lifeline_health",
+          "ratio": "1 unit per 30.000 penduduk",
+          "service_radius_meters": 1500,
+          "min_land_area_m2": 300,
+          "summary": "Puskesmas pembantu/kelurahan wajib disediakan melayani minimal 30.000 jiwa dengan radius pencapaian aman pejalan kaki maksimal 1.500 m.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 12 hal. 29 (Puskesmas)",
+          "facility_type": "puskesmas_kecamatan",
+          "pillar": "lifeline_health",
+          "ratio": "1 unit per 120.000 penduduk",
+          "service_radius_meters": 3000,
+          "min_land_area_m2": 1000,
+          "summary": "Puskesmas tingkat kecamatan memiliki kapasitas pelayanan primer untuk 120.000 penduduk dengan radius akses 3.000 m.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Rumah Sakit",
+          "facility_type": "rumah_sakit",
+          "pillar": "lifeline_health",
+          "ratio": null,
+          "service_radius_meters": null,
+          "min_land_area_m2": null,
+          "summary": "Rumah Sakit melayani rujukan lintas wilayah dan tidak diatur rasionya dalam SNI 03-1733-2004.",
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.2",
+      "title": "Sarana Pendidikan Lingkungan Perumahan",
+      "articles": [
+        {
+          "article_number": "Tabel 8 hal. 26 (Taman Kanak-kanak)",
+          "facility_type": "taman_kanak_kanak",
+          "pillar": "education",
+          "ratio": "1 unit per 1.250 penduduk",
+          "service_radius_meters": 500,
+          "min_land_area_m2": 500,
+          "summary": "Taman Kanak-kanak (TK) wajib berada dalam radius 500 m untuk setiap 1.250 jiwa penduduk.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (Sekolah Dasar)",
+          "facility_type": "sekolah_dasar",
+          "pillar": "education",
+          "ratio": "1 unit per 1.600 penduduk",
+          "service_radius_meters": 1000,
+          "min_land_area_m2": 2000,
+          "summary": "Sekolah Dasar (SD) wajib berada dalam radius jalan kaki anak 1.000 m untuk setiap 1.600 jiwa penduduk.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (SLTP)",
+          "facility_type": "sekolah_menengah_pertama",
+          "pillar": "education",
+          "ratio": "1 unit per 4.800 penduduk",
+          "service_radius_meters": 1000,
+          "min_land_area_m2": 9000,
+          "summary": "Sekolah Menengah Pertama (SMP / SLTP) melayani 4.800 jiwa dengan radius maksimal 1.000 m.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 8 hal. 26 (SMU)",
+          "facility_type": "sekolah_menengah_atas",
+          "pillar": "education",
+          "ratio": "1 unit per 4.800 penduduk",
+          "service_radius_meters": 3000,
+          "min_land_area_m2": 12500,
+          "summary": "Sekolah Menengah Atas/Kejuruan (SMA/SMK / SMU) melayani 4.800 jiwa dengan radius jangkauan transportasi 3.000 m.",
+          "verification": "pdf_matched"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.7",
+      "title": "Ruang Terbuka Hijau (RTH) & Rekreasi Lingkungan",
+      "articles": [
+        {
+          "article_number": "Tabel 16 hal. 36 (Taman RT)",
+          "facility_type": "taman_rt",
+          "pillar": "urban_livability",
+          "ratio": "1 m² per jiwa (min 250 m²)",
+          "service_radius_meters": 100,
+          "min_land_area_m2": 250,
+          "summary": "Taman RT wajib disediakan dengan luas minimal 250 m² per 250 jiwa penduduk.",
+          "verification": "pdf_matched"
+        },
+        {
+          "article_number": "Tabel 16 hal. 36 (Taman Kecamatan)",
+          "facility_type": "taman_kecamatan",
+          "pillar": "urban_livability",
+          "ratio": "0.2 m² per jiwa",
+          "service_radius_meters": 2000,
+          "min_land_area_m2": 24000,
+          "summary": "Taman kota skala kecamatan berfungsi sebagai paru-paru kota dan resapan air permukaan.",
+          "verification": "pdf_matched"
+        }
+      ]
+    },
+    {
+      "chapter": "Bagian 7.5",
+      "title": "Sarana Perdagangan dan Niaga",
+      "articles": [
+        {
+          "article_number": "Tabel 14 hal. 33 (Pertokoan / Pasar)",
+          "facility_type": "pasar_tradisional",
+          "pillar": "mobility_connectivity",
+          "ratio": "1 unit per 30.000 penduduk",
+          "service_radius_meters": 1500,
+          "min_land_area_m2": 10000,
+          "summary": "Pertokoan dan pasar lingkungan penyedia logistik pangan pokok harian untuk setiap 30.000 jiwa.",
+          "verification": "pdf_matched"
+        }
+      ]
+    }
+  ]
+}

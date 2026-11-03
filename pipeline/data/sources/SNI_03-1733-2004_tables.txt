@@ -1,0 +1,300 @@
+================================================================================
+SNI 03-1733-2004: VERBATIM EXTRACTED TABLES
+Source: SNI_03-1733-2004.pdf (not in repo, see README.md)
+SHA-256: a5c2fe7695187219609a1fb30ce7101b5ed68e6a474a5071375e497fa87e6f38
+================================================================================
+
+--------------------------------------------------------------------------------
+TABEL 6: Kebutuhan sarana pemerintahan dan pelayanan umum
+PDF Pages: 29 & 30 | Printed Pages: 23 & 24 dari 52
+--------------------------------------------------------------------------------
+Tabel 6 Kebutuhan sarana pemerintahan dan pelayanan umum
+
+                                               Kebutuhan Per
+                           Jumlah                                                             Kriteria
+                                               Satuan Sarana
+                         Penduduk                               Standard
+ No.    Jenis Sarana     pendukung              Luas    Luas
+                                               Lantai  Lahan      2
+                                                                (m /jiwa)       Radius
+                                                                                             Lokasi dan Penyelesaian
+                                    (jiwa)      Min.    Min.                  pencapaian
+                                                   2       2
+                                                (m )    (m )
+ 1.    Balai                          2.500       150     300          0,12                Di tengah kelompok bangunan
+       pertemuan                                                                           hunian warga, ataupun di
+ 2.    pos hansip                     2.500        6      12           0,06      500 m’    akses keluar/masuk dari
+                                                                                           kelompok bangunan.
+                                                                                           Dapat berintegrasi dengan
+                                                                                           bangunan sarana yang lain.
+ 3.    gardu listrik                  2.500       20      30          0,012      500 m’    Lokasi dan bangunannya
+                                                                                           harus mempertimbangkan
+                        RW
+
+
+
+
+                                                                                           keamanan dan kenyamanan
+                                                                                           sekitar.
+ 4.    telepon umum,                  2.500         -     30          0,012      500 m’    Lokasinya disebar pada titik-
+       bis surat                                                                           titik strategis atau di sekitar
+                                                                                           pusat lingkungan.
+ 5.    parkir umum                    2.500         -    100           0,04                Dilokasikan dapat melayani
+                                                                                           kebutuhan bangunan sarana
+                                                                                           kebudayaan dan rekreasi lain
+                                                                                           berupa balai pertemuan warga.
+ 6.    Kantor                        30.000      500    1.000         0,033                Dapat dijangkau dengan
+       kelurahan                                                                           kendaraan umum.
+ 7.    pos kamtib                    30.000       72     200          0,006                Beberapa sarana dapat
+ 8.    pos pemadam                   30.000       72     200          0,006                digabung dalam satu atau
+       kebakaran                                                                           kelompok bangunan pada
+ 9.    Agen                          30.000       36      72      0,0024                   tapak yang sama.
+       pelayanan pos                                                                       Agen layanan pos dapat
+ 10.   Loket                         30.000       21      60          0,002                bekerja sama dengan pihak
+       pembayaran air                                                                      yang mau berinvestasi dan
+                        Kelurahan
+
+
+
+
+       bersih                                                                              bergabung dengan sarana lain
+ 11.   Loket                         30.000       21      60          0,002                dalam bentuk wartel, warnet,
+       pembayaran                                                                          atau warpostel.
+       listrik                                                                             Loket pembayaran air bersih
+                                                                                           dan listrik lebih baik saling
+                                                                                           bersebelahan.
+ 12.   telepon umum,                 30.000         -     80          0,003                Lokasinya disebar pada titik-
+       bis surat, bak                                                                      titik strategis atau di sekitar
+       sampah kecil                                                                        pusat lingkungan.
+ 13.   parkir umum                   30.000         -    500          0,017                Dilokasikan dapat melayani
+                                                                                           kebutuhan bangunan sarana
+                                                                                           kebudayaan dan rekreasi lain
+                                                                                           berupa geduang serba guna /
+                                                                                           balai karang taruna.
+ 14.   Kantor                        120.000    1.000   2.500          0,02                Dapat dijangkau dengan
+       kecamatan                                                                           kendaraan umum.
+ 15.   kantor polisi                 120.000     500    1.000         0,001                Beberapa sarana dapat
+ 16.   pos pemadam                   120.000     500    1.000         0,001                digabung dalam satu atau
+                        Kecamatan
+
+
+
+
+       kebakaran                                                                           kelompok bangunan pada
+ 17.   kantor pos                    120.000     250     500          0,004                tapak yang sama.
+       pembantu                                                                            Lokasinya mempertimbangkan
+ 18.   Stasiun                       120.000     500    1.000         0,008   3 - 5 km     kemudahan dijangkau dari
+       telepon otomat                                                                      lingkungan luar.
+       dan agen
+       pelayan-an
+       gangguan
+       telepon
+
+[Halaman 24 dari 52 / PDF Page 30]
+
+Tabel 6 (lanjutan)
+
+
+
+
+                                                                                                                      “Hak Cipta Badan Standardisasi Nasional, Copy standar ini dibuat untuk penayangan di website dan tidak untuk dikomersialkan”
+                                      Kebutuhan Per
+                           Jumlah                                                      Kriteria
+                                      Satuan Sarana
+                         Penduduk                     Standard
+ No.     Jenis Sarana    pendukung     Luas    Luas
+                                      Lantai  Lahan        2
+                                                      (m /jiwa)          Radius
+                                                                                      Lokasi dan Penyelesaian
+                           (jiwa)      Min.    Min.                    pencapaian
+                                         2       2
+                                       (m )    (m )
+
+ 19.    balai nikah /       120.000     250     750            0,006                Lokasinya harus strategis
+        KUA / BP4                                                                   untuk memudahkan dicari dan
+                                                                                    dijangkau oleh pengunjung di
+                                                                                    luar kawasan.
+ 20.    Telepon umum,       120.000       -      80            0,003                Lokasinya disebar pada titik-
+        bis surat, bak                                                              titik strategis atau di sekitar
+        sampah besar                                                                pusat lingkungan.
+ 21.    parkir umum         120.000       -    2000            0,017                Dilokasikan dapat melayani
+                                                                                    kebutuhan bangunan sarana
+                                                                                    kebudayaan dan rekreasi lain
+                                                                                    berupa balai pertemuan warga.
+CATATAN        Acuan diambil dari SNI 03-1733-1989, Tata cara perencanaan kawasan perumahan kota
+
+--------------------------------------------------------------------------------
+TABEL 8: Kebutuhan sarana pendidikan dan pembelajaran
+PDF Page: 32 | Printed Page: 26 dari 52
+--------------------------------------------------------------------------------
+Tabel 8 Kebutuhan sarana pendidikan dan pembelajaran
+
+                                  Kebutuhan Per
+                        Jumlah                                                 Kriteria
+                                   Satuan Sarana
+        Jenis         Penduduk     Luas     Luas      Standard
+ No.                                                     2                                              Keterangan
+       Sarana         pendukung   Lantai   Lahan      (m /jiwa)     Radius          Lokasi dan
+                         (jiwa)    Min.     Min.                  pencapaian       Penyelesaian
+                                      2       2
+                                   (m )     (m )
+ 1.    Taman            1.250        216      500     0,28 m2/j     500 m’       Di tengah            2 rombongan
+       Kanak-                     termasuk                                       kelompok warga.      prabelajar @ 60
+                                     rumah
+       kanak                       penjaga                                       Tidak                murid dapat
+                                     36 m2                                       menyeberang          bersatu dengan
+                                                                                 jalan raya.          sarana lain
+                                                                                 Bergabung
+ 2.    Sekolah          1.600        633      2.000   1,25         1.000 m’      dengan taman         Kebutuhan harus
+       Dasar                                                                     sehingga terjadi     berdasarkan
+                                                                                 pengelompokan        perhitungan
+                                                                                 kegiatan.            dengan rumus 2,
+ 3.    SLTP             4.800      2.282      9.000   1,88         1.000 m’      Dapat dijangkau      3 dan 4.
+                                                                                 dengan               Dapat digabung
+ 4.    SMU              4.800      3.835     12.500   2,6          3.000 m’      kendaraan umum.      dengan sarana
+                                                                                 Disatukan dengan     pendidikan lain,
+                                                                                 lapangan olah        mis. SD, SMP,
+                                                                                 raga.                SMA dalam satu
+                                                                                 Tidak selalu harus   komplek
+                                                                                 di pusat
+                                                                                 lingkungan.
+ 5.    Taman            2.500          72      150    0,09         1.000 m’      Di tengah
+       Bacaan                                                                    kelompok warga
+                                                                                 tidak menyebe-
+                                                                                 rang jalan
+                                                                                 lingkungan.
+
+CATATAN         Acuan diambil dari SNI 03-1733-1989, Tata cara perencanaan kawasan perumahan kota
+
+
+--------------------------------------------------------------------------------
+TABEL 12: Kebutuhan sarana kesehatan
+PDF Page: 35 | Printed Page: 29 dari 52
+--------------------------------------------------------------------------------
+Tabel 12 Kebutuhan sarana kesehatan
+
+                                       Kebutuhan Per
+                                                                                 Kriteria
+                             Jumlah     Satuan Sarana
+              Jenis        Penduduk     Luas     Luas    Standard
+     No.                                                    2                                          Keterangan
+             Sarana        pendukung   Lantai   Lahan    (m /jiwa)     Radius         Lokasi dan
+                              (jiwa)    Min.     Min.                pencapaian      Penyelesaian
+                                           2       2
+                                        (m )     (m )
+ 1.        Posyandu          1.250          36      60       0,048      500          Di tengah ke-    Dapat berga-
+                                                                                     lompok           bung dengan
+                                                                                     tetangga tidak   balai warga
+                                                                                     menyeberang      atau sarana
+                                                                                     jalan raya.      hunian/rumah
+ 2.        Balai             2.500       150      300         0,12    1.000 m’       Di tengah        Dapat
+           Pengobatan                                                                kelompok         bergabung
+           Warga                                                                     tetangga tidak   dalam lokasi
+                                                                                     menyeberang      balai warga
+                                                                                     jalan raya.
+ 3.        BKIA / Klinik    30.000      1.500    3.000         0,1    4.000 m’       Dapat
+           Bersalin                                                                  dijangkau
+                                                                                     dengan
+                                                                                     kendaraan
+                                                                                     umum
+ 4.        Puskesmas        30.000       150      300        0,006    1.500 m’            -idem-      Dapat berg-
+           Pembantu                                                                                   bung dalam
+           dan Balai                                                                                  lokasi kantor
+           Pengobatan                                                                                 kelurahan
+           Lingkungan
+ 5.        Puskesmas        120.000      420     1.000       0,008    3.000 m’              -idem-    Dapat
+           dan Balai                                                                                  bergabung
+           Pengobatan                                                                                 dalam lokasi
+                                                                                                      kantor
+                                                                                                      kecamatan
+ 6.        Tempat            5.000        18         -           -    1.500 m’              -idem-    Dapat bersatu
+           Praktek                                                                                    dengan rumah
+           Dokter                                                                                     tinggal/tempat
+ 7.        Apotik /         30.000       120      250        0,025    1.500 m’              -idem-    usaha/apotik
+           Rumah
+           Obat
+
+CATATAN               Acuan diambil dari SNI 03-1733-1989, Tata cara perencanaan kawasan perumahan
+kota.
+
+
+--------------------------------------------------------------------------------
+TABEL 14: Jenis sarana perdagangan dan niaga (Section 7.5)
+PDF Page: 39 | Printed Page: 33 dari 52
+--------------------------------------------------------------------------------
+Tabel 14 Jenis sarana perdagangan dan niaga
+
+
+
+
+                                                                                                                  “Hak Cipta Badan Standardisasi Nasional, Copy standar ini dibuat untuk penayangan di website dan tidak untuk dikomersialkan”
+                                           Kebutuhan Per
+                                                                                           Kriteria
+                               Jumlah      Satuan Sarana
+                             Penduduk     Luas       Luas         Standard
+      No.    Jenis Sarana                                            2
+                             pendukung   Lantai     Lahan         (m /jiwa)     Radius           Lokasi dan
+                                (jiwa)    Min.       Min.                     pencapaian        Penyelesaian
+                                             2         2
+                                          (m )       (m )
+      1.     Toko /             250            50       100          0,4        300 m’       Di tengah
+             Warung                      (termasuk        (bila                              kelompok tetangga.
+                                           gudang)      berdiri                              Dapat merupakan
+                                                       sendiri)                              bagian dari sarana
+                                                                                             lain
+      2.     Pertokoan         6.000        1.200       3.000        0,5       2.000 m’      Di pusat kegiatan
+                                                                                             sub lingkungan.
+                                                                                             KDB 40% Dapat
+                                                                                             berbentuk P&D
+      3.     Pusat            30.000      13.500       10.000       0,33                     Dapat dijangkau
+             Pertokoan +                                                                     dengan kendaraan
+             Pasar                                                                           umum
+             Lingkungan
+      4.     Pusat            120.000     36.000       36.000        0,3                     Terletak di jalan
+             Perbelanjaan                                                                    utama.
+             dan Niaga                                                                       Termasuk sarana
+             (toko + pasar                                                                   parkir sesuai
+             + bank +                                                                        ketentuan
+             kantor)                                                                         setempat
+
+CATATAN          Acuan diambil dari SNI 03-1733-1989, Tata cara perencanaan kawasan perumahan kota
+
+
+--------------------------------------------------------------------------------
+TABEL 16: Sarana ruang terbuka, taman dan lapangan olah raga (Section 7.7)
+PDF Page: 42 | Printed Page: 36 dari 52
+--------------------------------------------------------------------------------
+Tabel 16 Sarana ruang terbuka, taman dan lapangan olah raga
+
+                               Jumlah    Kebutuhan
+                                                                    Radius
+                             Penduduk      Luas       Standard                          Kriteria
+      No.     Jenis Sarana                               2        pencapaian
+                             pendukung   Lahan Min.   (m /jiwa)                 Lokasi dan Penyelesaian
+                                              2                      (m)
+                                (jiwa)      (m )
+      1.      Taman             250             250      1           100       Di tengah kelompok
+              /Tempat Main                                                     tetangga.
+
+      2.      Taman/           2.500          1.250      0,5        1.000      Di pusat kegiatan lingkungan.
+              Tempat Main
+
+      3.      Taman dan       30.000          9.000      0,3                   Sedapat mungkin berkelompk
+              Lapangan                                                         dengan sarana pendidikan.
+              Olah Raga
+      4.      Taman dan       120.000        24.000      0,2                   Terletak di jalan utama.
+              Lapangan                                                         Sedapat mungkin
+              Olah Raga                                                        berkelompok dengan sarana
+                                                                               pendidikan.
+      5.      Jalur Hijau        -                -     15 m                   Terletak menyebar.
+
+
+
+      6.      Kuburan /       120.000                                          Mempertimbangkan radius
+              Pemakaman                                                        pencapaian dan area yang
+              Umum                                                             dilayani.
+
+
+CATATAN     Acuan tabel diambil dari SNI 03-1733-1989, tentang Tata cara perencanaan kawasan
+perumahan kota.
+
