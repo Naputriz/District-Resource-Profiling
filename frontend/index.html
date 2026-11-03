@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>District Resource Profiling</title>
+  
+  <!-- Modern Typography (Plus Jakarta Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet GIS WebGL Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ==============================================================================
+       1. TOP NAVBAR & REAL-TIME TELEMETRY STRIP
+       ============================================================================== -->
+  <header class="top-navbar">
+    <div class="brand-section">
+      <div class="brand-logo">🏛️</div>
+      <div class="brand-title">
+        District Resource Profiling
+        <span class="brand-badge">DKI Jakarta</span>
+      </div>
+    </div>
+
+    <div class="nav-telemetry-strip">
+      <div class="telemetry-chip">
+        <span class="dot-indicator pulse"></span>
+        <span>PostGIS 3.4 & pgvector</span>
+      </div>
+      <div class="telemetry-chip">
+        <span class="dot-indicator"></span>
+        <span>Redis 7 Cache (24h)</span>
+      </div>
+      <div class="telemetry-chip">
+        <span class="dot-indicator" id="nav-llm-dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span>
+        <span id="nav-llm-model">Memuat Model...</span>
+      </div>
+      <div class="telemetry-chip">
+        <span class="dot-indicator" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span>
+        <span>44 Kecamatan Loaded</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==============================================================================
+       2. RESIZABLE SPLIT LAYOUT (70% MAP / 30% INFO PANEL)
+       ============================================================================== -->
+  <div class="split-layout-container" id="split-layout">
+
+    <!-- LEFT PANEL: MAP VIEWPORT (70%) -->
+    <main class="map-viewport-panel" id="map-viewport">
+      
+      <!-- Floating Header (Search Bar & Pillar Filter Chips) -->
+      <div class="map-floating-header">
+        <div class="search-box-card">
+          <span style="font-size: 16px;">🔍</span>
+          <input type="text" id="search-district-input" placeholder="Cari kecamatan atau kode (contoh: Tebet, Cilandak, 31.71.09)..." autocomplete="off">
+          <button id="btn-reset-map" title="Tampilkan Seluruh Jakarta" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 10px; border-radius: 8px; cursor: pointer; font-size: 11.5px; font-weight: 600; white-space: nowrap; transition: all 0.2s;">🔄 Seluruh Jakarta</button>
+          <div class="search-autocomplete-dropdown" id="search-autocomplete-list"></div>
+        </div>
+
+        <div class="pillar-filter-bar">
+          <div class="pillar-chip active p1" data-pillar="lifeline_health">
+            <span>🏥</span> <span>Pilar 1: Kesehatan & Damkar</span>
+          </div>
+          <div class="pillar-chip active p2" data-pillar="education">
+            <span>🎓</span> <span>Pilar 2: Pendidikan</span>
+          </div>
+          <div class="pillar-chip active p3" data-pillar="urban_livability">
+            <span>🌳</span> <span>Pilar 3: RTH & Rekreasi</span>
+          </div>
+          <div class="pillar-chip active p4" data-pillar="mobility_connectivity">
+            <span>🚆</span> <span>Pilar 4: Transit & Niaga</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GIS Map Canvas -->
+      <div id="gis-map-canvas"></div>
+
+      <!-- Floating Docked Chatbot (Bottom of Map) -->
+      <div class="chatbot-dock-container" id="chatbot-dock">
+        <div class="chat-dock-header">
+          <div class="chat-header-title">
+            <span class="dot-indicator pulse" id="chat-header-dot" style="background: #a855f7;"></span>
+            <span>Asisten Tata Ruang</span>
+            <span class="chat-model-tag" id="chat-model-tag">Memuat...</span>
+          </div>
+          <button id="btn-toggle-chat" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; font-weight: 700;">
+            ▼ Minimize
+          </button>
+        </div>
+
+        <div class="chat-history-scroll" id="chat-history">
+          <div class="chat-message-row assistant">
+            <div class="chat-bubble">
+              Halo! Saya adalah <strong>Asisten Tata Ruang</strong> DKI Jakarta. Saya menganalisis kepatuhan regulasi nasional (<strong>SNI 03-1733-2004</strong> & <strong>Perda RDTR No. 31/2022</strong>), menghitung area <em>blank spot</em> via PostGIS, dan menjalankan simulasi dampak skenario urban. Anda dapat bertanya atau memilih opsi di bawah:
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-prompt-chips">
+          <div class="prompt-chip">Berapa indeks kecukupan fasilitas Tebet?</div>
+          <div class="prompt-chip">Tampilkan area blank spot puskesmas Tebet</div>
+          <div class="prompt-chip">Simulasi lonjakan 15.000 penduduk di Tebet</div>
+          <div class="prompt-chip">Simulasi dampak superblok 3.000 unit di Tebet</div>
+        </div>
+
+        <div class="chat-input-bar">
+          <input type="text" id="chat-msg-input" placeholder="Ketik pertanyaan tata ruang, audit kepatuhan, atau skenario simulasi...">
+          <button class="btn-send-chat" id="btn-send-chat">➔</button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- RESIZABLE SPLIT DRAGGER -->
+    <div class="split-resizer" id="split-resizer" title="Tarik untuk mengubah ukuran panel"></div>
+
+    <!-- RIGHT PANEL: INFORMATION & SIMULATION (30%) -->
+    <aside class="info-sidebar-panel" id="info-panel">
+      
+      <!-- District Header -->
+      <div class="info-header">
+        <div>
+          <h1 class="info-district-name" id="info-district-name">DKI Jakarta</h1>
+          <div class="info-district-code" id="info-district-code">Pilih kecamatan pada peta atau cari di atas</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 14px; font-weight: 800; color: #fff;" id="info-district-pop">--</div>
+          <div style="font-size: 10px; color: #fbbf24;" id="info-district-pop-note">Sumber data penduduk belum terverifikasi (TODO-VERIFY)</div>
+          <div style="font-size: 11.5px; color: var(--text-dim);" id="info-district-area">44 Kecamatan DKI Jakarta</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="info-nav-tabs">
+        <button class="info-tab-btn active" data-tab="scorecard">📊 Scorecard</button>
+        <button class="info-tab-btn" data-tab="simulation">🔮 Simulasi</button>
+        <button class="info-tab-btn" data-tab="blankspots">📍 Blank Spots</button>
+        <button class="info-tab-btn" data-tab="watchdog">🛡️ Watchdog</button>
+      </nav>
+
+      <!-- Tab Content Views -->
+      <div class="info-tab-content">
+        
+        <!-- TAB 1: SCORECARD VIEW -->
+        <div class="tab-pane-view" id="tab-pane-scorecard" style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="score-overview-card">
+            <div class="score-dial-circle" id="score-dial-val">--</div>
+            <div class="score-meta-text">
+              <div class="score-meta-title">Indeks Kecukupan Fasilitas Dasar (0-100)</div>
+              <div class="score-meta-desc" id="score-meta-standards-desc">Dihitung deterministik via PostGIS berdasarkan standar SNI 03-1733-2004.</div>
+            </div>
+          </div>
+
+          <!-- Composite Note (Verbatim from API) -->
+          <div id="composite-note-box" class="composite-note-card" style="display: none;"></div>
+
+          <!-- Single Pillar Notice (if only one pillar active) -->
+          <div id="single-pillar-notice" class="composite-note-card" style="display: none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;"></div>
+
+          <!-- 4 Pillars Progress Cards -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="pillar-progress-card" id="pillar-card-health">
+              <div class="pillar-card-header">
+                <span style="color: var(--p1-health);" id="pillar-title-health">🏥 Lifeline & Kesehatan (30%)</span>
+                <span id="score-h-val">--</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="score-h-bar" style="width: 0%; background: var(--p1-health);"></div>
+              </div>
+              <div class="pillar-meta-row" id="pillar-h-meta"></div>
+            </div>
+
+            <div class="pillar-progress-card" id="pillar-card-education">
+              <div class="pillar-card-header">
+                <span style="color: var(--p2-education);" id="pillar-title-education">🎓 Human Capital & Pendidikan (25%)</span>
+                <span id="score-e-val">--</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="score-e-bar" style="width: 0%; background: var(--p2-education);"></div>
+              </div>
+              <div class="pillar-meta-row" id="pillar-e-meta"></div>
+            </div>
+
+            <div class="pillar-progress-card" id="pillar-card-livability">
+              <div class="pillar-card-header">
+                <span style="color: var(--p3-livability);" id="pillar-title-livability">🌳 Kualitas Hidup & RTH (25%)</span>
+                <span id="score-l-val">--</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="score-l-bar" style="width: 0%; background: var(--p3-livability);"></div>
+              </div>
+              <div class="pillar-meta-row" id="pillar-l-meta"></div>
+            </div>
+
+            <div class="pillar-progress-card" id="pillar-card-mobility">
+              <div class="pillar-card-header">
+                <span style="color: var(--p4-mobility);" id="pillar-title-mobility">🚆 Mobilitas & Transit (20%)</span>
+                <span id="score-m-val">--</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="score-m-bar" style="width: 0%; background: var(--p4-mobility);"></div>
+              </div>
+              <div class="pillar-meta-row" id="pillar-m-meta"></div>
+            </div>
+          </div>
+
+          <!-- Collapsible Excluded Types with Reasons -->
+          <details class="excluded-types-block" id="excluded-types-block" style="display: none;">
+            <summary id="excluded-types-summary">Tipe Fasilitas Dikecualikan dari Penilaian (0)</summary>
+            <div class="excluded-types-list" id="excluded-types-list"></div>
+          </details>
+
+          <!-- Granular Facility Deficit Breakdown -->
+          <div style="margin-top: 6px;">
+            <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px;">Audit Kepatuhan Fasilitas Wilayah:</div>
+            <div style="font-size: 11px; color: #fbbf24; margin-bottom: 10px;">* Defisit menurut data OSM (bukan data resmi Dapodik/Dinkes)</div>
+            <div id="metrics-breakdown-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+        </div>
+
+        <!-- TAB 2: WHAT-IF SIMULATION SANDBOX -->
+        <div class="tab-pane-view" id="tab-pane-simulation" style="display: none; flex-direction: column; gap: 16px;">
+          <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: var(--radius-md); padding: 12px; font-size: 12px; color: #bae6fd;">
+            💡 <strong>Isolated Sandbox:</strong> Simulasi berjalan di memori tanpa memutasi data dasar PostGIS. Seluruh hasil bertaraf <strong>hipotetis</strong>.
+          </div>
+
+          <div style="display: flex; gap: 14px; font-size: 13px;">
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="sim-mode" value="pop" checked> Lonjakan Penduduk
+            </label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="sim-mode" value="superblock"> Proyek Superblok
+            </label>
+          </div>
+
+          <div id="sim-pop-controls" class="sim-control-group">
+            <div class="sim-label">
+              <span>Persentase Perubahan Penduduk:</span>
+              <strong id="sim-pop-slider-val">+15%</strong>
+            </div>
+            <input type="range" id="sim-pop-slider" class="sim-slider" min="-30" max="60" value="15" step="5">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+              <span style="font-size: 11.5px; color: var(--text-dim);">Atau jumlah jiwa:</span>
+              <input type="number" id="sim-pop-count" class="sim-input" placeholder="contoh: 10000" style="flex: 1; padding: 4px 8px;">
+            </div>
+          </div>
+
+          <div id="sim-superblock-controls" style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="sim-control-group">
+              <div class="sim-label">Nama Proyek:</div>
+              <input type="text" id="sim-sb-name" class="sim-input" value="Superblok Urban Oasis Tebet">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="sim-control-group">
+                <div class="sim-label">Unit Hunian:</div>
+                <input type="number" id="sim-sb-units" class="sim-input" value="3500">
+              </div>
+              <div class="sim-control-group">
+                <div class="sim-label">Luas Lahan (m²):</div>
+                <input type="number" id="sim-sb-area" class="sim-input" value="25000">
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-run-simulation" class="btn-primary-action">
+            ⚡ Jalankan Simulasi Sandbox
+          </button>
+
+          <!-- Dynamic Delta Result Box (Hipotetis) -->
+          <div class="sim-delta-result-box" id="sim-result-box" style="display: none;">
+            <div style="font-size: 13.5px; font-weight: 800; color: #fff;">Hasil Komputasi Skenario (Hipotetis):</div>
+            
+            <!-- Fixed Legal / Regulatory Disclaimer -->
+            <div class="sim-fixed-disclaimer-box">
+              ⚠️ Bukan keputusan perizinan. Untuk bahan diskusi perencanaan.
+            </div>
+
+            <!-- Impact Level Indicator -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.25); padding: 8px 12px; border-radius: var(--radius-sm);">
+              <span style="font-size: 12px; color: var(--text-muted);">Indikasi Dampak Beban Fasilitas:</span>
+              <span class="pillar-badge-tag" id="res-impact-level" style="font-size: 12px; padding: 3px 10px;">-</span>
+            </div>
+
+            <div class="delta-stat-grid">
+              <div class="delta-stat-cell">
+                <div class="delta-stat-label">Tambahan Penduduk</div>
+                <div class="delta-stat-value" id="res-pop-delta">+0</div>
+              </div>
+              <div class="delta-stat-cell">
+                <div class="delta-stat-label">Perubahan Skor</div>
+                <div class="delta-stat-value" id="res-score-delta">0.0</div>
+              </div>
+              <div class="delta-stat-cell">
+                <div class="delta-stat-label">Skor Simulasi Baru</div>
+                <div class="delta-stat-value" id="res-sim-score">0.0 pts</div>
+              </div>
+              <div class="delta-stat-cell">
+                <div class="delta-stat-label">Status Sandbox</div>
+                <div class="delta-stat-value" style="color: #38bdf8; font-size: 13px;">Hipotetis (Sandbox)</div>
+              </div>
+            </div>
+
+            <!-- Assumptions Table -->
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">Parameter & Asumsi Model:</div>
+              <div class="assumptions-table-wrapper" id="res-assumptions-wrapper">
+                <table class="assumptions-table" id="res-assumptions-table">
+                  <thead><tr><th>Parameter Asumsi</th><th>Nilai</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">Mitigasi & Asumsi Pengembang (Parameter Skenario):</div>
+              <div id="res-obligations-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: BLANK SPOTS VIEW -->
+        <div class="tab-pane-view" id="tab-pane-blankspots" style="display: none; flex-direction: column; gap: 16px;">
+          <div style="font-size: 12.5px; color: var(--text-muted);">
+            Analisis zona tidak terlayani (*blank spot*) menggunakan PostGIS <code>ST_Difference</code> antara batas kecamatan dan buffer fasilitas standar nasional dengan jangkauan lintas batas.
+          </div>
+
+          <!-- Area discrepancy warning banner -->
+          <div id="bs-area-warning-box" style="display: none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 11.5px; color: #fde68a; line-height: 1.4;"></div>
+
+          <div class="delta-stat-grid">
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Luas poligon (geometri, dasar perhitungan cakupan)</div>
+              <div class="delta-stat-value" id="bs-area-total">--</div>
+            </div>
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Zona Tidak Terlayani</div>
+              <div class="delta-stat-value" id="bs-area-unserved" style="color: #f43f5e;">--</div>
+            </div>
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Cakupan Layanan Fasilitas</div>
+              <div class="delta-stat-value" id="bs-coverage-pct" style="color: #38bdf8;">--</div>
+            </div>
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Cakupan Tanpa Tetangga</div>
+              <div class="delta-stat-value" id="bs-coverage-no-neigh" style="color: #94a3b8;">--</div>
+            </div>
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Fasilitas Dalam Wilayah</div>
+              <div class="delta-stat-value" id="bs-fac-inside">--</div>
+            </div>
+            <div class="delta-stat-cell">
+              <div class="delta-stat-label">Fasilitas Tetangga Reaching</div>
+              <div class="delta-stat-value" id="bs-fac-neighbours">--</div>
+            </div>
+            <div class="delta-stat-cell" style="grid-column: span 2;">
+              <div class="delta-stat-label">Lingkup Lintas Batas</div>
+              <div class="delta-stat-value" id="bs-cross-border-scope" style="font-size: 13.5px; color: #a7f3d0;">--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: WATCHDOG VIEW -->
+        <div class="tab-pane-view" id="tab-pane-watchdog" style="display: none; flex-direction: column; gap: 16px;">
+          <div style="font-size: 13.5px; font-weight: 800; color: #fff;">System Watchdog</div>
+          <div id="watchdog-error-banner" style="display: none; font-size: 12px; color: #f87171; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 10px; border-radius: 6px;"></div>
+          
+          <div class="pillar-progress-card">
+            <div class="pillar-card-header">
+              <span id="watchdog-gpu-name">--</span>
+              <span class="brand-badge" id="watchdog-gpu-status" style="background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3);">--</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>VRAM Usage:</span>
+              <strong id="watchdog-vram-usage">--</strong>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>Suhu & Daya:</span>
+              <strong id="watchdog-gpu-temp">--</strong>
+            </div>
+          </div>
+
+          <div class="pillar-progress-card">
+            <div class="pillar-card-header">
+              <span>Asisten Tata Ruang AI Engine</span>
+              <span class="brand-badge" id="watchdog-ai-status" style="background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3);">--</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>Model:</span>
+              <strong id="watchdog-ai-model">--</strong>
+            </div>
+          </div>
+
+          <div class="pillar-progress-card">
+            <div class="pillar-card-header">
+              <span>Container Services</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>PostgreSQL + PostGIS:</span>
+              <strong id="watchdog-postgis-status" style="color: #9ca3af;">--</strong>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>Redis 7 Cache:</span>
+              <strong id="watchdog-redis-status" style="color: #9ca3af;">--</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Leaflet GIS Map Library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Master Frontend Application Script -->
+  <script src="/js/app.js"></script>
+
+</body>
+</html>
