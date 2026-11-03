@@ -1,0 +1,228 @@
+[
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Tebet Eco Park",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_kecamatan",
+    "address": "Jl. Tebet Barat Raya, Tebet Barat",
+    "capacity": 73000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8532,
+        -6.2375
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 73000,
+      "children_playground": true,
+      "canopy_bridge": true,
+      "water_retention": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RPTRA Akasia Tebet",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_rptra",
+    "address": "Jl. Tebet Barat Raya No. 10, Tebet Barat",
+    "capacity": 2500,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8495,
+        -6.2415
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 2400,
+      "futsal_court": true,
+      "children_play": true,
+      "library_room": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Taman Suropati",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_kecamatan",
+    "address": "Jl. Taman Suropati, Menteng",
+    "capacity": 16000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8315,
+        -6.1995
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 16328,
+      "jogging_track": true,
+      "monument": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Taman Ayodya & Barito",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_kecamatan",
+    "address": "Jl. Lamandau III, Kramat Pela, Kebayoran Baru",
+    "capacity": 7500,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7935,
+        -6.2445
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 7500,
+      "artificial_lake": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Hutan Kota Srengseng",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "unclassified",
+    "address": "Jl. H. Kelik, Srengseng, Kembangan",
+    "capacity": 150000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7625,
+        -6.2085
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 150000,
+      "biodiversity": true,
+      "water_reservoir": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Taman Waduk Pluit",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_kecamatan",
+    "address": "Jl. Pluit Timur Raya, Penjaringan",
+    "capacity": 80000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7965,
+        -6.1195
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "area_m2": 80000,
+      "jogging_track": true,
+      "retention_basin": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Gelanggang Remaja Kecamatan Tebet (GOR Tebet)",
+    "pillar": "urban_livability",
+    "category": "recreation",
+    "facility_type": "unclassified",
+    "address": "Jl. Tebet Timur Dalam III, Tebet Timur",
+    "capacity": 1500,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8585,
+        -6.2345
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "badminton_courts": 4,
+      "indoor_hall": true,
+      "operator": "Dispora DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "GOR Soemantri Brodjonegoro (Kuningan)",
+    "pillar": "urban_livability",
+    "category": "recreation",
+    "facility_type": "unclassified",
+    "address": "Jl. HR Rasuna Said Kav. C-22, Karet Kuningan, Setiabudi",
+    "capacity": 5000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8325,
+        -6.2195
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "athletics_track": true,
+      "football_pitch": true,
+      "swimming_pool": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "RPTRA Kalijodo",
+    "pillar": "urban_livability",
+    "category": "green_open_space",
+    "facility_type": "taman_rptra",
+    "address": "Jl. Tubagus Angke, Tambora / Penjaringan",
+    "capacity": 15000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7865,
+        -6.1425
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "skate_park": true,
+      "amphitheatre": true,
+      "children_play": true
+    }
+  }
+]

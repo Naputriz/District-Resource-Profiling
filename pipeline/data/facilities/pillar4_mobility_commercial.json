@@ -1,0 +1,286 @@
+[
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Stasiun Manggarai (Sentral Transit)",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "stasiun_transit",
+    "address": "Jl. Manggarai Utara 1, Tebet",
+    "capacity": 150000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8505,
+        -6.2098
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "transit_modes": [
+        "KRL Commuterline",
+        "KA Bandara"
+      ],
+      "platforms": 14,
+      "hub_class": "Sentral"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Stasiun Tebet",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "stasiun_transit",
+    "address": "Jl. Prof. Dr. Soepomo, Tebet Timur",
+    "capacity": 45000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8582,
+        -6.2265
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "transit_modes": [
+        "KRL Commuterline (Bogor Line)"
+      ],
+      "feeder_microtrans": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Stasiun MRT Blok M BCA",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "stasiun_transit",
+    "address": "Jl. Panglima Polim, Melawai, Kebayoran Baru",
+    "capacity": 60000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7975,
+        -6.2445
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "transit_modes": [
+        "MRT Jakarta (North-South Line)"
+      ],
+      "tod_integrated": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Stasiun MRT Dukuh Atas BNI",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "stasiun_transit",
+    "address": "Jl. Jend. Sudirman, Setiabudi",
+    "capacity": 85000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8225,
+        -6.2005
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "transit_modes": [
+        "MRT",
+        "LRT Jabodebek",
+        "KRL",
+        "KA Bandara"
+      ],
+      "multimodal_hub": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Stasiun MRT Fatmawati Indomaret",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "stasiun_transit",
+    "address": "Jl. TB Simatupang, Cilandak Barat",
+    "capacity": 40000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7935,
+        -6.2925
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "transit_modes": [
+        "MRT Jakarta"
+      ],
+      "park_and_ride": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Halte TransJakarta Bundaran HI Astra",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "halte_transjakarta",
+    "address": "Bundaran HI, Menteng",
+    "capacity": 30000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8235,
+        -6.1925
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "corridors": [
+        "Koridor 1 (Blok M - Kota)"
+      ],
+      "skydeck_view": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Halte TransJakarta Tebet BUMD",
+    "pillar": "mobility_connectivity",
+    "category": "transit_mobility",
+    "facility_type": "halte_transjakarta",
+    "address": "Jl. MT Haryono, Tebet Timur",
+    "capacity": 15000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8575,
+        -6.2435
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "corridors": [
+        "Koridor 9 (Pinang Ranti - Pluit)"
+      ]
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pasar Tebet Barat",
+    "pillar": "mobility_connectivity",
+    "category": "commercial",
+    "facility_type": "pasar_tradisional",
+    "address": "Jl. Tebet Barat Dalam Raya No. 1, Tebet Barat",
+    "capacity": 400,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8485,
+        -6.2365
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "kiosks_count": 420,
+      "fresh_produce": true,
+      "operator": "Perumda Pasar Jaya"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pasar Mayestik",
+    "pillar": "mobility_connectivity",
+    "category": "commercial",
+    "facility_type": "pasar_tradisional",
+    "address": "Jl. Tebah III, Gunung, Kebayoran Baru",
+    "capacity": 800,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7895,
+        -6.2415
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "kiosks_count": 850,
+      "textiles": true,
+      "operator": "Perumda Pasar Jaya"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Pasar Tanah Abang Blok A & B",
+    "pillar": "mobility_connectivity",
+    "category": "commercial",
+    "facility_type": "pasar_tradisional",
+    "address": "Jl. KH Mas Mansyur, Tanah Abang",
+    "capacity": 5000,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8155,
+        -6.1875
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "wholesale_market": true,
+      "textiles_hub": "Asia Tenggara terbesar"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Sentra Kuliner & UMKM Tebet Eco Park",
+    "pillar": "mobility_connectivity",
+    "category": "commercial",
+    "facility_type": "unclassified",
+    "address": "Kawasan Tebet Barat Raya, Tebet",
+    "capacity": 120,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8525,
+        -6.2385
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "micro_merchants": 120,
+      "digital_payment_qris": true
+    }
+  }
+]

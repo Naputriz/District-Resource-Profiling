@@ -1,0 +1,277 @@
+[
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMAN 8 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_atas",
+    "address": "Jl. Taman Bukit Duri No. 2, Bukit Duri, Tebet",
+    "contact": "+62-21-8295455",
+    "capacity": 1080,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8625,
+        -6.2225
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMA",
+      "classroom_count": 30,
+      "operator": "Disdik DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMPN 115 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_pertama",
+    "address": "Jl. KH Abdullah Syafei No. 1, Tebet",
+    "contact": "+62-21-8290374",
+    "capacity": 960,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8525,
+        -6.2245
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMP",
+      "classroom_count": 27
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SDN Tebet Barat 01 Pagi",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_dasar",
+    "address": "Jl. Tebet Barat Dalam VII No. 1, Tebet Barat",
+    "capacity": 480,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8485,
+        -6.2395
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SD",
+      "classroom_count": 16
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMAN 28 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_atas",
+    "address": "Jl. Ragunan No. 1, Pasar Minggu",
+    "contact": "+62-21-7806208",
+    "capacity": 1080,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8325,
+        -6.2895
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMA"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMAN 34 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_atas",
+    "address": "Jl. Margasatwa No. 1, Pondok Labu, Cilandak",
+    "contact": "+62-21-7690064",
+    "capacity": 1050,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7965,
+        -6.3125
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMA"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMPN 41 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_pertama",
+    "address": "Jl. Harsono RM, Ragunan, Pasar Minggu",
+    "capacity": 900,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8215,
+        -6.2985
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMP"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SDN Menteng 01",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_dasar",
+    "address": "Jl. Besuki No. 4, Menteng",
+    "contact": "+62-21-3909774",
+    "capacity": 600,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8325,
+        -6.1955
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SD",
+      "historical": true
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMAN 68 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_atas",
+    "address": "Jl. Salemba Raya No. 18, Senen",
+    "capacity": 960,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8525,
+        -6.1915
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMA"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "SMKN 1 Jakarta",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "sekolah_menengah_atas",
+    "address": "Jl. Budi Utomo No. 7, Pasar Baru, Sawah Besar",
+    "capacity": 1200,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8355,
+        -6.1685
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "accreditation": "A",
+      "education_level": "SMK"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Perpustakaan Umum Daerah Jakarta Selatan",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "unclassified",
+    "address": "Jl. Gandaria Tengah V No. 1, Kramat Pela, Kebayoran Baru",
+    "contact": "+62-21-72793132",
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.7925,
+        -6.2485
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "collection_size": 45000,
+      "operator": "Dispusip DKI Jakarta"
+    }
+  },
+  {
+    "source": "seed_manual",
+    "source_id": null,
+    "osm_id": null,
+    "name": "Perpustakaan Jakarta Cikini (TIM)",
+    "pillar": "education",
+    "category": "education",
+    "facility_type": "unclassified",
+    "address": "Taman Ismail Marzuki, Jl. Cikini Raya No. 73, Menteng",
+    "contact": "+62-21-31937325",
+    "capacity": 800,
+    "coordinates": {
+      "type": "Point",
+      "coordinates": [
+        106.8395,
+        -6.1895
+      ]
+    },
+    "is_active": true,
+    "is_verified": false,
+    "metadata": {
+      "collection_size": 190000,
+      "modern_learning_centre": true
+    }
+  }
+]
