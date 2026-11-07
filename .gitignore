@@ -27,3 +27,4 @@ scratch/
 .DS_Store
 .idea/
 .vscode/
+scripts/output/
