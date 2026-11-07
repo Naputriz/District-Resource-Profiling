@@ -248,9 +248,9 @@ class PostGISSpatialEngine:
             area_note = None
             if ratio > 1.5:
                 area_note = (
-                    f"Perhatian: Luas poligon geometri ({geom_area_km2} km²) melebihi luas administratif BPS "
-                    f"({area_km2} km², rasio {ratio}x) karena batas geometri mencakup perairan laut. "
-                    f"Persentase cakupan dihitung terhadap luas poligon geometri dan tidak merefleksikan cakupan daratan murni."
+                    f"Perhatian: Luas poligon geometri ({geom_area_km2} km²) berbeda jauh dari luas administratif BPS "
+                    f"({area_km2} km², rasio {ratio}x). "
+                    f"Persentase cakupan dihitung terhadap luas poligon geometri, bukan luas BPS."
                 )
 
             return BlankSpotAnalysisResult(

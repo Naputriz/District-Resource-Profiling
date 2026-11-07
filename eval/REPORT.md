@@ -5,6 +5,8 @@
 **Dataset:** `eval/ai_eval_set.json` (30 Indonesian queries)  
 **Repetitions:** 3 runs (total 90 evaluation turns)
 
+> **Catatan data:** run 14-15 Oktober memakai geometri lama Kepulauan Seribu Selatan (31.01.01). Sejak poligon OpenStreetMap ditambahkan (lihat `pipeline/data/boundaries/SOURCES.md`), nilai harapan item `scorecard_seribu_selatan_composite`, `scorecard_seribu_selatan_health` dan `blank_spot_seribu_selatan` di `eval/ai_eval_set.json` sudah tidak sesuai dengan database dan perlu diperbarui sebelum evaluasi berikutnya.
+
 ---
 
 ## 1. Summary of Benchmark Metrics

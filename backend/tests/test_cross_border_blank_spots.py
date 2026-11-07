@@ -109,9 +109,11 @@ def test_isolated_district_kepulauan_seribu_selatan():
 def test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression():
     """
     Regression Test:
-    Verifies that Kepulauan Seribu Selatan sekolah_dasar (1 facility inside)
+    Verifies that Kepulauan Seribu Selatan sekolah_dasar (3 facilities inside)
     does NOT report artificial 0.00% coverage caused by clamping against BPS land area.
-    With true geometric area (42.48 km2), coverage is ~3.25%, served area is ~1.38 km2.
+    Polygon is the OpenStreetMap relation 5802402 (see pipeline/data/boundaries/SOURCES.md).
+    Measured values: facilities_inside == 3, district_area_km2 == 3.98,
+    served_area_km2 >= 1.15, coverage_pct ~28.89%.
     """
     init_db_pool()
     res = PostGISSpatialEngine.calculate_blank_spots("31.01.01", "sekolah_dasar")
@@ -119,14 +121,15 @@ def test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression():
     assert res.district_code == "31.01.01"
     assert res.district_name == "Kepulauan Seribu Selatan"
     assert res.facility_type == "sekolah_dasar"
-    assert res.facilities_inside == 1
+    assert res.facilities_inside == 3
     assert res.facilities_from_neighbours == 0
-    assert res.district_area_km2 == 42.48
-    assert res.served_area_km2 >= 1.30
+    assert res.district_area_km2 == 3.98
+    assert res.served_area_km2 >= 1.15
     assert res.coverage_pct > 0.0
-    assert 3.20 <= res.coverage_pct <= 3.30
+    assert 28.84 <= res.coverage_pct <= 28.94
     assert res.coverage_pct == res.coverage_pct_without_neighbours
     assert res.cross_border_scope == "DKI Jakarta only"
+    assert res.area_note is not None
     assert bool(res.blank_spot_geojson) is True
 
 

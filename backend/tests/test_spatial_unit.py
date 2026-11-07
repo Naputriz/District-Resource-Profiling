@@ -144,7 +144,7 @@ def test_calculate_blank_spots_normal_area_ratio():
 def test_calculate_blank_spots_high_ratio_area_note():
     """
     Verifies area_note rule for anomalous geometry/BPS ratios (> 1.5x),
-    such as Kepulauan Seribu Selatan (geom 42.48 km2 vs BPS 1.13 km2).
+    (mocked values: geom 42.48 km2 vs BPS 1.13 km2).
     """
     mock_cur = MagicMock()
     mock_dist = {
@@ -174,7 +174,7 @@ def test_calculate_blank_spots_high_ratio_area_note():
         res = PostGISSpatialEngine.calculate_blank_spots("31.01.01", "puskesmas_kelurahan")
         assert res.area_ratio == 37.59  # 42.48 / 1.13 = 37.5929...
         assert res.area_note is not None
-        assert "mencakup perairan laut" in res.area_note
+        assert "berbeda jauh" in res.area_note
         assert "42.48 km²" in res.area_note
         assert "1.13 km²" in res.area_note
         assert "37.59x" in res.area_note
