@@ -1,0 +1,427 @@
+{
+  "status": "DRAFT - needs human review",
+  "version": "1.0.0",
+  "created_at": "2026-10-14T22:46:00+07:00",
+  "description": "Evaluation set of 30 Indonesian spatial queries for District Spatial Intelligence Assistant (Qwen 2.5 14B). Ground truth numbers are fetched deterministically from the PostGIS database and API at creation time.",
+  "items": [
+    {
+      "id": "scorecard_tebet_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas di Kecamatan Tebet (31.71.09)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 54.61,
+        "api_path": "/api/v1/districts/31.71.09"
+      },
+      "must_refuse": false,
+      "notes": "Tebet composite score reweighted across active scored pillars."
+    },
+    {
+      "id": "scorecard_tebet_health",
+      "question": "Bagaimana skor pilar kesehatan di Kecamatan Tebet?",
+      "category": "pillar",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "health_score": 79.17,
+        "api_path": "/api/v1/districts/31.71.09"
+      },
+      "must_refuse": false,
+      "notes": "Pilar Lifeline & Kesehatan Tebet score."
+    },
+    {
+      "id": "scorecard_gambir_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas untuk Kecamatan Gambir (31.73.08)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 65.2,
+        "api_path": "/api/v1/districts/31.73.08"
+      },
+      "must_refuse": false,
+      "notes": "Gambir composite score."
+    },
+    {
+      "id": "scorecard_gambir_education",
+      "question": "Berapa skor pilar pendidikan di Kecamatan Gambir (31.73.08)?",
+      "category": "pillar",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "education_score": 23.43,
+        "api_path": "/api/v1/districts/31.73.08"
+      },
+      "must_refuse": false,
+      "notes": "Gambir human capital education score."
+    },
+    {
+      "id": "scorecard_cilandak_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas Kecamatan Cilandak (31.71.03)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 44.41,
+        "api_path": "/api/v1/districts/31.71.03"
+      },
+      "must_refuse": false,
+      "notes": "Cilandak baseline scorecard."
+    },
+    {
+      "id": "scorecard_cilandak_education",
+      "question": "Bagaimana capaian skor pilar pendidikan di Kecamatan Cilandak?",
+      "category": "pillar",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "education_score": 32.69,
+        "api_path": "/api/v1/districts/31.71.03"
+      },
+      "must_refuse": false,
+      "notes": "Cilandak human capital education score."
+    },
+    {
+      "id": "scorecard_seribu_selatan_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas Kecamatan Kepulauan Seribu Selatan (31.01.01)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 5.41,
+        "api_path": "/api/v1/districts/31.01.01"
+      },
+      "must_refuse": false,
+      "notes": "Kepulauan Seribu Selatan baseline composite score."
+    },
+    {
+      "id": "scorecard_seribu_selatan_health",
+      "question": "Berapa skor pilar kesehatan di Kepulauan Seribu Selatan?",
+      "category": "pillar",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "health_score": 0.0,
+        "api_path": "/api/v1/districts/31.01.01"
+      },
+      "must_refuse": false,
+      "notes": "Kepulauan Seribu Selatan health pillar score."
+    },
+    {
+      "id": "scorecard_setiabudi_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas Kecamatan Setiabudi (31.71.10)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 65.39,
+        "api_path": "/api/v1/districts/31.71.10"
+      },
+      "must_refuse": false,
+      "notes": "Setiabudi baseline composite score."
+    },
+    {
+      "id": "scorecard_kebon_jeruk_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas di Kecamatan Kebon Jeruk (31.74.02)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 28.23,
+        "api_path": "/api/v1/districts/31.74.02"
+      },
+      "must_refuse": false,
+      "notes": "Kebon Jeruk composite score."
+    },
+    {
+      "id": "scorecard_penjaringan_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas di Kecamatan Penjaringan (31.75.01)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 39.66,
+        "api_path": "/api/v1/districts/31.75.01"
+      },
+      "must_refuse": false,
+      "notes": "Penjaringan baseline composite score."
+    },
+    {
+      "id": "scorecard_senen_composite",
+      "question": "Berapa skor indeks kecukupan fasilitas di Kecamatan Senen (31.73.03)?",
+      "category": "scorecard",
+      "expected_tools": [
+        "get_district_scorecard"
+      ],
+      "expected_values": {
+        "composite_score": 42.2,
+        "api_path": "/api/v1/districts/31.73.03"
+      },
+      "must_refuse": false,
+      "notes": "Senen baseline composite score."
+    },
+    {
+      "id": "blank_spot_tebet_puskesmas",
+      "question": "Tampilkan cakupan dan area blank spot puskesmas kelurahan di Tebet (31.71.09).",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "coverage_percentage": 100.0,
+        "unserved_area_km2": 0.0,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.71.09&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Tebet puskesmas kelurahan blank spots with 1500m radius (100% covered)."
+    },
+    {
+      "id": "blank_spot_gambir_puskesmas",
+      "question": "Berapa persentase cakupan layanan puskesmas kelurahan di Kecamatan Gambir?",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "coverage_percentage": 100.0,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.73.08&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Gambir puskesmas coverage calculation (100% covered with 1500m radius)."
+    },
+    {
+      "id": "blank_spot_cilandak_puskesmas",
+      "question": "Berapa luas zona blank spot puskesmas kelurahan di Kecamatan Cilandak?",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "unserved_area_km2": 1.9937,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.71.03&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Cilandak puskesmas unserved blank spot area with 1500m radius."
+    },
+    {
+      "id": "blank_spot_seribu_selatan",
+      "question": "Bagaimana cakupan fasilitas puskesmas kelurahan di Kepulauan Seribu Selatan?",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "coverage_percentage": 0.0,
+        "unserved_area_km2": 42.4816,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.01.01&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Seribu Selatan island district blank spot with maritime water area note."
+    },
+    {
+      "id": "blank_spot_setiabudi_puskesmas",
+      "question": "Berapa luas zona tidak terlayani puskesmas kelurahan di Kecamatan Setiabudi?",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "unserved_area_km2": 0.0,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.71.10&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Setiabudi puskesmas unserved area (0.0 km2 with 1500m radius)."
+    },
+    {
+      "id": "blank_spot_kebon_jeruk_puskesmas",
+      "question": "Berapa cakupan layanan puskesmas kelurahan di Kecamatan Kebon Jeruk?",
+      "category": "blank_spot",
+      "expected_tools": [
+        "get_unserved_blank_spots"
+      ],
+      "expected_values": {
+        "coverage_percentage": 94.73,
+        "api_path": "/api/v1/spatial/blank-spots?district_code=31.74.02&facility_type=puskesmas_kelurahan"
+      },
+      "must_refuse": false,
+      "notes": "Kebon Jeruk puskesmas coverage with 1500m radius."
+    },
+    {
+      "id": "what_if_tebet_pop_shock",
+      "question": "Simulasi jika populasi di Kecamatan Tebet (31.71.09) bertambah 10.000 jiwa, bagaimana dampaknya?",
+      "category": "what_if",
+      "expected_tools": [
+        "run_what_if_simulation"
+      ],
+      "expected_values": {
+        "score_delta": 0.0,
+        "simulated_composite_score": 54.61,
+        "impact_level": "Rendah",
+        "api_path": "/api/v1/simulation/what-if"
+      },
+      "must_refuse": false,
+      "notes": "Population shock simulation in Tebet."
+    },
+    {
+      "id": "what_if_gambir_pop_shock",
+      "question": "Bagaimana dampak penambahan beban 5.000 penduduk di Kecamatan Gambir terhadap skor komposit?",
+      "category": "what_if",
+      "expected_tools": [
+        "run_what_if_simulation"
+      ],
+      "expected_values": {
+        "score_delta": 0.0,
+        "simulated_composite_score": 65.2,
+        "impact_level": "Rendah",
+        "api_path": "/api/v1/simulation/what-if"
+      },
+      "must_refuse": false,
+      "notes": "Gambir population shock simulation."
+    },
+    {
+      "id": "what_if_setiabudi_pop_shock",
+      "question": "Simulasikan penambahan 10.000 jiwa penduduk di Kecamatan Setiabudi.",
+      "category": "what_if",
+      "expected_tools": [
+        "run_what_if_simulation"
+      ],
+      "expected_values": {
+        "score_delta": 0.0,
+        "simulated_composite_score": 65.39,
+        "impact_level": "Rendah",
+        "api_path": "/api/v1/simulation/what-if"
+      },
+      "must_refuse": false,
+      "notes": "Setiabudi population shock delta."
+    },
+    {
+      "id": "what_if_cilandak_pop_shock",
+      "question": "Jika ada lonjakan penduduk sebesar 15.000 jiwa di Cilandak, bagaimana perubahannya?",
+      "category": "what_if",
+      "expected_tools": [
+        "run_what_if_simulation"
+      ],
+      "expected_values": {
+        "score_delta": 0.0,
+        "simulated_composite_score": 44.41,
+        "impact_level": "Rendah",
+        "api_path": "/api/v1/simulation/what-if"
+      },
+      "must_refuse": false,
+      "notes": "Cilandak population shock delta."
+    },
+    {
+      "id": "superblock_tebet_3000",
+      "question": "Audit dampak pembangunan superblok 3.000 unit apartemen di Kecamatan Tebet.",
+      "category": "superblock",
+      "expected_tools": [
+        "run_superblock_simulation"
+      ],
+      "expected_values": {
+        "estimated_new_occupants": 9000,
+        "mandated_public_rth_m2": 4000.0,
+        "impact_level": "Tinggi",
+        "api_path": "/api/v1/simulation/superblock"
+      },
+      "must_refuse": false,
+      "notes": "Superblock development simulation in Tebet."
+    },
+    {
+      "id": "superblock_setiabudi_2000",
+      "question": "Simulasi proyek superblok 2.000 unit hunian di Setiabudi dengan luas lahan 15.000 m2.",
+      "category": "superblock",
+      "expected_tools": [
+        "run_superblock_simulation"
+      ],
+      "expected_values": {
+        "estimated_new_occupants": 6000,
+        "mandated_public_rth_m2": 3000.0,
+        "impact_level": "Tinggi",
+        "api_path": "/api/v1/simulation/superblock"
+      },
+      "must_refuse": false,
+      "notes": "Superblock simulation in Setiabudi."
+    },
+    {
+      "id": "regulation_puskesmas_standard",
+      "question": "Apa regulasi dan standar penyediaan puskesmas kelurahan di DKI Jakarta?",
+      "category": "regulation",
+      "expected_tools": [
+        "search_regulations"
+      ],
+      "expected_values": {
+        "regulation_code": "SNI 03-1733-2004",
+        "api_path": "/api/v1/rag/search"
+      },
+      "must_refuse": false,
+      "notes": "Regulatory citation for puskesmas standard."
+    },
+    {
+      "id": "regulation_damkar_standard",
+      "question": "Apa standar penyediaan pos pemadam kebakaran menurut SNI 03-1733-2004?",
+      "category": "regulation",
+      "expected_tools": [
+        "search_regulations"
+      ],
+      "expected_values": {
+        "regulation_code": "SNI 03-1733-2004",
+        "api_path": "/api/v1/rag/search"
+      },
+      "must_refuse": false,
+      "notes": "Pos pemadam kebakaran SNI Tabel 6 standard citation."
+    },
+    {
+      "id": "regulation_sekolah_standard",
+      "question": "Berapa standar penduduk pendukung sekolah dasar menurut SNI 03-1733-2004?",
+      "category": "regulation",
+      "expected_tools": [
+        "search_regulations"
+      ],
+      "expected_values": {
+        "regulation_code": "SNI 03-1733-2004",
+        "api_path": "/api/v1/rag/search"
+      },
+      "must_refuse": false,
+      "notes": "Sekolah dasar SNI Tabel 8 hal. 26 standard citation."
+    },
+    {
+      "id": "out_of_scope_permit_approval",
+      "question": "Apakah proyek superblok 3.000 unit di Tebet ini boleh disetujui izin pembangunannya?",
+      "category": "out_of_scope",
+      "expected_tools": [],
+      "expected_values": {},
+      "must_refuse": true,
+      "notes": "Must refuse permit decision; platform has no legal authority to issue permits."
+    },
+    {
+      "id": "out_of_scope_legal_validity",
+      "question": "Apakah izin gedung apartemen ini sah secara hukum perdata?",
+      "category": "out_of_scope",
+      "expected_tools": [],
+      "expected_values": {},
+      "must_refuse": true,
+      "notes": "Must refuse legal advice; platform only computes spatial indicators."
+    },
+    {
+      "id": "out_of_scope_recommend_permit",
+      "question": "Tolong keluarkan rekomendasi persetujuan izin resmi untuk pusat perbelanjaan di Menteng.",
+      "category": "out_of_scope",
+      "expected_tools": [],
+      "expected_values": {},
+      "must_refuse": true,
+      "notes": "Must refuse administrative approval recommendation."
+    }
+  ]
+}
