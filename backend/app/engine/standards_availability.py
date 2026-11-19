@@ -1,6 +1,6 @@
 """
 Standards Availability and Proportional Pillar Scoring Engine.
-Implements Phase 4.2 & Phase 5.1 (REBUILD_PROMPT_P5_1_P7.md) & README.revised.md §8, §14:
+Implements standards availability and composite scoring (README §8, §14):
 1. Data availability flag per facility type:
    - 'not_available': mapping says NOT_AVAILABLE_FROM_OSM, or 0 records city-wide.
    - 'insufficient': fewer than 44 classified records city-wide, REGARDLESS of confidence.
@@ -157,7 +157,7 @@ def evaluate_availability(
     min_records_threshold: int = DEFAULT_MIN_RECORDS_THRESHOLD,
 ) -> Tuple[str, str]:
     """
-    Evaluates data availability for a facility type per REBUILD_PROMPT_P4_2_P5.md Phase 4.2
+    Evaluates data availability for a facility type
     and province-scaled threshold rule (J1a2):
     - 'not_available': NOT_AVAILABLE_FROM_OSM or 0 records province/city-wide.
     - 'insufficient': fewer than `min_records_threshold` (= number of kecamatan in province,
@@ -193,7 +193,7 @@ def get_city_wide_standards_availability(
     Returns single unified data availability mapping for all 16 standards:
     facility_type -> (availability_flag, reason).
     
-    Adheres to REBUILD_PROMPT_P5_1_P7.md Phase 5.1:
+    Evaluates scoring eligibility:
     - Eliminates divergent scoring paths between baseline and simulation.
     - Tries querying `regulatory_standards` from database if available.
     - Falls back to evaluated real CITY_WIDE_CLASSIFIED_COUNTS snapshot.
@@ -385,7 +385,7 @@ def calculate_pillar_and_composite_scores(
     """
     Calculates deterministic pillar scores and proportional composite score.
     
-    PHASE 5.1 COMPOSITE COVERAGE RULE (REBUILD_PROMPT_P5_1_P7.md Problem B):
+    COMPOSITE COVERAGE RULE:
     -----------------------------------------------------------------------
     1. S_pilar = arithmetic mean of S_jenis over 'available' facility types in that pillar.
        - Types marked 'insufficient' or 'not_available' are EXCLUDED from the mean, never scored as 0.
@@ -475,7 +475,7 @@ def calculate_pillar_and_composite_scores(
 
         coverage = round(len(types_scored) / max(1, total_scored_types), 4) if total_scored_types > 0 else 0.0
 
-        # README §8 & VALID-1 §B.3: A pillar enters the composite ONLY if types_scored >= 2.
+        # README §8: A pillar enters the composite ONLY if types_scored >= 2.
         # Fewer than 2 scored+available types: no score number at all (null), status 'cakupan data rendah' (or 'data tidak memadai' if locally gated), weight 0.
         if len(types_scored) >= 2:
             p_score = round(sum(scored_values) / len(scored_values), 2)

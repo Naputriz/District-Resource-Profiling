@@ -1,5 +1,5 @@
 """
-Unit tests for API key behavior per REBUILD_PROMPT_P13_1 §13.1C.
+Unit tests for API key behavior.
 Marker: unit.
 """
 
@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_optional_api_key_behavior():
-    """Verify API_KEY behavior per REBUILD_PROMPT_P13_1 §13.1C:
+    """Verify API_KEY behavior:
     1. If unset in env: POST routes succeed without X-API-Key header.
     2. If set in env: POST routes require X-API-Key, 401 if missing/invalid, 200 if valid.
     3. GET routes remain accessible without header in both cases.

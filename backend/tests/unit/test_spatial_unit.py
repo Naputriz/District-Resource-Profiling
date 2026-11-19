@@ -1,5 +1,5 @@
 """
-Unit tests for PostGISSpatialEngine logic (README.revised.md §17, Phase 10.1).
+Unit tests for PostGISSpatialEngine logic (README §17).
 Validates:
 1. SQL query construction and parameterization (buffers, boundaries).
 2. Result post-processing and GeoJSON FeatureCollection generation.

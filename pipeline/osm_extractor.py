@@ -5,7 +5,7 @@ Pillar 2: Human Capital & Education (SD, SMP, SMA/SMK, TK)
 Pillar 3: Urban Livability & Recreation (Taman RT, Taman Kelurahan, Taman Kecamatan, Taman RPTRA)
 Pillar 4: Mobility & Commercial (Stasiun KRL/MRT/LRT, Halte TransJakarta, Pasar)
 
-Strictly complies with README.revised.md §6, §7, §14 and REBUILD_PROMPT_P3.md §3B:
+Strictly complies with README.md §6, §7, §14:
 - Primary Overpass endpoint: https://overpass-api.de/api/interpreter
 - Mandatory header: User-Agent: DistrictProfiling-UI-RPL/0.1 (muhammaddhiya2006@gmail.com)
 - Fallback mirror with logging after 3 attempts on primary.
@@ -212,7 +212,7 @@ def normalize_name_for_dedup(name: Optional[str]) -> str:
 
 def deduplicate_facilities(facilities: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
-    Deduplicates facilities per REBUILD_PROMPT_P4.md §3.1.5:
+    Deduplicates facilities:
     When a node and a way (or two elements) have the same facility_type and a normalized name
     that matches (non-empty), within 150m, keep one (prefer the way centroid).
     Returns (deduped_facilities, removed_counts_per_type).
@@ -317,7 +317,7 @@ def classify_osm_element(
     snapshot_date: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Shared deterministic classifier per OSM_TAG_MAPPING.md and REBUILD_PROMPT_P4.md.
+    Shared deterministic classifier per OSM_TAG_MAPPING.md.
     Used identically by both Overpass (OSMExtractor) and Geofabrik PBF extraction paths.
     """
     tags = element.get("tags", {})
@@ -610,7 +610,7 @@ class OSMExtractor:
         raise RuntimeError(f"Overpass API is unreachable or returned persistent errors after 3 attempts on all endpoints for {group_name}.")
 
     def classify_element(self, element: Dict[str, Any], query_group: str) -> Dict[str, Any]:
-        """Classifies element deterministically per OSM_TAG_MAPPING.md and REBUILD_PROMPT_P4.md."""
+        """Classifies element deterministically per OSM_TAG_MAPPING.md."""
         return classify_osm_element(element, query_group, snapshot_date=SNAPSHOT_DATE)
 
     def run_extraction(self) -> Dict[str, Any]:
@@ -679,7 +679,7 @@ class OSMExtractor:
     def reclassify_from_raw(self, raw_dir: Optional[Path] = None) -> Dict[str, Any]:
         """
         Reclassifies facilities offline directly from the raw snapshot files
-        per REBUILD_PROMPT_P4.md ("Do NOT call Overpass again").
+        ("Do NOT call Overpass again").
         Applies deduplication and saves normalized output.
         """
         target_raw_dir = raw_dir or self.raw_dir

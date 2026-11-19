@@ -1,6 +1,6 @@
 """
 Unit tests for Standards Availability, Coverage, and Proportional Re-weighting.
-Complies with Phase 4.2 & Phase 5.1 (REBUILD_PROMPT_P5_1_P7.md). Marker: unit.
+Availability and composite scoring rules. Marker: unit.
 """
 
 import pytest
@@ -46,7 +46,7 @@ def test_evaluate_availability_rules():
 
 def test_pillar_single_type_excluded_from_composite_phase_5_1():
     """
-    Phase 5.1 / VALID-1: A pillar with fewer than 2 scored+available types gets
+    A pillar with fewer than 2 scored+available types gets
     score: None, status: 'cakupan data rendah', and weight 0 (included_in_composite: False).
     The remaining pillars with types_scored >= 2 re-normalize proportionally.
     """

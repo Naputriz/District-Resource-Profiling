@@ -39,7 +39,7 @@ npx wrangler deploy
 Export the branch into a deploy directory (do not run production compose directly from the shared dev working tree):
 
 ```bash
-DEPLOY_DIR=/home/digilab/deploy/drp-$(git rev-parse --short HEAD)
+DEPLOY_DIR=$HOME/deploy/drp-$(git rev-parse --short HEAD)
 mkdir -p "$DEPLOY_DIR"
 git archive HEAD | tar -x -C "$DEPLOY_DIR"
 ```

@@ -34,7 +34,7 @@ def chat_with_spatial_agent(
     Powered by local LLM (Qwen 2.5 14B).
     Performs deterministic text-to-spatial tool calling, regulation citations,
     and returns Map Action events for dual-view sync.
-    Target endpoint aligned with README.revised.md §13.
+    Target endpoint aligned with README.md §13.
     """
     # Enforce per-user rate limit for regular authenticated users (bypass for service principal)
     if not current_user.get("is_service"):
@@ -80,7 +80,7 @@ def chat_with_spatial_agent_alias(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Deprecated alias for /api/v1/chat (README.revised.md §13).
+    Deprecated alias for /api/v1/chat (README.md §13).
     """
     response.headers["Deprecation"] = "true"
     return chat_with_spatial_agent(req, current_user=current_user)

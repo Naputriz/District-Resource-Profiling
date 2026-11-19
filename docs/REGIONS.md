@@ -1,6 +1,6 @@
-# Multi-Region Support (Java & Expansion Guide)
+# Multi-Region Support (National 38-Province Release & Expansion Guide)
 
-Java provinces `31`–`36` have been live on `https://drp.digilabui.cloud` (fallback `https://drp.digilabui.workers.dev`) since 17 Nov 2026 (commit `9ee346d`, `ACTIVE_PROVINCES=31,32,33,34,35,36`).
+All 38 Indonesian provinces (`11`–`96`, `7,033` kecamatan) are live on `https://drp.digilabui.cloud` (fallback `https://drp.digilabui.workers.dev`). Java (`31`–`36`) launched on 17 Nov 2026 (commit `9ee346d`), and Sumatra, Sulawesi, Papua, Bali–Nusa Tenggara, Kalimantan, and Maluku were added on 18 Nov 2026 (commits `fb0eaa3`–`bfbc514`).
 
 ---
 
@@ -8,57 +8,59 @@ Java provinces `31`–`36` have been live on `https://drp.digilabui.cloud` (fall
 
 | Code | Province | Status | Kecamatan | Scored (`memadai`) | Gated (`tidak_memadai`) | Population Source |
 |---|---|---|---:|---:|---:|---|
-| `11` | Aceh | **Staging** | 289 | 64 | 225 | WorldPop R2025A 2024 (model estimate) |
-| `12` | Sumatera Utara | **Staging** | 449 | 89 | 360 | WorldPop R2025A 2024 (model estimate) |
-| `13` | Sumatera Barat | **Staging** | 179 | 75 | 104 | WorldPop R2025A 2024 (model estimate) |
-| `14` | Riau | **Staging** | 169 | 62 | 107 | WorldPop R2025A 2024 (model estimate) |
-| `15` | Jambi | **Staging** | 141 | 104 | 37 | WorldPop R2025A 2024 (model estimate) |
-| `16` | Sumatera Selatan | **Staging** | 236 | 62 | 174 | WorldPop R2025A 2024 (model estimate) |
-| `17` | Bengkulu | **Staging** | 128 | 60 | 68 | WorldPop R2025A 2024 (model estimate) |
-| `18` | Lampung | **Staging** | 228 | 69 | 159 | WorldPop R2025A 2024 (model estimate) |
-| `19` | Kepulauan Bangka Belitung | **Staging** | 47 | 20 | 27 | WorldPop R2025A 2024 (model estimate) |
-| `21` | Kepulauan Riau | **Staging** | 70 | 27 | 43 | WorldPop R2025A 2024 (model estimate) |
+| `11` | Aceh | **Active** | 289 | 64 | 225 | WorldPop R2025A 2024 (model estimate) |
+| `12` | Sumatera Utara | **Active** | 449 | 89 | 360 | WorldPop R2025A 2024 (model estimate) |
+| `13` | Sumatera Barat | **Active** | 179 | 75 | 104 | WorldPop R2025A 2024 (model estimate) |
+| `14` | Riau | **Active** | 169 | 62 | 107 | WorldPop R2025A 2024 (model estimate) |
+| `15` | Jambi | **Active** | 141 | 104 | 37 | WorldPop R2025A 2024 (model estimate) |
+| `16` | Sumatera Selatan | **Active** | 236 | 62 | 174 | WorldPop R2025A 2024 (model estimate) |
+| `17` | Bengkulu | **Active** | 128 | 60 | 68 | WorldPop R2025A 2024 (model estimate) |
+| `18` | Lampung | **Active** | 228 | 69 | 159 | WorldPop R2025A 2024 (model estimate) |
+| `19` | Kepulauan Bangka Belitung | **Active** | 47 | 20 | 27 | WorldPop R2025A 2024 (model estimate) |
+| `21` | Kepulauan Riau | **Active** | 70 | 27 | 43 | WorldPop R2025A 2024 (model estimate) |
 | `31` | DKI Jakarta | **Active** | 44 | 44 | 0 | BPS 2024 |
 | `32` | Jawa Barat | **Active** | 627 | 321 | 306 | WorldPop R2025A 2024 (model estimate) |
 | `33` | Jawa Tengah | **Active** | 573 | 288 | 285 | WorldPop R2025A 2024 (model estimate) |
 | `34` | DI Yogyakarta | **Active** | 78 | 66 | 12 | WorldPop R2025A 2024 (model estimate) |
 | `35` | Jawa Timur | **Active** | 666 | 327 | 339 | WorldPop R2025A 2024 (model estimate) |
 | `36` | Banten | **Active** | 155 | 63 | 92 | WorldPop R2025A 2024 (model estimate) |
-| `51` | Bali | **Staging** | 57 | 37 | 20 | WorldPop R2025A 2024 (model estimate) |
-| `52` | Nusa Tenggara Barat | **Staging** | 116 | 84 | 32 | WorldPop R2025A 2024 (model estimate) |
-| `53` | Nusa Tenggara Timur | **Staging** | 307 | 109 | 198 | WorldPop R2025A 2024 (model estimate) |
-| `61` | Kalimantan Barat | **Staging** | 174 | 44 | 130 | WorldPop R2025A 2024 (model estimate) |
-| `62` | Kalimantan Tengah | **Staging** | 136 | 47 | 89 | WorldPop R2025A 2024 (model estimate) |
-| `63` | Kalimantan Selatan | **Staging** | 152 | 110 | 42 | WorldPop R2025A 2024 (model estimate) |
-| `64` | Kalimantan Timur | **Staging** | 103 | 72 | 31 | WorldPop R2025A 2024 (model estimate) |
-| `65` | Kalimantan Utara | **Staging** | 53 | 32 | 21 | WorldPop R2025A 2024 (model estimate) |
-| `71` | Sulawesi Utara | **Staging** | 171 | 92 | 79 | WorldPop R2025A 2024 (model estimate) |
-| `72` | Sulawesi Tengah | **Staging** | 175 | 38 | 137 | WorldPop R2025A 2024 (model estimate) |
-| `73` | Sulawesi Selatan | **Staging** | 307 | 168 | 139 | WorldPop R2025A 2024 (model estimate) |
-| `74` | Sulawesi Tenggara | **Staging** | 222 | 74 | 148 | WorldPop R2025A 2024 (model estimate) |
-| `75` | Gorontalo | **Staging** | 77 | 6 | 71 | WorldPop R2025A 2024 (model estimate) |
-| `76` | Sulawesi Barat | **Staging** | 69 | 10 | 58 *(+1 zero-pop)* | WorldPop R2025A 2024 (model estimate) |
-| `81` | Maluku | **Staging** | 118 | 25 | 93 | WorldPop R2025A 2024 (model estimate) |
-| `82` | Maluku Utara | **Staging** | 116 | 12 | 104 | WorldPop R2025A 2024 (model estimate) |
-| `91` | Papua | **Staging** | 97 | 31 | 66 | WorldPop R2025A 2024 (model estimate) |
-| `92` | Papua Barat | **Staging** | 78 | 40 | 38 | WorldPop R2025A 2024 (model estimate) |
-| `93` | Papua Selatan | **Staging** | 69 | 22 | 47 | WorldPop R2025A 2024 (model estimate) |
-| `94` | Papua Tengah | **Staging** | 73 | 19 | 54 | WorldPop R2025A 2024 (model estimate) |
-| `95` | Papua Pegunungan | **Staging** | 185 | 69 | 112 *(+4 zero-pop)* | WorldPop R2025A 2024 (model estimate) |
-| `96` | Papua Barat Daya | **Staging** | 99 | 60 | 39 | WorldPop R2025A 2024 (model estimate) |
+| `51` | Bali | **Active** | 57 | 37 | 20 | WorldPop R2025A 2024 (model estimate) |
+| `52` | Nusa Tenggara Barat | **Active** | 116 | 84 | 32 | WorldPop R2025A 2024 (model estimate) |
+| `53` | Nusa Tenggara Timur | **Active** | 307 | 109 | 198 | WorldPop R2025A 2024 (model estimate) |
+| `61` | Kalimantan Barat | **Active** | 174 | 44 | 130 | WorldPop R2025A 2024 (model estimate) |
+| `62` | Kalimantan Tengah | **Active** | 136 | 47 | 89 | WorldPop R2025A 2024 (model estimate) |
+| `63` | Kalimantan Selatan | **Active** | 152 | 110 | 42 | WorldPop R2025A 2024 (model estimate) |
+| `64` | Kalimantan Timur | **Active** | 103 | 72 | 31 | WorldPop R2025A 2024 (model estimate) |
+| `65` | Kalimantan Utara | **Active** | 53 | 32 | 21 | WorldPop R2025A 2024 (model estimate) |
+| `71` | Sulawesi Utara | **Active** | 171 | 92 | 79 | WorldPop R2025A 2024 (model estimate) |
+| `72` | Sulawesi Tengah | **Active** | 175 | 38 | 137 | WorldPop R2025A 2024 (model estimate) |
+| `73` | Sulawesi Selatan | **Active** | 307 | 168 | 139 | WorldPop R2025A 2024 (model estimate) |
+| `74` | Sulawesi Tenggara | **Active** | 222 | 74 | 148 | WorldPop R2025A 2024 (model estimate) |
+| `75` | Gorontalo | **Active** | 77 | 6 | 71 | WorldPop R2025A 2024 (model estimate) |
+| `76` | Sulawesi Barat | **Active** | 69 | 10 | 58 *(+1 zero-pop)* | WorldPop R2025A 2024 (model estimate) |
+| `81` | Maluku | **Active** | 118 | 25 | 93 | WorldPop R2025A 2024 (model estimate) |
+| `82` | Maluku Utara | **Active** | 116 | 12 | 104 | WorldPop R2025A 2024 (model estimate) |
+| `91` | Papua | **Active** | 97 | 31 | 66 | WorldPop R2025A 2024 (model estimate) |
+| `92` | Papua Barat | **Active** | 78 | 40 | 38 | WorldPop R2025A 2024 (model estimate) |
+| `93` | Papua Selatan | **Active** | 69 | 22 | 47 | WorldPop R2025A 2024 (model estimate) |
+| `94` | Papua Tengah | **Active** | 73 | 19 | 54 | WorldPop R2025A 2024 (model estimate) |
+| `95` | Papua Pegunungan | **Active** | 185 | 69 | 112 *(+4 zero-pop)* | WorldPop R2025A 2024 (model estimate) |
+| `96` | Papua Barat Daya | **Active** | 99 | 60 | 39 | WorldPop R2025A 2024 (model estimate) |
 
-Total served across Java: **2,143 kecamatan** (1,109 scored, 1,034 gated). Sumatra in staging: **1,936 kecamatan** (`memadai`: 632; `tidak_memadai`: 1,304; provinces `13`, `15`, `21` have `>= 2` province-available scored types for composite calculation). Bali & Nusa Tenggara in staging: **480 kecamatan** (`memadai`: 230; `tidak_memadai`: 250; provinces `51`, `52` compute composites). Kalimantan in staging: **618 kecamatan** (`memadai`: 305; `tidak_memadai`: 313; provinces `63`, `64` compute composites). Sulawesi in staging: **1,021 kecamatan** (`memadai`: 388; `tidak_memadai`: 632; 1 zero-population island kecamatan `76.04.023`; provinces `71`, `73` compute composites). Maluku in staging: **234 kecamatan** (`memadai`: 37; `tidak_memadai`: 197; 0 reach `>= 2` scored types). Papua in staging: **601 kecamatan** (`memadai`: 241; `tidak_memadai`: 356; 4 zero-population highland kecamatan in `95`; 0 reach `>= 2` scored types). **All 38 Indonesian provinces (`7,033` kecamatan total) are loaded in staging.**
+*(Note: in the table above, `Scored (memadai)` / `Gated (tidak_memadai)` reflect the per-kecamatan `SD >= 1` local gate; in 23 provinces where `< 2` scored facility types meet the province-wide `>= N` threshold, composite scores are `NULL`, leaving **1,878** kecamatan with a numeric composite score across **15** provinces and **5,155** showing `"Data tidak memadai"`.)*
+
+Summary across islands (all **38** provinces, **7,033** kecamatan live): Java **2,143 kecamatan** (1,109 composite-scored, 1,034 gated); Sumatra **1,936 kecamatan** (local `memadai`: 632; `tidak_memadai`: 1,304; provinces `13`, `15`, `21` compute composite scores for 206 kecamatan); Bali & Nusa Tenggara **480 kecamatan** (`memadai`: 230; `tidak_memadai`: 250; provinces `51`, `52` compute composites for 121 kecamatan); Kalimantan **618 kecamatan** (`memadai`: 305; `tidak_memadai`: 313; provinces `63`, `64` compute composites for 182 kecamatan); Sulawesi **1,021 kecamatan** (`memadai`: 388; `tidak_memadai`: 632; 1 zero-population island kecamatan `76.04.023`; provinces `71`, `73` compute composites for 260 kecamatan); Maluku **234 kecamatan** (`memadai`: 37; `tidak_memadai`: 197; 0 reach `>= 2` scored types); Papua **601 kecamatan** (`memadai`: 241; `tidak_memadai`: 356; 4 zero-population highland kecamatan in `95`; 0 reach `>= 2` scored types).
 
 ---
 
 ## 2. Data Sources & Licences
 
-Raw downloads for provinces `32`–`36` and outer islands are stored outside Git under `/mnt/data/rpl/data_raw/`. Exact URLs, download dates, byte sizes, and SHA-256 hashes are recorded in [`pipeline/data/sources/REGION_SOURCES.md`](../pipeline/data/sources/REGION_SOURCES.md).
+Raw downloads for provinces `32`–`36` and outer islands are stored outside Git under ``data_raw/` (di luar Git)`. Exact URLs, download dates, byte sizes, and SHA-256 hashes are recorded in [`pipeline/data/sources/REGION_SOURCES.md`](../pipeline/data/sources/REGION_SOURCES.md).
 
-| Layer | DKI Jakarta (`31`) | Java Provinces (`32`–`36`) | Licence |
+| Layer | DKI Jakarta (`31`) | Other Provinces (`37` non-DKI) | Licence |
 |---|---|---|---|
-| **Boundaries** | `SakifAbdillah/jakartaKecamatanGeoJSON` (BPS / Kemendagri) | HDX COD-AB Indonesia (`cod-ab-idn`, layer `idn_admin3`, BPS / BIG via OCHA ROAP) | DKI: Public Domain / ODbL<br>32–36: **CC BY-IGO** |
-| **Population** | BPS Provinsi DKI Jakarta 2024 (*Statistik Daerah 2024*) | WorldPop Global2 constrained 100 m (`G2_CN_POP_R25A_100m`, release R2025A, 2024) | DKI: Government Open Data (BPS)<br>32–36: **CC BY 4.0** |
+| **Boundaries** | `SakifAbdillah/jakartaKecamatanGeoJSON` (BPS / Kemendagri) | HDX COD-AB Indonesia (`cod-ab-idn`, layer `idn_admin3`, BPS / BIG via OCHA ROAP) | DKI: Public Domain / ODbL<br>Non-DKI: **CC BY-IGO** |
+| **Population** | BPS Provinsi DKI Jakarta 2024 (*Statistik Daerah 2024*) | WorldPop Global2 constrained 100 m (`G2_CN_POP_R25A_100m`, release R2025A, 2024) | DKI: Government Open Data (BPS)<br>Non-DKI: **CC BY 4.0** |
 | **Public Facilities** | OpenStreetMap via Overpass API (`2026-10-14`, 14,496 active facilities) | OpenStreetMap via Geofabrik PBFs (`java-latest.osm.pbf`, `sumatra-latest.osm.pbf`, `nusa-tenggara-latest.osm.pbf`, `kalimantan-latest.osm.pbf`, `sulawesi-latest.osm.pbf`, `maluku-latest.osm.pbf`, `papua-latest.osm.pbf`) | **ODbL 1.0** |
 | **Standards** | SNI 03-1733-2004 (16 facility standards) | SNI 03-1733-2004 (same 16 standards) | BSN |
 
@@ -72,7 +74,7 @@ Raw downloads for provinces `32`–`36` and outer islands are stored outside Git
 
 ## 3. Population Estimation & BPS Check
 
-For provinces `32`–`36`, kecamatan population is computed by [`compute_worldpop_zonal_sums()`](../pipeline/load_region.py) over the WorldPop 100 m GeoTIFF:
+For all 37 non-DKI provinces, kecamatan population is computed by [`compute_worldpop_zonal_sums()`](../pipeline/load_region.py) over the WorldPop 100 m GeoTIFF:
 - Clips pixels strictly inside each COD-AB polygon using `rasterio.mask.mask(..., crop=True, filled=False, all_touched=False)` (falling back to `all_touched=True` only if 0 valid pixels intersect a tiny polygon) so adjacent kecamatan never double-count shared pixels.
 - Sums positive finite non-nodata pixel values and rounds to an integer.
 - Marks `population_source = 'WorldPop R2025A 2024 (model estimate)'` and `population_verification_status = 'model_estimate'`. DKI Jakarta (`31`) keeps its BPS 2024 values untouched.
@@ -199,22 +201,22 @@ The backend environment variable `ACTIVE_PROVINCES` (comma-separated province co
 `pipeline/load_region.py` includes a live-DB guard (`ensure_safe_database()`) that refuses to run against `district_profiling` unless `--allow-live` is explicitly passed. Always load and verify in staging first.
 
 ### Step 1: Prepare Raw Data & Metadata
-1. Download the COD-AB boundaries, WorldPop 2024 raster (if not already present), Geofabrik `.osm.pbf` extract for the target island, and COD-PS 2020 reference CSVs into `/mnt/data/rpl/data_raw/`.
+1. Download the COD-AB boundaries, WorldPop 2024 raster (if not already present), Geofabrik `.osm.pbf` extract for the target island, and COD-PS 2020 reference CSVs into ``data_raw/` (di luar Git)`.
 2. Record URL, download date, byte size, and SHA-256 in [`pipeline/data/sources/REGION_SOURCES.md`](../pipeline/data/sources/REGION_SOURCES.md).
 3. Add the province entry to `SUPPORTED_PROVINCES` in `pipeline/load_region.py` (and `REGIONS_CATALOG` in `backend/app/api/routers/regions.py` when exposing it in the API).
 
 ### Step 2: Load into the Staging Database (`district_profiling_stage`)
 1. Ensure staging schema migrations are applied:
    ```bash
-   POSTGRES_DB=district_profiling_stage PYTHONPATH=. /mnt/data/rpl/og/.venv/bin/python pipeline/migrate_multiregion.py
+   POSTGRES_DB=district_profiling_stage PYTHONPATH=. python pipeline/migrate_multiregion.py
    ```
 2. Run a dry run first:
    ```bash
-   POSTGRES_DB=district_profiling_stage REDIS_DB=1 PYTHONPATH=. /mnt/data/rpl/og/.venv/bin/python pipeline/load_region.py --province <code> --dry-run
+   POSTGRES_DB=district_profiling_stage REDIS_DB=1 PYTHONPATH=. python pipeline/load_region.py --province <code> --dry-run
    ```
 3. Load boundaries, WorldPop population, OSM facilities, compliance scores, simplified GeoJSON (`frontend/data/boundaries/<code>_kecamatan.geojson`), and manifest (`pipeline/data/regions/<code>.json`):
    ```bash
-   POSTGRES_DB=district_profiling_stage REDIS_DB=1 PYTHONPATH=. /mnt/data/rpl/og/.venv/bin/python pipeline/load_region.py --province <code>
+   POSTGRES_DB=district_profiling_stage REDIS_DB=1 PYTHONPATH=. python pipeline/load_region.py --province <code>
    ```
    *(To re-score existing DB records without reloading polygons/facilities, pass `--rescore-only`.)*
 
@@ -237,7 +239,7 @@ The backend environment variable `ACTIVE_PROVINCES` (comma-separated province co
 
 ## 7. What's Next
 
-- **All 38 provinces loaded in staging:** Java (`31`–`36`, live), Sumatra (`11`–`19`, `21`), Bali & Nusa Tenggara (`51`–`53`), Kalimantan (`61`–`65`), Sulawesi (`71`–`76`), Maluku (`81`–`82`), and Papua (`91`–`96`) are loaded in `district_profiling_stage` using `load_region.py` and Geofabrik island PBFs. Promote to live via Step 4 when ready.
+- **All 38 provinces live (`7,033` kecamatan):** Java (`31`–`36`), Sumatra (`11`–`19`, `21`), Bali & Nusa Tenggara (`51`–`53`), Kalimantan (`61`–`65`), Sulawesi (`71`–`76`), Maluku (`81`–`82`), and Papua (`91`–`96`) are loaded and `Active` on the live site (`1,878` composite-scored kecamatan across 15 provinces, `5,155` `"Data tidak memadai"`).
 - **SNI 1733:2026:** Switch facility standards from `SNI 03-1733-2004` to `SNI 1733:2026` once the official BSN PDF is available.
 - **Official facility counts:** Supplement or replace OSM counts with official ministry / BPS / Dinas facility registries to reduce under-counting outside DKI Jakarta.
 
