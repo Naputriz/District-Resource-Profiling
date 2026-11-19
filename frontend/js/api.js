@@ -77,15 +77,28 @@ export async function fetchHealthStatus() {
   return handleResponse(res, "health");
 }
 
-export async function fetchDistricts() {
-  const res = await fetch(`${API_BASE}/api/v1/districts`);
+export async function fetchRegions() {
+  const res = await fetch(`${API_BASE}/api/v1/regions`);
+  return handleResponse(res, "regions");
+}
+
+export async function fetchRegionDetail(provinceCode) {
+  const res = await fetch(`${API_BASE}/api/v1/regions/${provinceCode}`);
+  return handleResponse(res, `regions/${provinceCode}`);
+}
+
+export async function fetchDistricts(provinceCode = null) {
+  let url = `${API_BASE}/api/v1/districts`;
+  if (provinceCode) {
+    url += `?province_code=${encodeURIComponent(provinceCode)}`;
+  }
+  const res = await fetch(url);
   return handleResponse(res, "districts");
 }
 
-export async function fetchBoundariesGeoJSON() {
-  const geoRes = await fetch("/data/boundaries/jakarta_44_kecamatan.geojson").catch(
-    () => null
-  );
+export async function fetchBoundariesGeoJSON(geojsonUrl = null) {
+  const targetUrl = geojsonUrl || "/data/boundaries/jakarta_44_kecamatan.geojson";
+  const geoRes = await fetch(targetUrl).catch(() => null);
   if (geoRes && geoRes.ok) {
     return geoRes.json();
   }

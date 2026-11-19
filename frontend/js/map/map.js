@@ -7,6 +7,7 @@
 import { state } from "../state.js";
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "../config.js";
 import {
+  fetchRegions,
   fetchDistricts,
   fetchBoundariesGeoJSON,
   fetchDistrictDetail,
@@ -217,14 +218,33 @@ export async function loadStandardsMetadata() {
 
 export async function loadAllDistricts() {
   try {
-    const data = await fetchDistricts();
+    let regionConfig = null;
+    try {
+      const regions = await fetchRegions();
+      regionConfig = regions.find(r => r.has_data && r.province_code === (state.activeProvince || "31")) ||
+                    regions.find(r => r.has_data) ||
+                    regions[0];
+      state.activeRegion = regionConfig;
+      if (regionConfig && state.map && regionConfig.center && regionConfig.zoom) {
+        state.map.setView(regionConfig.center, regionConfig.zoom);
+      }
+      const brandBadge = document.querySelector(".brand-badge");
+      if (brandBadge && regionConfig && regionConfig.name) {
+        brandBadge.textContent = regionConfig.name;
+      }
+    } catch (regErr) {
+      console.warn("Could not load regions metadata, using defaults:", regErr);
+    }
+
+    const data = await fetchDistricts(state.activeProvince || "31");
     let districtList = data.districts || [];
     if (typeof districtList === "object" && !Array.isArray(districtList)) {
       districtList = Object.values(districtList);
     }
     state.districts = districtList;
 
-    const geojsonData = await fetchBoundariesGeoJSON();
+    const geojsonUrl = regionConfig?.geojson_url || "/data/boundaries/jakarta_44_kecamatan.geojson";
+    const geojsonData = await fetchBoundariesGeoJSON(geojsonUrl);
     renderDistrictChoropleth(geojsonData);
   } catch (err) {
     console.error("Error loading districts:", err);
@@ -246,11 +266,13 @@ export async function selectDistrict(districtCode) {
     if (!data) return;
     state.selectedDistrict = data;
 
+    const regionName = state.activeRegion?.name || "DKI Jakarta";
+
     const nameEl = document.getElementById("info-district-name");
     if (nameEl) nameEl.textContent = data.name;
 
     const codeEl = document.getElementById("info-district-code");
-    if (codeEl) codeEl.textContent = `${data.kemendagri_code} • ${data.city_name || 'DKI Jakarta'}`;
+    if (codeEl) codeEl.textContent = `${data.kemendagri_code} • ${data.city_name || regionName}`;
 
     const popEl = document.getElementById("info-district-pop");
     if (popEl) popEl.textContent = `${data.population.toLocaleString()} jiwa`;
@@ -300,8 +322,11 @@ export function unselectDistrict() {
     });
   }
 
+  const regionName = state.activeRegion?.name || "DKI Jakarta";
+  const totalCount = state.districts?.length || 44;
+
   const nameEl = document.getElementById("info-district-name");
-  if (nameEl) nameEl.textContent = "DKI Jakarta";
+  if (nameEl) nameEl.textContent = regionName;
 
   const codeEl = document.getElementById("info-district-code");
   if (codeEl) codeEl.textContent = "Pilih kecamatan pada peta atau cari di atas";
@@ -313,10 +338,12 @@ export function unselectDistrict() {
   if (popNoteEl) popNoteEl.textContent = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)";
 
   const areaEl = document.getElementById("info-district-area");
-  if (areaEl) areaEl.textContent = "44 Kecamatan";
+  if (areaEl) areaEl.textContent = `${totalCount} Kecamatan ${regionName}`;
 
   if (state.map) {
-    state.map.setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
+    const center = state.activeRegion?.center || DEFAULT_MAP_CENTER;
+    const zoom = state.activeRegion?.zoom || DEFAULT_MAP_ZOOM;
+    state.map.setView(center, zoom);
   }
 }
 

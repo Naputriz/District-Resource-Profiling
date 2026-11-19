@@ -9,6 +9,7 @@ Handles:
 6. Redis scorecard cache.
 """
 
+import argparse
 import os
 import json
 import logging
@@ -28,6 +29,18 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
+REGIONS_DIR = DATA_DIR / "regions"
+
+def load_region_manifest(province_code: str) -> Dict[str, Any]:
+    manifest_path = REGIONS_DIR / f"{province_code}.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Region manifest for province '{province_code}' not found at {manifest_path}. "
+            f"Currently only province 31 (DKI Jakarta) has verified data sources (rencana v1.1)."
+        )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 BOUNDARIES_FILE = DATA_DIR / "boundaries" / "jakarta_44_kecamatan.geojson"
 FACILITIES_DIR = DATA_DIR / "facilities"
 REGULATIONS_DIR = DATA_DIR / "regulations"
@@ -43,7 +56,10 @@ KABUPATEN_KOTA_JAKARTA = [
 ]
 
 class DistrictDataIngestionPipeline:
-    def __init__(self):
+    def __init__(self, province_code: str = "31"):
+        self.province_code = str(province_code).strip()
+        self.manifest = load_region_manifest(self.province_code)
+        logger.info(f"Initialized ingestion pipeline for province {self.province_code} ({self.manifest.get('province_name')})")
         self.db_config = {
             "dbname": os.getenv("POSTGRES_DB", "district_profiling"),
             "user": os.getenv("POSTGRES_USER", "postgres"),
@@ -530,9 +546,11 @@ class DistrictDataIngestionPipeline:
                     "metrics": payload
                 }
 
-            # Cache with 24h TTL (86400s)
+            # Cache with 24h TTL (86400s) - province scoped key per TODO-3 and legacy key
+            cache_key_scoped = f"cache:compliance:scores:{self.province_code}"
+            self.redis_client.setex(cache_key_scoped, 86400, json.dumps(scorecards))
             self.redis_client.setex("cache:compliance:scores", 86400, json.dumps(scorecards))
-            logger.info(f"Cached {len(scorecards)} district compliance scorecards into Redis key 'cache:compliance:scores' (TTL 24h).")
+            logger.info(f"Cached {len(scorecards)} district compliance scorecards into Redis keys '{cache_key_scoped}' and 'cache:compliance:scores' (TTL 24h).")
 
     def run_all(self):
         """Executes full ingestion, validation, scoring, and caching cycle."""
@@ -559,5 +577,8 @@ class DistrictDataIngestionPipeline:
             conn.close()
 
 if __name__ == "__main__":
-    pipeline = DistrictDataIngestionPipeline()
+    parser = argparse.ArgumentParser(description="Master spatial ingestion and scoring pipeline per province")
+    parser.add_argument("--province", default="31", help="Kemendagri province code (default: 31 for DKI Jakarta)")
+    args = parser.parse_args()
+    pipeline = DistrictDataIngestionPipeline(province_code=args.province)
     pipeline.run_all()

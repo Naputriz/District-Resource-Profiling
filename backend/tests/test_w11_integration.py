@@ -138,7 +138,7 @@ def test_d1_frontend_assumptions_and_obligations_xss_prevention():
 # -----------------------------------------------------------------------------
 # D2: Canonical District Code Resolution & Map Actions
 # -----------------------------------------------------------------------------
-@pytest.mark.unit
+@pytest.mark.db
 def test_d2_map_action_resolves_district_name_to_code():
     """
     When tool args provide a district name like 'Tebet', orchestrator deterministically

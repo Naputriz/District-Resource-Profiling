@@ -35,6 +35,11 @@ def get_district_facility_buffers(
             district_code=district_code, facility_type=facility_type, pillar=pillar
         )
         return buffers
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "ambigu" in err_msg.lower():
+            raise HTTPException(status_code=400, detail=err_msg)
+        raise HTTPException(status_code=404, detail=err_msg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -62,7 +67,10 @@ def get_district_blank_spots(
         )
         return result
     except ValueError as ve:
-        raise HTTPException(status_code=404, detail=str(ve))
+        err_msg = str(ve)
+        if "ambigu" in err_msg.lower():
+            raise HTTPException(status_code=400, detail=err_msg)
+        raise HTTPException(status_code=404, detail=err_msg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -87,5 +95,10 @@ def simulate_blank_spot_reduction(
             custom_radius_meters=req.custom_radius_meters,
         )
         return delta
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "ambigu" in err_msg.lower():
+            raise HTTPException(status_code=400, detail=err_msg)
+        raise HTTPException(status_code=404, detail=err_msg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
