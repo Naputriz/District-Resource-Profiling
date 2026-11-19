@@ -89,6 +89,7 @@ def browser_page(live_server_url):
                     row = cur.fetchone()
                     if row:
                         u_id = row["id"]
+                        cur.execute("DELETE FROM chat_logs WHERE user_id = %s;", (u_id,))
                         cur.execute("DELETE FROM chat_audit WHERE user_id = %s;", (u_id,))
                         cur.execute("DELETE FROM app_users WHERE id = %s;", (u_id,))
                         r = get_redis_client()
@@ -229,3 +230,245 @@ def test_system_ui_full_demo_journey(browser_page):
 
     # 6. Strict check: console errors == 0
     assert len(errors) == 0, f"DEMO journey failed console error requirement: {errors}"
+
+
+def _boxes_overlap(a, b) -> bool:
+    return not (
+        a["x"] + a["width"] <= b["x"]
+        or b["x"] + b["width"] <= a["x"]
+        or a["y"] + a["height"] <= b["y"]
+        or b["y"] + b["height"] <= a["y"]
+    )
+
+
+def test_system_ui_legend_collapse_persists_and_no_mobile_overlap(live_server_url):
+    """
+    F1-A:
+    1. Wide screen (1366x768): legend starts expanded, collapses on click, persists across reload.
+    2. Narrow screen (390x844): legend starts collapsed and does not overlap chat input (collapsed or expanded).
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        # 1. Wide screen 1366x768
+        ctx_wide = browser.new_context(viewport={"width": 1366, "height": 768})
+        page_wide = ctx_wide.new_page()
+        errors_wide = []
+        page_wide.on("console", lambda m: errors_wide.append(m.text) if m.type == "error" else None)
+
+        page_wide.goto(live_server_url, wait_until="networkidle")
+        page_wide.wait_for_selector("#map-legend-toggle", timeout=10000)
+        assert page_wide.get_attribute("#map-legend-toggle", "aria-expanded") == "true"
+        assert page_wide.locator("#map-legend-body").is_visible()
+
+        # Collapse legend and verify persistence across reload
+        page_wide.click("#map-legend-toggle")
+        assert page_wide.get_attribute("#map-legend-toggle", "aria-expanded") == "false"
+        assert not page_wide.locator("#map-legend-body").is_visible()
+
+        page_wide.reload(wait_until="networkidle")
+        page_wide.wait_for_selector("#map-legend-toggle", timeout=10000)
+        assert page_wide.get_attribute("#map-legend-toggle", "aria-expanded") == "false"
+        assert not page_wide.locator("#map-legend-body").is_visible()
+
+        # Expand again and verify persistence
+        page_wide.click("#map-legend-toggle")
+        assert page_wide.get_attribute("#map-legend-toggle", "aria-expanded") == "true"
+        assert page_wide.locator("#map-legend-body").is_visible()
+        ctx_wide.close()
+        assert len(errors_wide) == 0, f"Wide legend test console errors: {errors_wide}"
+
+        # 2. Narrow phone screen 390x844
+        ctx_phone = browser.new_context(viewport={"width": 390, "height": 844})
+        page_phone = ctx_phone.new_page()
+        errors_phone = []
+        page_phone.on("console", lambda m: errors_phone.append(m.text) if m.type == "error" else None)
+
+        page_phone.goto(live_server_url, wait_until="networkidle")
+        page_phone.wait_for_selector("#map-legend-toggle", timeout=10000)
+        assert page_phone.get_attribute("#map-legend-toggle", "aria-expanded") == "false"
+        assert not page_phone.locator("#map-legend-body").is_visible()
+
+        legend_box = page_phone.locator(".info-legend-box").bounding_box()
+        input_box = page_phone.locator("#chat-msg-input").bounding_box()
+        send_box = page_phone.locator("#btn-send-chat").bounding_box()
+        assert legend_box and input_box and send_box
+        assert not _boxes_overlap(legend_box, input_box), f"Collapsed legend {legend_box} overlaps chat input {input_box}"
+        assert not _boxes_overlap(legend_box, send_box), f"Collapsed legend {legend_box} overlaps send button {send_box}"
+
+        # Also verify expanded legend on 390x844 stays above chat input
+        page_phone.click("#map-legend-toggle")
+        page_phone.wait_for_timeout(150)
+        legend_box_exp = page_phone.locator(".info-legend-box").bounding_box()
+        input_box_exp = page_phone.locator("#chat-msg-input").bounding_box()
+        assert legend_box_exp and input_box_exp
+        assert not _boxes_overlap(legend_box_exp, input_box_exp), f"Expanded legend {legend_box_exp} overlaps chat input {input_box_exp}"
+
+        ctx_phone.close()
+        browser.close()
+        assert len(errors_phone) == 0, f"Phone legend test console errors: {errors_phone}"
+
+
+def test_system_ui_chat_history_riwayat_panel(browser_page):
+    """
+    F1-B: Logged-in user sends a chat turn (out-of-scope refusal, 0 LLM rounds)
+    and sees the entry in the Riwayat panel, toggles 'Lihat jawaban', and clears history.
+    """
+    page, errors, url, created_emails = browser_page
+    page.goto(url, wait_until="networkidle")
+    page.wait_for_selector("#split-layout", timeout=10000)
+
+    # Guest does not see Riwayat button
+    assert not page.locator("#btn-chat-history").is_visible()
+    assert "90 hari" in page.inner_text("#chat-privacy-notice")
+
+    # Log in via modal
+    login_ui(page, created_emails)
+    page.wait_for_selector("#btn-chat-history", state="visible", timeout=5000)
+
+    # Send a deterministic out-of-scope chat message (0 LLM rounds)
+    prompt_text = "Apakah proyek apartemen 3.000 unit di Tebet boleh disetujui izin pembangunannya?"
+    page.fill("#chat-msg-input", prompt_text)
+    page.click("#btn-send-chat")
+    page.wait_for_function(
+        "document.getElementById('chat-history').textContent.includes('tidak berwenang')",
+        timeout=10000,
+    )
+
+    # Open Riwayat panel
+    page.click("#btn-chat-history")
+    page.wait_for_selector("#chat-history-drawer", state="visible", timeout=5000)
+    page.wait_for_selector(".chat-history-item", timeout=10000)
+
+    drawer_text = page.inner_text("#chat-history-drawer")
+    assert prompt_text in drawer_text
+
+    # Toggle 'Lihat jawaban'
+    toggle_resp = page.locator(".btn-history-toggle-resp").first
+    assert toggle_resp.inner_text().strip() == "Lihat jawaban"
+    toggle_resp.click()
+    resp_el = page.locator(".chat-history-item-response").first
+    assert resp_el.is_visible()
+    assert "tidak berwenang" in resp_el.inner_text()
+
+    # Clear history with confirm dialog
+    page.once("dialog", lambda d: d.accept())
+    page.click("#btn-clear-chat-history")
+    page.wait_for_function(
+        "document.getElementById('chat-history-drawer-list').textContent.includes('Belum ada riwayat')",
+        timeout=5000,
+    )
+
+    assert len(errors) == 0, f"Riwayat UI test console errors: {errors}"
+
+
+def test_system_ui_splitter_clamp_persist_and_keyboard(live_server_url):
+    """
+    F2-A:
+    At 1366x768 and 1024x768:
+    - Dragging splitter to extreme right and extreme left keeps divider >= 10px wide, visible, and draggable back.
+    - Sidebar is never narrower than 320px; left panel is >= 45%.
+    - Reload restores a clamped split (including clamping extreme localStorage values).
+    - Double-click resets to 70/30 (clamped) and keyboard arrows move the divider.
+    """
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        for vp_width, vp_height in [(1366, 768), (1024, 768)]:
+            ctx = browser.new_context(viewport={"width": vp_width, "height": vp_height})
+            page = ctx.new_page()
+            errors = []
+            page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+
+            page.goto(live_server_url, wait_until="networkidle")
+            page.wait_for_selector("#split-resizer", timeout=10000)
+
+            resizer = page.locator("#split-resizer")
+            assert resizer.get_attribute("role") == "separator"
+            assert resizer.get_attribute("aria-orientation") == "vertical"
+            assert resizer.get_attribute("tabindex") == "0"
+
+            def boxes():
+                c = page.locator("#split-layout").bounding_box()
+                l = page.locator("#map-viewport").bounding_box()
+                r = resizer.bounding_box()
+                s = page.locator("#info-panel").bounding_box()
+                assert c and l and r and s
+                return c, l, r, s
+
+            def drag_resizer_to(target_x: float):
+                _, _, r_box, _ = boxes()
+                start_x = r_box["x"] + r_box["width"] / 2
+                start_y = r_box["y"] + r_box["height"] / 2
+                page.mouse.move(start_x, start_y)
+                page.mouse.down()
+                page.mouse.move(target_x, start_y, steps=10)
+                page.mouse.up()
+                page.wait_for_timeout(80)
+
+            # 1. Drag to extreme right
+            c0, _, _, _ = boxes()
+            drag_resizer_to(c0["x"] + c0["width"] - 2)
+            c1, l1, r1, s1 = boxes()
+            assert r1["width"] >= 10, f"Resizer shrank at {vp_width}x{vp_height}: {r1}"
+            assert resizer.is_visible()
+            assert s1["width"] >= 320 - 0.5, f"Sidebar < 320px at {vp_width}x{vp_height}: {s1}"
+            assert r1["x"] + r1["width"] <= c1["x"] + c1["width"]
+
+            # 2. Verify divider is draggable back to left extreme
+            drag_resizer_to(c1["x"] + 5)
+            c2, l2, r2, s2 = boxes()
+            assert r2["width"] >= 10, f"Resizer shrank after left drag at {vp_width}x{vp_height}: {r2}"
+            assert resizer.is_visible()
+            assert s2["width"] >= 320 - 0.5
+            assert l2["width"] >= c2["width"] * 0.45 - 1.5, f"Left panel < 45% at {vp_width}x{vp_height}: {l2}"
+            assert l2["width"] < l1["width"] - 40, "Dragging back left did not shrink left panel"
+
+            # 3. Reload restores clamped split
+            page.reload(wait_until="networkidle")
+            page.wait_for_selector("#split-resizer", timeout=10000)
+            c3, l3, r3, s3 = boxes()
+            assert r3["width"] >= 10
+            assert s3["width"] >= 320 - 0.5
+            assert abs(l3["width"] - l2["width"]) <= 3
+
+            # Even if localStorage holds an extreme value (98%), reload clamps it safely
+            page.evaluate("localStorage.setItem('drp_split_left_pct', '98')")
+            page.reload(wait_until="networkidle")
+            page.wait_for_selector("#split-resizer", timeout=10000)
+            c4, l4, r4, s4 = boxes()
+            assert r4["width"] >= 10
+            assert s4["width"] >= 320 - 0.5
+            assert r4["x"] + r4["width"] <= c4["x"] + c4["width"]
+
+            # 4. Keyboard ArrowLeft moves divider left, ArrowRight moves it right
+            resizer.focus()
+            before_kb_left = boxes()[1]["width"]
+            page.keyboard.press("ArrowLeft")
+            page.wait_for_timeout(50)
+            after_kb_left = boxes()[1]["width"]
+            assert after_kb_left < before_kb_left, f"ArrowLeft did not move divider at {vp_width}x{vp_height}"
+
+            page.keyboard.press("ArrowRight")
+            page.wait_for_timeout(50)
+            after_kb_right = boxes()[1]["width"]
+            assert after_kb_right > after_kb_left, f"ArrowRight did not move divider at {vp_width}x{vp_height}"
+
+            # 5. Double-click resets to 70/30 (clamped)
+            resizer.dblclick()
+            page.wait_for_timeout(80)
+            c5, l5, r5, s5 = boxes()
+            assert r5["width"] >= 10
+            assert s5["width"] >= 320 - 0.5
+            expected_70 = min(
+                c5["width"] - 320 - r5["width"],
+                c5["width"] * 0.70,
+            )
+            assert abs(l5["width"] - expected_70) <= 3
+
+            ctx.close()
+            assert len(errors) == 0, f"Splitter UI test console errors at {vp_width}x{vp_height}: {errors}"
+
+        browser.close()

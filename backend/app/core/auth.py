@@ -10,14 +10,19 @@ Enforces TODO-4 requirements:
 
 import hmac
 import ipaddress
+import json
+import os
+import threading
 import time
 import logging
+from collections.abc import Mapping
+from logging.handlers import RotatingFileHandler
 from typing import Optional, Tuple, Dict, List
 from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 
-from backend.app.core.config import settings
+from backend.app.core.config import settings, _resolve_default_chat_log_file_path
 from backend.app.core.db import get_redis_client, get_db_cursor
 
 logger = logging.getLogger(__name__)
@@ -288,3 +293,177 @@ def record_chat_audit(
             )
     except Exception as e:
         logger.warning("Failed to record chat audit: %s", e)
+
+
+CHAT_LOG_PROMPT_MAX_CHARS = 4000
+CHAT_LOG_RESPONSE_MAX_CHARS = 20000
+
+_chat_file_logger = logging.getLogger("drp.chat_log_file")
+_chat_file_logger.setLevel(logging.INFO)
+_chat_file_logger.propagate = False
+_chat_file_logger_lock = threading.Lock()
+_chat_file_handler_config: Optional[Tuple[str, int, int]] = None
+
+
+class _ChatLogRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that ensures 0640 file permissions when supported."""
+
+    def _open(self):
+        stream = super()._open()
+        try:
+            os.chmod(self.baseFilename, 0o640)
+        except OSError:
+            pass
+        return stream
+
+
+def _get_chat_file_logger(
+    target_path: str, max_bytes: int, backup_count: int
+) -> logging.Logger:
+    global _chat_file_handler_config
+    abs_path = os.path.abspath(target_path)
+    desired_config = (abs_path, max_bytes, backup_count)
+
+    with _chat_file_logger_lock:
+        current_handler = (
+            _chat_file_logger.handlers[0] if _chat_file_logger.handlers else None
+        )
+        needs_recreate = (
+            current_handler is None
+            or _chat_file_handler_config != desired_config
+            or not os.path.exists(abs_path)
+        )
+        if needs_recreate:
+            for h in list(_chat_file_logger.handlers):
+                _chat_file_logger.removeHandler(h)
+                try:
+                    h.close()
+                except Exception:
+                    pass
+
+            parent_dir = os.path.dirname(abs_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+
+            handler = _ChatLogRotatingFileHandler(
+                abs_path,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+            )
+            handler.setFormatter(logging.Formatter("%(message)s"))
+            _chat_file_logger.addHandler(handler)
+            _chat_file_handler_config = desired_config
+
+    return _chat_file_logger
+
+
+def _write_chat_log_file(entry: dict) -> None:
+    if not settings.CHAT_LOG_FILE_ENABLED:
+        return
+    raw_path = (settings.CHAT_LOG_FILE_PATH or "").strip()
+    if not raw_path:
+        raw_path = _resolve_default_chat_log_file_path()
+    max_bytes = max(1, int(float(settings.CHAT_LOG_FILE_MAX_MB) * 1024 * 1024))
+    backup_count = max(0, int(settings.CHAT_LOG_FILE_BACKUPS))
+    file_logger = _get_chat_file_logger(raw_path, max_bytes, backup_count)
+    line = json.dumps(entry, ensure_ascii=False)
+    with _chat_file_logger_lock:
+        file_logger.info("%s", line)
+
+
+def record_chat_log(
+    user_id: Optional[str],
+    province_code: Optional[str],
+    prompt: str,
+    response: str,
+    tools_used: List[str],
+    guardrail_status: Optional[str],
+    latency_ms: Optional[int],
+    model: Optional[str],
+) -> None:
+    """
+    Records full chat turn (prompt + response) into chat_logs for authenticated users
+    (pruning rows older than CHAT_LOG_RETENTION_DAYS) and appends one JSON line to
+    CHAT_LOG_FILE_PATH when CHAT_LOG_FILE_ENABLED is true. Never raises on DB or file errors.
+    """
+    if not settings.CHAT_LOG_ENABLED:
+        return
+    if not user_id:
+        return
+
+    safe_prompt = (prompt or "")[:CHAT_LOG_PROMPT_MAX_CHARS]
+    safe_response = (response or "")[:CHAT_LOG_RESPONSE_MAX_CHARS]
+    raw_prov = str(province_code).strip() if province_code else ""
+    safe_prov = raw_prov[:2] if raw_prov else None
+    safe_guardrail = str(guardrail_status)[:50] if guardrail_status else None
+    safe_model = str(model)[:100] if model else None
+    safe_tools = [str(t) for t in (tools_used or []) if t]
+    retention_days = max(0, int(settings.CHAT_LOG_RETENTION_DAYS))
+
+    log_id: Optional[str] = None
+    db_logged = False
+    try:
+        with get_db_cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO chat_logs (
+                    user_id, province_code, prompt, response,
+                    tools_used, guardrail_status, latency_ms, model
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+                """,
+                (
+                    str(user_id),
+                    safe_prov,
+                    safe_prompt,
+                    safe_response,
+                    safe_tools,
+                    safe_guardrail,
+                    latency_ms,
+                    safe_model,
+                ),
+            )
+            inserted = cur.fetchone()
+            if isinstance(inserted, Mapping):
+                raw_id = inserted.get("id")
+            elif isinstance(inserted, (tuple, list)) and inserted:
+                raw_id = inserted[0]
+            else:
+                raw_id = None
+            if raw_id is not None:
+                log_id = str(raw_id)
+
+            cur.execute(
+                """
+                DELETE FROM chat_logs
+                WHERE user_id = %s
+                  AND created_at < NOW() - make_interval(days => %s);
+                """,
+                (str(user_id), retention_days),
+            )
+        db_logged = True
+    except Exception as e:
+        db_logged = False
+        log_id = None
+        logger.warning("Failed to record chat log: %s", e)
+
+    if settings.CHAT_LOG_FILE_ENABLED:
+        try:
+            entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "log_id": log_id,
+                "user_id": str(user_id),
+                "province_code": safe_prov,
+                "prompt": safe_prompt,
+                "response": safe_response,
+                "tools_used": safe_tools,
+                "guardrail_status": safe_guardrail,
+                "latency_ms": latency_ms,
+                "model": safe_model,
+                "db_logged": db_logged,
+            }
+            _write_chat_log_file(entry)
+        except Exception as e:
+            logger.warning("Failed to write chat log file: %s", e)

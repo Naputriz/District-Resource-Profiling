@@ -5,7 +5,12 @@
  */
 
 import { state } from "../state.js";
-import { postChatMessage } from "../api.js";
+import {
+  postChatMessage,
+  fetchChatHistory,
+  deleteChatHistory,
+  getAuthToken,
+} from "../api.js";
 import { escapeHtml } from "../utils/dom.js";
 import { executeMapActions } from "../map/actions.js";
 
@@ -154,16 +159,166 @@ export async function handleSendMessage() {
   }
 }
 
+function formatHistoryTime(isoStr) {
+  if (!isoStr) return "-";
+  try {
+    const dt = new Date(isoStr);
+    if (Number.isNaN(dt.getTime())) return String(isoStr);
+    return dt.toLocaleString("id-ID", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  } catch (_) {
+    return String(isoStr);
+  }
+}
+
+function getProvinceLabel(provinceCode) {
+  if (!provinceCode) return "Umum";
+  const region = (state.regions || []).find((r) => r.province_code === provinceCode);
+  return region ? region.name : `Provinsi ${provinceCode}`;
+}
+
+function renderHistoryEmpty(listEl, message = "Belum ada riwayat percakapan.") {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "chat-history-empty";
+  empty.textContent = message;
+  listEl.appendChild(empty);
+}
+
+export async function loadChatHistoryDrawer() {
+  const listEl = document.getElementById("chat-history-drawer-list");
+  if (!listEl) return;
+  renderHistoryEmpty(listEl, "Memuat riwayat...");
+
+  try {
+    const data = await fetchChatHistory(20);
+    const noticeEl = document.getElementById("chat-privacy-notice");
+    if (noticeEl && typeof data?.retention_days === "number") {
+      noticeEl.textContent = `Pertanyaan dan jawaban disimpan untuk evaluasi layanan (${data.retention_days} hari). Lihat atau hapus lewat Riwayat.`;
+    }
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (items.length === 0) {
+      renderHistoryEmpty(listEl);
+      return;
+    }
+
+    listEl.innerHTML = "";
+    items.forEach((entry) => {
+      const card = document.createElement("div");
+      card.className = "chat-history-item";
+
+      const meta = document.createElement("div");
+      meta.className = "chat-history-item-meta";
+
+      const timeSpan = document.createElement("span");
+      timeSpan.textContent = formatHistoryTime(entry.created_at);
+
+      const provSpan = document.createElement("span");
+      provSpan.textContent = getProvinceLabel(entry.province_code);
+
+      meta.appendChild(timeSpan);
+      meta.appendChild(provSpan);
+
+      const promptEl = document.createElement("div");
+      promptEl.className = "chat-history-item-prompt";
+      promptEl.textContent = entry.prompt || "";
+
+      const toggleRespBtn = document.createElement("button");
+      toggleRespBtn.type = "button";
+      toggleRespBtn.className = "btn-history-toggle-resp";
+      toggleRespBtn.textContent = "Lihat jawaban";
+      toggleRespBtn.setAttribute("aria-expanded", "false");
+
+      const respEl = document.createElement("div");
+      respEl.className = "chat-history-item-response";
+      respEl.style.display = "none";
+      respEl.textContent = entry.response || "";
+
+      toggleRespBtn.addEventListener("click", () => {
+        const isHidden = respEl.style.display === "none";
+        respEl.style.display = isHidden ? "block" : "none";
+        toggleRespBtn.textContent = isHidden ? "Sembunyikan jawaban" : "Lihat jawaban";
+        toggleRespBtn.setAttribute("aria-expanded", String(isHidden));
+      });
+
+      card.appendChild(meta);
+      card.appendChild(promptEl);
+      card.appendChild(toggleRespBtn);
+      card.appendChild(respEl);
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    renderHistoryEmpty(listEl, `Gagal memuat riwayat: ${err.message}`);
+  }
+}
+
 export function initChatbot() {
   const dock = document.getElementById("chatbot-dock");
   const toggleBtn = document.getElementById("btn-toggle-chat");
   const input = document.getElementById("chat-msg-input");
   const sendBtn = document.getElementById("btn-send-chat");
+  const historyBtn = document.getElementById("btn-chat-history");
+  const historyDrawer = document.getElementById("chat-history-drawer");
+  const closeHistoryBtn = document.getElementById("btn-close-chat-history");
+  const clearHistoryBtn = document.getElementById("btn-clear-chat-history");
 
   if (toggleBtn && dock) {
     toggleBtn.addEventListener("click", () => {
       dock.classList.toggle("collapsed");
-      toggleBtn.textContent = dock.classList.contains("collapsed") ? "▲ Expand" : "▼ Minimize";
+      const isCollapsed = dock.classList.contains("collapsed");
+      toggleBtn.textContent = isCollapsed ? "▲ Expand" : "▼ Minimize";
+      if (isCollapsed && historyDrawer && historyBtn) {
+        historyDrawer.style.display = "none";
+        dock.classList.remove("riwayat-open");
+        historyBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  if (historyBtn && historyDrawer) {
+    historyBtn.addEventListener("click", async () => {
+      if (!getAuthToken()) return;
+      if (dock && dock.classList.contains("collapsed")) {
+        dock.classList.remove("collapsed");
+        if (toggleBtn) toggleBtn.textContent = "▼ Minimize";
+      }
+      const willOpen = historyDrawer.style.display === "none";
+      historyDrawer.style.display = willOpen ? "flex" : "none";
+      if (dock) dock.classList.toggle("riwayat-open", willOpen);
+      historyBtn.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {
+        await loadChatHistoryDrawer();
+      }
+    });
+  }
+
+  if (closeHistoryBtn && historyDrawer && historyBtn) {
+    closeHistoryBtn.addEventListener("click", () => {
+      historyDrawer.style.display = "none";
+      if (dock) dock.classList.remove("riwayat-open");
+      historyBtn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener("click", async () => {
+      if (!getAuthToken()) return;
+      const confirmed = window.confirm(
+        "Hapus seluruh riwayat percakapan Anda? Tindakan ini tidak dapat dibatalkan."
+      );
+      if (!confirmed) return;
+      try {
+        await deleteChatHistory();
+        const listEl = document.getElementById("chat-history-drawer-list");
+        renderHistoryEmpty(listEl);
+      } catch (err) {
+        const listEl = document.getElementById("chat-history-drawer-list");
+        renderHistoryEmpty(listEl, `Gagal menghapus riwayat: ${err.message}`);
+      }
     });
   }
 

@@ -460,3 +460,252 @@ def test_password_73_bytes_rejected_with_422():
     )
     assert res.status_code == 422
     assert "72 byte" in res.text
+
+
+def test_chat_logs_history_delete_and_retention(monkeypatch):
+    """
+    Integration tests for chat_logs:
+    - Guest gets 401 on GET/DELETE /api/v1/chat/history
+    - Authenticated chat (mocked orchestrator) inserts one chat_logs row
+    - GET /api/v1/chat/history returns only caller's rows, newest first, limit capped at 100
+    - Retention deletes rows older than CHAT_LOG_RETENTION_DAYS on insert
+    - DELETE /api/v1/chat/history deletes only caller's rows
+    """
+    client = TestClient(app)
+
+    # 1. Guest 401
+    assert client.get("/api/v1/chat/history").status_code == 401
+    assert client.delete("/api/v1/chat/history").status_code == 401
+
+    uid_a = uuid.uuid4().hex[:8]
+    uid_b = uuid.uuid4().hex[:8]
+    email_a = f"user_hist_a_{uid_a}@jakarta.go.id"
+    email_b = f"user_hist_b_{uid_b}@jakarta.go.id"
+    password = "HistPassword123!"
+    user_a_id = None
+    user_b_id = None
+
+    try:
+        reg_a = client.post(
+            "/api/v1/auth/register",
+            json={"email": email_a, "password": password, "display_name": "Hist User A"},
+        )
+        assert reg_a.status_code == 201
+        user_a_id = reg_a.json()["id"]
+
+        reg_b = client.post(
+            "/api/v1/auth/register",
+            json={"email": email_b, "password": password, "display_name": "Hist User B"},
+        )
+        assert reg_b.status_code == 201
+        user_b_id = reg_b.json()["id"]
+
+        tok_a = client.post("/api/v1/auth/login", json={"email": email_a, "password": password}).json()["access_token"]
+        tok_b = client.post("/api/v1/auth/login", json={"email": email_b, "password": password}).json()["access_token"]
+        headers_a = {"Authorization": f"Bearer {tok_a}"}
+        headers_b = {"Authorization": f"Bearer {tok_b}"}
+
+        # 2. Chat turns for A and B (mock orchestrator)
+        with patch(
+            "backend.app.api.routers.chat.agent_orchestrator.process_chat",
+            side_effect=[
+                AgentChatResponse(reply="Jawaban A1", model_used="mock-qwen", guardrail="passed"),
+                AgentChatResponse(reply="Jawaban A2", model_used="mock-qwen", guardrail="passed"),
+                AgentChatResponse(reply="Jawaban B1", model_used="mock-qwen", guardrail="passed"),
+            ],
+        ):
+            r_a1 = client.post(
+                "/api/v1/chat",
+                json={"messages": [{"role": "user", "content": "Pertanyaan A1"}], "province_code": "31"},
+                headers=headers_a,
+            )
+            assert r_a1.status_code == 200
+
+            r_a2 = client.post(
+                "/api/v1/chat",
+                json={"messages": [{"role": "user", "content": "Pertanyaan A2"}], "province_code": "32"},
+                headers=headers_a,
+            )
+            assert r_a2.status_code == 200
+
+            r_b1 = client.post(
+                "/api/v1/chat",
+                json={"messages": [{"role": "user", "content": "Pertanyaan B1"}], "province_code": "34"},
+                headers=headers_b,
+            )
+            assert r_b1.status_code == 200
+
+        # 3. Verify DB row count for A and retention backdate test
+        with get_db_cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS cnt FROM chat_logs WHERE user_id = %s;", (user_a_id,))
+            assert cur.fetchone()["cnt"] == 2
+
+            # Insert an expired row (20 days old) for user A
+            cur.execute(
+                """
+                INSERT INTO chat_logs (user_id, created_at, province_code, prompt, response)
+                VALUES (%s, NOW() - INTERVAL '20 days', '31', 'Pertanyaan kedaluwarsa', 'Jawaban lama');
+                """,
+                (user_a_id,),
+            )
+
+        # Trigger another chat for A with retention=7 days -> expired row deleted
+        monkeypatch.setattr(settings, "CHAT_LOG_RETENTION_DAYS", 7)
+        with patch(
+            "backend.app.api.routers.chat.agent_orchestrator.process_chat",
+            return_value=AgentChatResponse(reply="Jawaban A3", model_used="mock-qwen", guardrail="passed"),
+        ):
+            r_a3 = client.post(
+                "/api/v1/chat",
+                json={"messages": [{"role": "user", "content": "Pertanyaan A3"}], "province_code": "31"},
+                headers=headers_a,
+            )
+            assert r_a3.status_code == 200
+
+        # 4. GET /api/v1/chat/history returns only A's rows, newest first, retention pruned old row
+        res_hist_a = client.get("/api/v1/chat/history?limit=500", headers=headers_a)
+        assert res_hist_a.status_code == 200
+        hist_a = res_hist_a.json()
+        prompts_a = [item["prompt"] for item in hist_a["items"]]
+        assert "Pertanyaan kedaluwarsa" not in prompts_a
+        assert "Pertanyaan B1" not in prompts_a
+        assert prompts_a == ["Pertanyaan A3", "Pertanyaan A2", "Pertanyaan A1"]
+        assert hist_a["items"][0]["response"] == "Jawaban A3"
+        assert hist_a["items"][0]["latency_ms"] is not None
+
+        # Verify limit parameter works and limit > 100 is capped at 100
+        res_hist_1 = client.get("/api/v1/chat/history?limit=1", headers=headers_a)
+        assert res_hist_1.status_code == 200
+        assert len(res_hist_1.json()["items"]) == 1
+        assert res_hist_1.json()["items"][0]["prompt"] == "Pertanyaan A3"
+
+        with get_db_cursor() as cur:
+            # Insert 105 rows for user B to verify cap at 100
+            for idx in range(105):
+                cur.execute(
+                    """
+                    INSERT INTO chat_logs (user_id, province_code, prompt, response)
+                    VALUES (%s, '34', %s, %s);
+                    """,
+                    (user_b_id, f"Bulk Q {idx}", f"Bulk A {idx}"),
+                )
+        res_hist_b_cap = client.get("/api/v1/chat/history?limit=500", headers=headers_b)
+        assert res_hist_b_cap.status_code == 200
+        assert len(res_hist_b_cap.json()["items"]) == 100
+
+        # 5. DELETE removes only caller's rows
+        res_del_a = client.delete("/api/v1/chat/history", headers=headers_a)
+        assert res_del_a.status_code == 200
+        assert res_del_a.json()["deleted_count"] == 3
+
+        res_hist_a_after = client.get("/api/v1/chat/history", headers=headers_a)
+        assert res_hist_a_after.status_code == 200
+        assert res_hist_a_after.json()["items"] == []
+
+        # B's rows untouched
+        res_hist_b_after = client.get("/api/v1/chat/history?limit=20", headers=headers_b)
+        assert res_hist_b_after.status_code == 200
+        assert len(res_hist_b_after.json()["items"]) == 20
+    finally:
+        with get_db_cursor() as cur:
+            for uid in (user_a_id, user_b_id):
+                if uid:
+                    cur.execute("DELETE FROM chat_logs WHERE user_id = %s;", (uid,))
+                    cur.execute("DELETE FROM chat_audit WHERE user_id = %s;", (uid,))
+                    cur.execute("DELETE FROM app_users WHERE id = %s;", (uid,))
+        r = get_redis_client()
+        if r:
+            for uid in (user_a_id, user_b_id):
+                if uid:
+                    r.delete(f"rate:chat:user:{uid}")
+        reset_failed_login(email_a, "testclient")
+        reset_failed_login(email_b, "testclient")
+
+
+def test_chat_logs_db_and_file_matching_log_id(monkeypatch, tmp_path):
+    """
+    F2-B Integration:
+    One chat turn (mocked orchestrator) inserts one chat_logs row AND appends
+    one JSON line to CHAT_LOG_FILE_PATH (tmp path) with matching log_id and db_logged=True.
+    """
+    import json
+
+    log_file = tmp_path / "integration_chat_log.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_file))
+
+    client = TestClient(app)
+    uid = uuid.uuid4().hex[:8]
+    email = f"user_filelog_{uid}@jakarta.go.id"
+    password = "FileLogPass123!"
+    user_id = None
+
+    try:
+        reg = client.post(
+            "/api/v1/auth/register",
+            json={"email": email, "password": password, "display_name": "File Log User"},
+        )
+        assert reg.status_code == 201
+        user_id = reg.json()["id"]
+
+        login = client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": password},
+        )
+        assert login.status_code == 200
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        with patch(
+            "backend.app.api.routers.chat.agent_orchestrator.process_chat",
+            return_value=AgentChatResponse(
+                reply="Skor Tebet tercatat 54.61.",
+                model_used="mock-qwen",
+                guardrail="passed",
+                tool_calls_executed=[{"name": "get_district_scorecard", "arguments": {}}],
+            ),
+        ):
+            res = client.post(
+                "/api/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "Cek skor Tebet untuk log file"}],
+                    "province_code": "31",
+                },
+                headers=headers,
+            )
+            assert res.status_code == 200
+
+        with get_db_cursor() as cur:
+            cur.execute(
+                "SELECT id, province_code, prompt, response, tools_used, guardrail_status, latency_ms, model "
+                "FROM chat_logs WHERE user_id = %s;",
+                (user_id,),
+            )
+            rows = cur.fetchall()
+            assert len(rows) == 1
+            row = rows[0]
+
+        assert log_file.exists()
+        lines = log_file.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["log_id"] == str(row["id"])
+        assert entry["db_logged"] is True
+        assert entry["user_id"] == str(user_id)
+        assert entry["province_code"] == "31"
+        assert entry["prompt"] == "Cek skor Tebet untuk log file"
+        assert entry["response"] == "Skor Tebet tercatat 54.61."
+        assert entry["tools_used"] == ["get_district_scorecard"]
+        assert entry["guardrail_status"] == "passed"
+        assert entry["model"] == "mock-qwen"
+        assert entry["latency_ms"] == row["latency_ms"]
+    finally:
+        if user_id:
+            with get_db_cursor() as cur:
+                cur.execute("DELETE FROM chat_logs WHERE user_id = %s;", (user_id,))
+                cur.execute("DELETE FROM chat_audit WHERE user_id = %s;", (user_id,))
+                cur.execute("DELETE FROM app_users WHERE id = %s;", (user_id,))
+            r = get_redis_client()
+            if r:
+                r.delete(f"rate:chat:user:{user_id}")
+        reset_failed_login(email, "testclient")

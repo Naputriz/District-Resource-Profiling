@@ -62,9 +62,17 @@ services:
       REDIS_PORT: 6379
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
       EDGE_SHARED_SECRET: ${EDGE_SHARED_SECRET:-}
+      CHAT_LOG_ENABLED: ${CHAT_LOG_ENABLED:-true}
+      CHAT_LOG_RETENTION_DAYS: ${CHAT_LOG_RETENTION_DAYS:-90}
+      CHAT_LOG_FILE_ENABLED: ${CHAT_LOG_FILE_ENABLED:-true}
+      CHAT_LOG_FILE_PATH: ${CHAT_LOG_FILE_PATH:-/app/logs/chat_log.jsonl}
+      CHAT_LOG_FILE_MAX_MB: ${CHAT_LOG_FILE_MAX_MB:-20}
+      CHAT_LOG_FILE_BACKUPS: ${CHAT_LOG_FILE_BACKUPS:-10}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       ACTIVE_PROVINCES: ${ACTIVE_PROVINCES:-31}
       PYTHONPATH: /app
+    volumes:
+      - ${CHAT_LOG_HOST_DIR:-./chat-logs}:/app/logs
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

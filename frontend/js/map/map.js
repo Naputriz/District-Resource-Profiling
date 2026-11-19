@@ -123,43 +123,202 @@ function fitMapToRegion(regionConfig, { preferBbox = true } = {}) {
   }
 }
 
+const SPLIT_STORAGE_KEY = "drp_split_left_pct";
+const DEFAULT_SPLIT_PCT = 70;
+const KEYBOARD_STEP_PCT = 2;
+
 export function initResizableSplitter() {
   const container = document.getElementById("split-layout");
   const leftPane = document.getElementById("map-viewport");
   const resizer = document.getElementById("split-resizer");
+  const sidebar = document.getElementById("info-panel");
   if (!container || !leftPane || !resizer) return;
 
-  let isDragging = false;
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  if (!resizer.hasAttribute("tabindex")) {
+    resizer.setAttribute("tabindex", "0");
+  }
 
-  resizer.addEventListener("mousedown", () => {
+  let isDragging = false;
+  let activePointerId = null;
+  let dragOffsetX = 0;
+  let rafId = null;
+  let desiredPct = loadStoredSplitPct();
+
+  function loadStoredSplitPct() {
+    try {
+      const raw = localStorage.getItem(SPLIT_STORAGE_KEY);
+      if (raw !== null) {
+        const parsed = parseFloat(raw);
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (_) {
+      // Ignore storage access errors (private mode / restricted storage)
+    }
+    return DEFAULT_SPLIT_PCT;
+  }
+
+  function saveSplitPct(pct) {
+    try {
+      localStorage.setItem(SPLIT_STORAGE_KEY, Number(pct).toFixed(2));
+    } catch (_) {
+      // Ignore storage access errors
+    }
+  }
+
+  function scheduleMapInvalidate() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      if (state.map) state.map.invalidateSize();
+      syncLegendPositionAboveChat();
+    });
+  }
+
+  function isHorizontalSplitActive() {
+    return window.getComputedStyle(resizer).display !== "none";
+  }
+
+  function getSplitBounds() {
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const resizerWidth = resizer.getBoundingClientRect().width || 10;
+    const sidebarMinWidth = sidebar
+      ? parseFloat(window.getComputedStyle(sidebar).minWidth) || 320
+      : 320;
+    const maxLeftPx = Math.max(0, Math.floor(containerWidth - sidebarMinWidth - resizerWidth));
+    const minLeftPx = Math.min(maxLeftPx, Math.ceil(Math.max(320, containerWidth * 0.45)));
+    return { containerRect, containerWidth, resizerWidth, minLeftPx, maxLeftPx };
+  }
+
+  function applySplitPx(rawPx, { persist = false, invalidate = true } = {}) {
+    if (!isHorizontalSplitActive()) {
+      leftPane.style.flex = "";
+      return;
+    }
+    const { containerWidth, minLeftPx, maxLeftPx } = getSplitBounds();
+    if (containerWidth <= 0) return;
+
+    const clampedPx = Math.max(minLeftPx, Math.min(maxLeftPx, Math.round(rawPx)));
+    leftPane.style.flex = `0 0 ${clampedPx}px`;
+
+    const actualPct = (clampedPx / containerWidth) * 100;
+    desiredPct = actualPct;
+
+    const minPct = Math.round((minLeftPx / containerWidth) * 100);
+    const maxPct = Math.round((maxLeftPx / containerWidth) * 100);
+    resizer.setAttribute("aria-valuemin", String(minPct));
+    resizer.setAttribute("aria-valuemax", String(maxPct));
+    resizer.setAttribute("aria-valuenow", String(Math.round(actualPct)));
+
+    if (persist) {
+      saveSplitPct(actualPct);
+    }
+    if (invalidate) {
+      scheduleMapInvalidate();
+    }
+  }
+
+  function applySplitPct(pct, options = {}) {
+    if (!isHorizontalSplitActive()) {
+      leftPane.style.flex = "";
+      return;
+    }
+    const { containerWidth } = getSplitBounds();
+    if (containerWidth <= 0) return;
+    applySplitPx((pct / 100) * containerWidth, options);
+  }
+
+  function endDrag(e) {
+    if (!isDragging) return;
+    if (e && activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) {
+      return;
+    }
+    isDragging = false;
+    resizer.classList.remove("dragging");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    if (activePointerId !== null && resizer.releasePointerCapture) {
+      try {
+        if (!resizer.hasPointerCapture || resizer.hasPointerCapture(activePointerId)) {
+          resizer.releasePointerCapture(activePointerId);
+        }
+      } catch (_) {
+        // Ignore if pointer capture already released
+      }
+    }
+    activePointerId = null;
+    saveSplitPct(desiredPct);
+    scheduleMapInvalidate();
+  }
+
+  resizer.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (!isHorizontalSplitActive()) return;
+    e.preventDefault();
     isDragging = true;
+    activePointerId = e.pointerId;
+    const resizerRect = resizer.getBoundingClientRect();
+    dragOffsetX = e.clientX - resizerRect.left;
     resizer.classList.add("dragging");
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-  });
-
-  document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-    const containerRect = container.getBoundingClientRect();
-    const pointerX = e.clientX - containerRect.left;
-    const totalWidth = containerRect.width;
-
-    let leftPercent = (pointerX / totalWidth) * 100;
-    leftPercent = Math.max(45, Math.min(85, leftPercent));
-
-    leftPane.style.flex = `0 0 ${leftPercent}%`;
-    if (state.map) state.map.invalidateSize();
-  });
-
-  document.addEventListener("mouseup", () => {
-    if (isDragging) {
-      isDragging = false;
-      resizer.classList.remove("dragging");
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      if (state.map) state.map.invalidateSize();
+    if (resizer.setPointerCapture) {
+      try {
+        resizer.setPointerCapture(e.pointerId);
+      } catch (_) {
+        // Ignore if pointer capture is unavailable for synthetic events
+      }
     }
   });
+
+  document.addEventListener("pointermove", (e) => {
+    if (!isDragging) return;
+    if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) {
+      return;
+    }
+    const { containerRect } = getSplitBounds();
+    const pointerLeftPx = e.clientX - containerRect.left - dragOffsetX;
+    applySplitPx(pointerLeftPx, { persist: false, invalidate: true });
+  });
+
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
+  resizer.addEventListener("lostpointercapture", () => {
+    if (isDragging) endDrag();
+  });
+
+  resizer.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    applySplitPct(DEFAULT_SPLIT_PCT, { persist: true, invalidate: true });
+  });
+
+  resizer.addEventListener("keydown", (e) => {
+    if (!isHorizontalSplitActive()) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      applySplitPct(desiredPct - KEYBOARD_STEP_PCT, { persist: true, invalidate: true });
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      applySplitPct(desiredPct + KEYBOARD_STEP_PCT, { persist: true, invalidate: true });
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      applySplitPct(0, { persist: true, invalidate: true });
+    } else if (e.key === "End") {
+      e.preventDefault();
+      applySplitPct(100, { persist: true, invalidate: true });
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    applySplitPct(desiredPct, { persist: false, invalidate: true });
+  });
+
+  // Restore initial split with clamping (no map yet during DOMContentLoaded init order)
+  applySplitPct(desiredPct, { persist: false, invalidate: false });
 }
 
 export function initLeafletMap() {
@@ -197,25 +356,116 @@ export function initLeafletMap() {
   addMapLegend();
 }
 
+const LEGEND_COLLAPSED_STORAGE_KEY = "drp_legend_collapsed";
+let legendObserverInitialized = false;
+
+function getInitialLegendCollapsed() {
+  try {
+    const saved = localStorage.getItem(LEGEND_COLLAPSED_STORAGE_KEY);
+    if (saved === "true") return true;
+    if (saved === "false") return false;
+  } catch (_) {
+    // Ignore storage access errors (private mode / restricted storage)
+  }
+  return window.innerWidth < 768 || window.innerHeight < 700;
+}
+
+export function syncLegendPositionAboveChat() {
+  const mapViewport = document.getElementById("map-viewport");
+  const chatDock = document.getElementById("chatbot-dock");
+  const legendContainer = mapViewport?.querySelector(".leaflet-bottom.leaflet-left");
+  if (!mapViewport || !legendContainer) return;
+
+  if (!chatDock) {
+    legendContainer.style.bottom = "";
+    return;
+  }
+
+  const vpRect = mapViewport.getBoundingClientRect();
+  const chatRect = chatDock.getBoundingClientRect();
+  const legendBox = legendContainer.querySelector(".info-legend-box");
+  const legendRect = legendBox ? legendBox.getBoundingClientRect() : null;
+
+  const legendRight = legendRect && legendRect.width > 0 ? legendRect.right : vpRect.left + 230;
+  const overlapsHorizontally =
+    window.innerWidth < 768 || (chatRect.width > 0 && legendRight + 8 > chatRect.left);
+
+  if (overlapsHorizontally && chatRect.height > 0) {
+    const chatBottomGap = Math.max(0, vpRect.bottom - chatRect.top);
+    const headerEl = mapViewport.querySelector(".map-floating-header");
+    const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom + 6 : vpRect.top + 8;
+    const legendHeight = legendRect ? legendRect.height : 40;
+    const desiredBottom = Math.ceil(chatBottomGap + 8);
+    const maxBottom = Math.max(0, Math.floor(vpRect.bottom - headerBottom - legendHeight));
+    legendContainer.style.bottom = `${Math.min(desiredBottom, maxBottom)}px`;
+  } else {
+    legendContainer.style.bottom = "";
+  }
+}
+
+function initLegendChatObserver() {
+  if (legendObserverInitialized) return;
+  legendObserverInitialized = true;
+
+  const chatDock = document.getElementById("chatbot-dock");
+  const mapViewport = document.getElementById("map-viewport");
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => syncLegendPositionAboveChat());
+    if (chatDock) ro.observe(chatDock);
+    if (mapViewport) ro.observe(mapViewport);
+  }
+  window.addEventListener("resize", syncLegendPositionAboveChat);
+}
+
 export function addMapLegend() {
   if (state.legendControl || !state.map) return;
   state.legendControl = L.control({ position: "bottomleft" });
   state.legendControl.onAdd = function() {
     const div = L.DomUtil.create("div", "info-legend-box");
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+
+    const isCollapsed = getInitialLegendCollapsed();
+    if (isCollapsed) {
+      div.classList.add("collapsed");
+    }
+
     div.innerHTML = `
-      <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 5px;">Indeks Kecukupan Fasilitas Dasar</div>
-      <div style="display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--text-muted);">
-        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #10b981; display: inline-block;"></span> 70 - 100 (Tinggi)</div>
-        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #84cc16; display: inline-block;"></span> 50 - 69 (Sedang)</div>
-        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #f59e0b; display: inline-block;"></span> 35 - 49 (Cukup)</div>
-        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #f97316; display: inline-block;"></span> 20 - 34 (Rendah)</div>
-        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #f43f5e; display: inline-block;"></span> &lt; 20 (Sangat Rendah)</div>
-        <div style="display: flex; align-items: center; gap: 6px;"><span class="legend-swatch-insufficient"></span> Data tidak memadai (cakupan OSM)</div>
+      <button type="button" class="legend-toggle-btn" id="map-legend-toggle" aria-expanded="${!isCollapsed}" aria-controls="map-legend-body">
+        <span class="legend-title">Indeks Kecukupan Fasilitas Dasar</span>
+        <span class="legend-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="legend-body" id="map-legend-body">
+        <div class="legend-item"><span class="legend-swatch legend-swatch-high"></span> 70 - 100 (Tinggi)</div>
+        <div class="legend-item"><span class="legend-swatch legend-swatch-medium"></span> 50 - 69 (Sedang)</div>
+        <div class="legend-item"><span class="legend-swatch legend-swatch-fair"></span> 35 - 49 (Cukup)</div>
+        <div class="legend-item"><span class="legend-swatch legend-swatch-low"></span> 20 - 34 (Rendah)</div>
+        <div class="legend-item"><span class="legend-swatch legend-swatch-very-low"></span> &lt; 20 (Sangat Rendah)</div>
+        <div class="legend-item"><span class="legend-swatch-insufficient"></span> Data tidak memadai (cakupan OSM)</div>
       </div>
     `;
+
+    const toggleBtn = div.querySelector("#map-legend-toggle");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nextCollapsed = !div.classList.contains("collapsed");
+        div.classList.toggle("collapsed", nextCollapsed);
+        toggleBtn.setAttribute("aria-expanded", String(!nextCollapsed));
+        try {
+          localStorage.setItem(LEGEND_COLLAPSED_STORAGE_KEY, String(nextCollapsed));
+        } catch (_) {
+          // Ignore storage access errors
+        }
+        syncLegendPositionAboveChat();
+      });
+    }
+
+    requestAnimationFrame(() => syncLegendPositionAboveChat());
     return div;
   };
   state.legendControl.addTo(state.map);
+  initLegendChatObserver();
 }
 
 export function getDistrictStyle(code) {

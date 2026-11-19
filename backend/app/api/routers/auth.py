@@ -193,6 +193,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         limits=UserLimits(
             chat_requests_limit=settings.AUTH_CHAT_RATE_LIMIT_REQUESTS,
             chat_window_minutes=settings.AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS // 60,
+            chat_log_retention_days=settings.CHAT_LOG_RETENTION_DAYS,
         ),
     )
 

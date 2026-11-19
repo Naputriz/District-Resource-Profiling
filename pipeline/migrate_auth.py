@@ -69,11 +69,32 @@ def migrate_auth_schema():
             CREATE INDEX IF NOT EXISTS idx_chat_audit_timestamp ON chat_audit (timestamp DESC);
         """)
 
+        print("Applying auth migration: chat_logs table...")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chat_logs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                province_code VARCHAR(2),
+                prompt TEXT NOT NULL,
+                response TEXT NOT NULL,
+                tools_used TEXT[] DEFAULT '{}',
+                guardrail_status VARCHAR(50),
+                latency_ms INT,
+                model VARCHAR(100)
+            );
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_chat_logs_user_created
+            ON chat_logs (user_id, created_at DESC);
+        """)
+
         # Verification check
         cur.execute("""
             SELECT table_name 
             FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_name IN ('app_users', 'chat_audit');
+            WHERE table_schema = 'public' AND table_name IN ('app_users', 'chat_audit', 'chat_logs');
         """)
         tables = [row[0] for row in cur.fetchall()]
         print(f"Migration successful! Verified tables exist: {tables}")

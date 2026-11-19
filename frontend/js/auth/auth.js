@@ -162,6 +162,34 @@ export function updateAuthUI() {
       simRunBtn.title = "Masuk untuk memakai fitur ini";
     }
   }
+
+  // 4. Update Chat History (Riwayat) button & retention notice
+  const historyBtn = document.getElementById("btn-chat-history");
+  const historyDrawer = document.getElementById("chat-history-drawer");
+  const historyList = document.getElementById("chat-history-drawer-list");
+  if (historyBtn) {
+    historyBtn.style.display = authed ? "inline-flex" : "none";
+    if (!authed) {
+      historyBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+  const dock = document.getElementById("chatbot-dock");
+  if (!authed) {
+    if (historyDrawer) historyDrawer.style.display = "none";
+    if (dock) dock.classList.remove("riwayat-open");
+    if (historyList) historyList.innerHTML = "";
+  }
+
+  const noticeEl = document.getElementById("chat-privacy-notice");
+  if (noticeEl) {
+    const days = user?.limits?.chat_log_retention_days;
+    const displayDays = typeof days === "number" && days >= 0 ? days : 90;
+    noticeEl.textContent = `Pertanyaan dan jawaban disimpan untuk evaluasi layanan (${displayDays} hari). Lihat atau hapus lewat Riwayat.`;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("drp:auth-changed", { detail: { authenticated: authed } })
+  );
 }
 
 async function handleLogout() {
@@ -263,6 +291,13 @@ export function initAuth() {
         const data = await loginUser(email, password);
         authState.token = data.access_token;
         authState.user = data.user;
+        try {
+          const profile = await fetchMyProfile();
+          if (profile) {
+            setStoredUser(profile);
+            authState.user = profile;
+          }
+        } catch (_) {}
         updateAuthUI();
         closeAuthModal();
         if (passInput) passInput.value = "";
@@ -313,6 +348,13 @@ export function initAuth() {
         const loginData = await loginUser(email, password);
         authState.token = loginData.access_token;
         authState.user = loginData.user;
+        try {
+          const profile = await fetchMyProfile();
+          if (profile) {
+            setStoredUser(profile);
+            authState.user = profile;
+          }
+        } catch (_) {}
         updateAuthUI();
         closeAuthModal();
         if (passInput) passInput.value = "";

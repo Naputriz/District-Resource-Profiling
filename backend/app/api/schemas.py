@@ -2,6 +2,7 @@
 Pydantic schemas used across API routers.
 """
 
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 
@@ -41,6 +42,7 @@ class TokenResponse(BaseModel):
 class UserLimits(BaseModel):
     chat_requests_limit: int
     chat_window_minutes: int
+    chat_log_retention_days: int = 90
 
 
 class UserProfileResponse(BaseModel):
@@ -49,6 +51,27 @@ class UserProfileResponse(BaseModel):
     display_name: str
     role: str
     limits: UserLimits
+
+
+class ChatLogEntry(BaseModel):
+    id: str
+    created_at: datetime
+    province_code: Optional[str] = None
+    prompt: str
+    response: str
+    tools_used: List[str] = []
+    guardrail_status: Optional[str] = None
+    latency_ms: Optional[int] = None
+
+
+class ChatHistoryResponse(BaseModel):
+    total: int
+    retention_days: int
+    items: List[ChatLogEntry]
+
+
+class ChatHistoryDeleteResponse(BaseModel):
+    deleted_count: int
 
 
 

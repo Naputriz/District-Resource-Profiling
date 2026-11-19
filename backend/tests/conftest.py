@@ -16,6 +16,25 @@ from backend.app.core.db import get_db_cursor, init_db_pool, close_db_pool
 from backend.app.core.auth import create_access_token, hash_password
 
 
+@pytest.fixture(scope="session", autouse=True)
+def isolate_chat_log_file(tmp_path_factory):
+    """Ensure tests never create chat_log.jsonl inside the repository."""
+    log_dir = tmp_path_factory.mktemp("drp_test_chat_logs")
+    log_path = str(log_dir / "chat_log.jsonl")
+    orig_setting = settings.CHAT_LOG_FILE_PATH
+    orig_env = os.environ.get("CHAT_LOG_FILE_PATH")
+    settings.CHAT_LOG_FILE_PATH = log_path
+    os.environ["CHAT_LOG_FILE_PATH"] = log_path
+    try:
+        yield log_path
+    finally:
+        settings.CHAT_LOG_FILE_PATH = orig_setting
+        if orig_env is None:
+            os.environ.pop("CHAT_LOG_FILE_PATH", None)
+        else:
+            os.environ["CHAT_LOG_FILE_PATH"] = orig_env
+
+
 @pytest.fixture(scope="session")
 def client() -> Generator[TestClient, None, None]:
     """Shared FastAPI TestClient."""
