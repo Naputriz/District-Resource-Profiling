@@ -346,21 +346,58 @@ export async function loadStandardsMetadata() {
   }
 }
 
+const REGION_ISLAND_GROUPS = [
+  { label: "Sumatra", codes: ["11", "12", "13", "14", "15", "16", "17", "18", "19", "21"] },
+  { label: "Jawa", codes: ["31", "32", "33", "34", "35", "36"] },
+  { label: "Bali & Nusa Tenggara", codes: ["51", "52", "53"] },
+  { label: "Kalimantan", codes: ["61", "62", "63", "64", "65"] },
+  { label: "Sulawesi", codes: ["71", "72", "73", "74", "75", "76"] },
+  { label: "Maluku", codes: ["81", "82"] },
+  { label: "Papua", codes: ["91", "92", "93", "94", "95", "96"] }
+];
+
+function createRegionOption(r, activeCode) {
+  const opt = document.createElement("option");
+  opt.value = r.province_code;
+  const isActive = r.status === "Active";
+  opt.disabled = !isActive;
+  opt.textContent = isActive ? r.name : `${r.name} (${r.status})`;
+  if (r.province_code === activeCode) {
+    opt.selected = true;
+  }
+  return opt;
+}
+
 function populateRegionSelect(regions, activeCode) {
   const select = document.getElementById("region-select");
   if (!select) return;
 
   select.innerHTML = "";
+  const regionByCode = new Map();
   (regions || []).forEach(r => {
-    const opt = document.createElement("option");
-    opt.value = r.province_code;
-    const isActive = r.status === "Active";
-    opt.disabled = !isActive;
-    opt.textContent = isActive ? r.name : `${r.name} (${r.status})`;
-    if (r.province_code === activeCode) {
-      opt.selected = true;
+    if (r && r.province_code) regionByCode.set(r.province_code, r);
+  });
+
+  const placed = new Set();
+  REGION_ISLAND_GROUPS.forEach(group => {
+    const items = group.codes
+      .map(code => regionByCode.get(code))
+      .filter(Boolean);
+    if (items.length === 0) return;
+
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = group.label;
+    items.forEach(r => {
+      placed.add(r.province_code);
+      optgroup.appendChild(createRegionOption(r, activeCode));
+    });
+    select.appendChild(optgroup);
+  });
+
+  (regions || []).forEach(r => {
+    if (r && !placed.has(r.province_code)) {
+      select.appendChild(createRegionOption(r, activeCode));
     }
-    select.appendChild(opt);
   });
 
   if (!select.dataset.bound) {

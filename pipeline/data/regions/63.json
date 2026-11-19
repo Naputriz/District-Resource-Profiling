@@ -1,0 +1,44 @@
+{
+  "province_code": "63",
+  "province_name": "Kalimantan Selatan",
+  "has_data": true,
+  "status": "Staging",
+  "center": [
+    -3.0122,
+    115.4406
+  ],
+  "zoom": 8,
+  "bbox": [
+    114.3466,
+    -4.7448,
+    116.5589,
+    -1.315
+  ],
+  "utm_srid": 32750,
+  "utm_zone": "50S",
+  "total_districts": 152,
+  "boundaries": {
+    "source": "HDX COD-AB Indonesia (BPS/BIG)",
+    "url": "https://data.humdata.org/dataset/cod-ab-idn",
+    "local_path": "frontend/data/boundaries/63_kecamatan.geojson",
+    "licence": "CC BY-IGO",
+    "total_districts": 152,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "WorldPop R2025A 2024 (model estimate)",
+    "url": "https://hub.worldpop.org/rest/data/pop/G2_CN_POP_R25A_100m?iso3=IDN",
+    "local_path": "/mnt/data/rpl/data_raw/idn_pop_2024_CN_100m_R2025A_v1.tif",
+    "licence": "CC BY 4.0",
+    "snapshot_date": "2024",
+    "verification_status": "model_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors via Geofabrik Kalimantan PBF (ODbL)",
+    "url": "https://download.geofabrik.de/asia/indonesia/kalimantan-latest.osm.pbf",
+    "local_path": "/mnt/data/rpl/data_raw/kalimantan-latest.osm.pbf",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-11-18",
+    "verification_status": "verified_osm_snapshot"
+  }
+}

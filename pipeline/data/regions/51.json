@@ -1,0 +1,44 @@
+{
+  "province_code": "51",
+  "province_name": "Bali",
+  "has_data": true,
+  "status": "Staging",
+  "center": [
+    -8.3696,
+    115.1319
+  ],
+  "zoom": 9,
+  "bbox": [
+    114.4316,
+    -8.8492,
+    115.7125,
+    -8.0614
+  ],
+  "utm_srid": 32750,
+  "utm_zone": "50S",
+  "total_districts": 57,
+  "boundaries": {
+    "source": "HDX COD-AB Indonesia (BPS/BIG)",
+    "url": "https://data.humdata.org/dataset/cod-ab-idn",
+    "local_path": "frontend/data/boundaries/51_kecamatan.geojson",
+    "licence": "CC BY-IGO",
+    "total_districts": 57,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "WorldPop R2025A 2024 (model estimate)",
+    "url": "https://hub.worldpop.org/rest/data/pop/G2_CN_POP_R25A_100m?iso3=IDN",
+    "local_path": "/mnt/data/rpl/data_raw/idn_pop_2024_CN_100m_R2025A_v1.tif",
+    "licence": "CC BY 4.0",
+    "snapshot_date": "2024",
+    "verification_status": "model_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors via Geofabrik Nusa Tenggara PBF (ODbL)",
+    "url": "https://download.geofabrik.de/asia/indonesia/nusa-tenggara-latest.osm.pbf",
+    "local_path": "/mnt/data/rpl/data_raw/nusa-tenggara-latest.osm.pbf",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-11-18",
+    "verification_status": "verified_osm_snapshot"
+  }
+}

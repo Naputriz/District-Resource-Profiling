@@ -1,0 +1,44 @@
+{
+  "province_code": "75",
+  "province_name": "Gorontalo",
+  "has_data": true,
+  "status": "Staging",
+  "center": [
+    0.6871,
+    122.3747
+  ],
+  "zoom": 9,
+  "bbox": [
+    121.1612,
+    0.3063,
+    123.5523,
+    1.0406
+  ],
+  "utm_srid": 32651,
+  "utm_zone": "51N",
+  "total_districts": 77,
+  "boundaries": {
+    "source": "HDX COD-AB Indonesia (BPS/BIG)",
+    "url": "https://data.humdata.org/dataset/cod-ab-idn",
+    "local_path": "frontend/data/boundaries/75_kecamatan.geojson",
+    "licence": "CC BY-IGO",
+    "total_districts": 77,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "WorldPop R2025A 2024 (model estimate)",
+    "url": "https://hub.worldpop.org/rest/data/pop/G2_CN_POP_R25A_100m?iso3=IDN",
+    "local_path": "/mnt/data/rpl/data_raw/idn_pop_2024_CN_100m_R2025A_v1.tif",
+    "licence": "CC BY 4.0",
+    "snapshot_date": "2024",
+    "verification_status": "model_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors via Geofabrik Sulawesi PBF (ODbL)",
+    "url": "https://download.geofabrik.de/asia/indonesia/sulawesi-latest.osm.pbf",
+    "local_path": "/mnt/data/rpl/data_raw/sulawesi-latest.osm.pbf",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-11-18",
+    "verification_status": "verified_osm_snapshot"
+  }
+}
