@@ -11,13 +11,18 @@ pytestmark = [pytest.mark.db, pytest.mark.usefixtures("requires_seed")]
 def test_direct_db_queries_and_simulation():
     init_db_pool()
     with get_db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM kecamatan;")
+        cur.execute("SELECT COUNT(*) as count FROM kecamatan WHERE kemendagri_code LIKE '31.%';")
         kec_count = cur.fetchone()["count"]
 
         cur.execute("SELECT COUNT(*) as count FROM public_facilities;")
         fac_count = cur.fetchone()["count"]
 
-        cur.execute("SELECT COUNT(*) as count FROM district_compliance_scores;")
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM district_compliance_scores s
+            JOIN kecamatan k ON k.id = s.district_id
+            WHERE k.kemendagri_code LIKE '31.%';
+        """)
         score_count = cur.fetchone()["count"]
 
         cur.execute("SELECT COUNT(*) as count FROM regulatory_standards;")

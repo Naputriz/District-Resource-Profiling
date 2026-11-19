@@ -7,6 +7,8 @@ import pytest
 from backend.app.engine.standards_availability import (
     evaluate_availability,
     calculate_pillar_and_composite_scores,
+    build_district_metrics_and_scores,
+    LOCAL_GATE_REASON,
     STANDARDS_AVAILABILITY_SPEC,
     CITY_WIDE_CLASSIFIED_COUNTS,
     BASE_PILLAR_WEIGHTS
@@ -157,3 +159,189 @@ def test_valid1_pillar_with_less_than_two_types_has_null_score():
     assert health["score"] is None
     assert health["status"] == "cakupan data rendah"
     assert health["included_in_composite"] is False
+
+
+def test_province_scaled_threshold_reason_and_status():
+    """J1a2 Rule 1: Threshold scales with number of kecamatan in province (e.g., 627 for Jabar)."""
+    flag_low, reason_low = evaluate_availability(
+        "puskesmas_kelurahan", 414, "Low", False, min_records_threshold=627
+    )
+    assert flag_low == "insufficient"
+    assert "(<627)" in reason_low
+
+    flag_ok, reason_ok = evaluate_availability(
+        "sekolah_dasar", 3404, "Medium", False, min_records_threshold=627
+    )
+    assert flag_ok == "available"
+    assert reason_ok == "Classified records >= 627 (3404)"
+
+
+def test_local_coverage_gate_and_dki_like_unchanged():
+    """J1a2 Rules 2 & 3: Pop >= 1600 with 0 mapped SD gates count-based scores to NULL; DKI-like stays unchanged."""
+    standards = [
+        ("taman_kanak_kanak", "education", 1250, 500, True, "SNI"),
+        ("sekolah_dasar", "education", 1600, 1000, True, "SNI"),
+        ("sekolah_menengah_pertama", "education", 4800, 1000, True, "SNI"),
+        ("sekolah_menengah_atas", "education", 4800, 3000, True, "SNI"),
+        ("puskesmas_kelurahan", "lifeline_health", 30000, 1500, True, "SNI"),
+        ("puskesmas_kecamatan", "lifeline_health", 120000, 3000, True, "SNI"),
+        ("pos_damkar", "lifeline_health", 120000, None, True, "SNI"),
+        ("taman_rt", "urban_livability", None, None, False, "SNI"),
+    ]
+    avail_map = {
+        "taman_kanak_kanak": ("available", "Classified records >= 44 (2274)"),
+        "sekolah_dasar": ("available", "Classified records >= 44 (1483)"),
+        "sekolah_menengah_pertama": ("available", "Classified records >= 44 (633)"),
+        "sekolah_menengah_atas": ("available", "Classified records >= 44 (539)"),
+        "puskesmas_kelurahan": ("available", "Classified records >= 44 (289)"),
+        "puskesmas_kecamatan": ("available", "Classified records >= 44 (57)"),
+        "pos_damkar": ("available", "Classified records >= 44 (99)"),
+        "taman_rt": ("not_available", "NOT_AVAILABLE_FROM_OSM (0 classified records city-wide)"),
+    }
+
+    # Gated kecamatan: pop = 50,000 (>= 1,600) and sekolah_dasar = 0
+    gated = build_district_metrics_and_scores(
+        pop=50000,
+        fac_counts={"taman_kanak_kanak": 2, "sekolah_dasar": 0, "puskesmas_kelurahan": 1},
+        standards=standards,
+        availability_map=avail_map,
+    )
+    assert gated["local_gated"] is True
+    assert gated["coverage"]["osm_coverage"]["status"] == "tidak_memadai"
+    assert gated["coverage"]["osm_coverage"]["mapped_sd"] == 0
+    assert gated["coverage"]["osm_coverage"]["required_sd"] == 32
+    assert gated["scores_res"]["composite_score"] is None
+    for p_data in gated["scores_res"]["pillar_scores"].values():
+        assert p_data["score"] is None
+    assert "1.600" in gated["scores_res"]["composite_note"]
+
+    for m in gated["metrics_detail"]:
+        if m["scored"]:
+            assert m["data_availability"] == "insufficient_local"
+            assert m["compliance_pct"] is None
+            assert m["deficit"] is None
+            assert m["availability_reason"] == LOCAL_GATE_REASON
+            assert m["required"] is not None and m["required"] >= 1
+        else:
+            assert m["data_availability"] == "not_available"
+            assert m["required"] is None
+
+    # DKI-like input: pop = 50,000 and sekolah_dasar = 10 -> unchanged normal scoring
+    dki_like = build_district_metrics_and_scores(
+        pop=50000,
+        fac_counts={
+            "taman_kanak_kanak": 20,
+            "sekolah_dasar": 10,
+            "sekolah_menengah_pertama": 5,
+            "sekolah_menengah_atas": 5,
+            "puskesmas_kelurahan": 1,
+            "puskesmas_kecamatan": 1,
+            "pos_damkar": 1,
+        },
+        standards=standards,
+        availability_map=avail_map,
+    )
+    assert dki_like["local_gated"] is False
+    assert dki_like["coverage"]["osm_coverage"]["status"] == "memadai"
+    assert dki_like["coverage"]["osm_coverage"]["mapped_sd"] == 10
+    assert dki_like["scores_res"]["composite_score"] is not None
+    assert dki_like["scores_res"]["pillar_scores"]["education"]["score"] is not None
+    assert dki_like["scores_res"]["pillar_scores"]["lifeline_health"]["score"] is not None
+
+
+def test_api_null_composite_returns_data_tidak_memadai_and_excluded_from_ranking():
+    """J1a2 Rule 4: API handles NULL composite cleanly, returns 'Data tidak memadai', and excludes from ranking."""
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock, patch
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+
+    cov_memadai = {"osm_coverage": {"status": "memadai", "mapped_sd": 5, "required_sd": 10, "rule": "rule"}}
+    cov_gated = {"osm_coverage": {"status": "tidak_memadai", "mapped_sd": 0, "required_sd": 10, "rule": "rule"}}
+    rows = [
+        {
+            "kemendagri_code": "31.71.01",
+            "bps_code": "3171010",
+            "name": "Scored A",
+            "city_name": "Jakarta Selatan",
+            "population": 16000,
+            "area_km2": 5.0,
+            "density_per_km2": 3200.0,
+            "health_score": 50.0,
+            "education_score": 60.0,
+            "livability_score": None,
+            "mobility_score": None,
+            "composite_livability_score": 54.55,
+            "composite_note": "Note A",
+            "metrics_payload": [],
+            "coverage": cov_memadai,
+        },
+        {
+            "kemendagri_code": "31.71.02",
+            "bps_code": "3171020",
+            "name": "Gated B",
+            "city_name": "Jakarta Selatan",
+            "population": 16000,
+            "area_km2": 5.0,
+            "density_per_km2": 3200.0,
+            "health_score": None,
+            "education_score": None,
+            "livability_score": None,
+            "mobility_score": None,
+            "composite_livability_score": None,
+            "composite_note": "Data tidak memadai",
+            "metrics_payload": [
+                {
+                    "facility_type": "sekolah_dasar",
+                    "pillar": "education",
+                    "existing": 0,
+                    "required": 10,
+                    "compliance_pct": None,
+                    "deficit": None,
+                    "data_availability": "insufficient_local",
+                    "availability_reason": LOCAL_GATE_REASON,
+                    "scored": True,
+                }
+            ],
+            "coverage": cov_gated,
+        },
+    ]
+
+    mock_cur = MagicMock()
+    mock_cur.fetchall.return_value = rows
+    mock_cur.fetchone.return_value = {
+        **rows[1],
+        "id": "00000000-0000-0000-0000-000000000002",
+        "boundary_geojson": None,
+    }
+
+    @contextmanager
+    def mock_cursor_ctx():
+        yield mock_cur
+
+    client = TestClient(app)
+    with patch("backend.app.api.routers.districts.get_redis_client", return_value=None), \
+         patch("backend.app.api.routers.districts.get_db_cursor", side_effect=mock_cursor_ctx), \
+         patch("backend.app.api.routers.districts.resolve_district_record", return_value=({"id": "00000000-0000-0000-0000-000000000002"}, None)):
+        res_list = client.get("/api/v1/districts")
+        assert res_list.status_code == 200
+        body = res_list.json()
+        assert body["average_composite_score"] == 54.55
+        assert body["scored_districts_count"] == 1
+        assert body["insufficient_data_districts_count"] == 1
+
+        by_code = {d["kemendagri_code"]: d for d in body["districts"]}
+        assert by_code["31.71.01"]["rank"] == 1
+        assert by_code["31.71.01"]["score_status"] == "Tersedia"
+        assert by_code["31.71.02"]["composite_livability_score"] is None
+        assert by_code["31.71.02"]["score_status"] == "Data tidak memadai"
+        assert by_code["31.71.02"]["rank"] is None
+        assert by_code["31.71.02"]["coverage"] == cov_gated
+
+        res_detail = client.get("/api/v1/districts/31.71.02")
+        assert res_detail.status_code == 200
+        detail = res_detail.json()
+        assert detail["composite_livability_score"] is None
+        assert detail["score_status"] == "Data tidak memadai"
+        assert detail["coverage"] == cov_gated
+        assert detail["pillar_scores"]["education"]["score"] is None

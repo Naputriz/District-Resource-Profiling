@@ -34,10 +34,13 @@ CREATE TABLE IF NOT EXISTS kecamatan (
     kabupaten_kota_id UUID REFERENCES kabupaten_kota(id) ON DELETE CASCADE,
     kemendagri_code VARCHAR(20) UNIQUE NOT NULL,
     bps_code VARCHAR(20),
+    cod_ab_pcode VARCHAR(20),
     name VARCHAR(100) NOT NULL,
     population INT DEFAULT 0,
     area_km2 NUMERIC(10, 4) DEFAULT 0,
     density_per_km2 NUMERIC(12, 2) DEFAULT 0,
+    population_source VARCHAR(150),
+    population_verification_status VARCHAR(50),
     total_rt INT DEFAULT 0,
     total_rw INT DEFAULT 0,
     boundary GEOMETRY(MultiPolygon, 4326) NOT NULL,
@@ -160,6 +163,7 @@ CREATE TABLE IF NOT EXISTS district_compliance_scores (
     composite_note TEXT,
     unserved_area_km2 NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     metrics_payload JSONB DEFAULT '{}'::jsonb,
+    coverage JSONB DEFAULT NULL,
     calculated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

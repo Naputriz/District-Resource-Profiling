@@ -10,3 +10,7 @@ asyncpg>=0.29.0
 redis>=5.0.0
 tqdm>=4.66.0
 python-dotenv>=1.0.1
+pyogrio==0.13.0
+rasterio==1.5.2
+osmium==4.3.2
+pyproj==3.8.0

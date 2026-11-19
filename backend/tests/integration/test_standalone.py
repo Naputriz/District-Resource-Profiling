@@ -9,7 +9,7 @@ def test_standalone_integration():
     init_db_pool()
 
     with get_db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM kecamatan;")
+        cur.execute("SELECT COUNT(*) as count FROM kecamatan WHERE kemendagri_code LIKE '31.%';")
         res = cur.fetchone()
         assert res["count"] == 44
 
@@ -17,7 +17,12 @@ def test_standalone_integration():
         res = cur.fetchone()
         assert res["count"] >= 50
 
-        cur.execute("SELECT COUNT(*) as count FROM district_compliance_scores;")
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM district_compliance_scores s
+            JOIN kecamatan k ON k.id = s.district_id
+            WHERE k.kemendagri_code LIKE '31.%';
+        """)
         res = cur.fetchone()
         assert res["count"] == 44
 

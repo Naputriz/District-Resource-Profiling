@@ -1,6 +1,6 @@
 """
 Standards Availability and Proportional Pillar Scoring Engine.
-Implements standards availability and composite scoring (README §8, §14):
+Implements Phase 4.2 & Phase 5.1 (REBUILD_PROMPT_P5_1_P7.md) & README.revised.md §8, §14:
 1. Data availability flag per facility type:
    - 'not_available': mapping says NOT_AVAILABLE_FROM_OSM, or 0 records city-wide.
    - 'insufficient': fewer than 44 classified records city-wide, REGARDLESS of confidence.
@@ -14,7 +14,7 @@ Implements standards availability and composite scoring (README §8, §14):
    - score: float | None (None if types_scored is empty)
    - status: "tersedia" (>1 types scored) | "cakupan data rendah" (1 type scored) | "data tidak tersedia" (0 types scored)
    - included_in_composite: bool (True only if types_scored >= 2)
-4. Composite rule: A pillar enters the composite ONLY if types_scored >= 2.
+4. Problem B (Phase 5.1): A pillar enters the composite ONLY if types_scored >= 2.
    A pillar with exactly 1 scored type gets weight 0 in the composite; the remaining eligible
    pillar weights are re-normalized proportionally.
 5. Unified single availability path via get_city_wide_standards_availability().
@@ -103,17 +103,64 @@ PILLAR_INDONESIAN_NAMES: Dict[str, str] = {
 
 _CACHED_AVAILABILITY_MAP: Optional[Dict[str, Tuple[str, str]]] = None
 
+DEFAULT_MIN_RECORDS_THRESHOLD: int = 44
+SD_POPULATION_THRESHOLD: int = 1600
+LOCAL_GATE_REASON: str = (
+    "Tidak ada SD terpetakan di OSM untuk kecamatan berpenduduk >= 1.600 jiwa; "
+    "cakupan data OSM tidak memadai, sehingga kekurangan layanan tidak dapat dibedakan dari kekurangan pemetaan"
+)
+LOCAL_GATE_COMPOSITE_NOTE: str = (
+    "Skor komposit dan pilar tidak dihitung (data tidak memadai): "
+    "tidak ada SD terpetakan di OSM untuk kecamatan berpenduduk >= 1.600 jiwa "
+    "sehingga kekurangan layanan tidak dapat dibedakan dari kekurangan pemetaan."
+)
+OSM_COVERAGE_RULE: str = (
+    "Kecamatan berpenduduk >= 1.600 jiwa (kebutuhan >= 1 SD menurut SNI 03-1733-2004) "
+    "dengan 0 sekolah_dasar terpetakan di OSM ditandai tidak_memadai."
+)
+
+
+def is_local_coverage_gated(
+    population: Optional[int],
+    mapped_sd: int,
+    sd_threshold: int = SD_POPULATION_THRESHOLD,
+) -> bool:
+    """Returns True when population requires >= 1 SD by SNI (>= 1,600) but 0 SD are mapped in OSM."""
+    if population is None:
+        return False
+    return int(population) >= int(sd_threshold) and int(mapped_sd) == 0
+
+
+def build_osm_coverage(
+    population: Optional[int],
+    mapped_sd: int,
+    sd_threshold: int = SD_POPULATION_THRESHOLD,
+) -> Dict[str, Any]:
+    """Builds the per-kecamatan osm_coverage flag dict."""
+    pop_val = max(0, int(population or 0))
+    required_sd = max(1, math.ceil(pop_val / sd_threshold)) if pop_val > 0 else 0
+    gated = is_local_coverage_gated(pop_val, mapped_sd, sd_threshold)
+    return {
+        "status": "tidak_memadai" if gated else "memadai",
+        "mapped_sd": int(mapped_sd),
+        "required_sd": int(required_sd),
+        "rule": OSM_COVERAGE_RULE,
+    }
+
 
 def evaluate_availability(
     facility_type: str,
     classified_count: int,
     confidence: Optional[str] = None,
-    is_not_available_from_osm: Optional[bool] = None
+    is_not_available_from_osm: Optional[bool] = None,
+    min_records_threshold: int = DEFAULT_MIN_RECORDS_THRESHOLD,
 ) -> Tuple[str, str]:
     """
-    Evaluates data availability for a facility type:
-    - 'not_available': NOT_AVAILABLE_FROM_OSM or 0 records city-wide.
-    - 'insufficient': fewer than 44 classified records city-wide, REGARDLESS of confidence.
+    Evaluates data availability for a facility type per REBUILD_PROMPT_P4_2_P5.md Phase 4.2
+    and province-scaled threshold rule (J1a2):
+    - 'not_available': NOT_AVAILABLE_FROM_OSM or 0 records province/city-wide.
+    - 'insufficient': fewer than `min_records_threshold` (= number of kecamatan in province,
+      44 for DKI Jakarta) classified records, REGARDLESS of confidence.
     - otherwise 'available'.
     Returns (availability_flag, reason).
     """
@@ -124,17 +171,18 @@ def evaluate_availability(
         if is_not_available_from_osm is not None
         else spec.get("is_not_available_from_osm", False)
     )
+    threshold = max(1, int(min_records_threshold)) if min_records_threshold is not None else DEFAULT_MIN_RECORDS_THRESHOLD
 
     if not_avail_mapping or classified_count == 0:
         if not_avail_mapping:
             return ("not_available", "NOT_AVAILABLE_FROM_OSM (0 classified records city-wide)")
         return ("not_available", "0 classified records city-wide in OSM")
 
-    # Completeness decides availability: fewer than 44 records is insufficient regardless of confidence
-    if classified_count < 44:
-        return ("insufficient", f"{classified_count} classified records city-wide (<44) - kelengkapan data tidak memadai")
+    # Completeness decides availability: fewer than threshold records is insufficient regardless of confidence
+    if classified_count < threshold:
+        return ("insufficient", f"{classified_count} classified records city-wide (<{threshold}) - kelengkapan data tidak memadai")
 
-    return ("available", f"Classified records >= 44 ({classified_count})")
+    return ("available", f"Classified records >= {threshold} ({classified_count})")
 
 
 def get_city_wide_standards_availability(
@@ -144,7 +192,7 @@ def get_city_wide_standards_availability(
     Returns single unified data availability mapping for all 16 standards:
     facility_type -> (availability_flag, reason).
     
-    Evaluates scoring eligibility:
+    Adheres to REBUILD_PROMPT_P5_1_P7.md Phase 5.1:
     - Eliminates divergent scoring paths between baseline and simulation.
     - Tries querying `regulatory_standards` from database if available.
     - Falls back to evaluated real CITY_WIDE_CLASSIFIED_COUNTS snapshot.
@@ -239,7 +287,7 @@ def calculate_pillar_and_composite_scores(
     """
     Calculates deterministic pillar scores and proportional composite score.
     
-    COMPOSITE COVERAGE RULE:
+    PHASE 5.1 COMPOSITE COVERAGE RULE (REBUILD_PROMPT_P5_1_P7.md Problem B):
     -----------------------------------------------------------------------
     1. S_pilar = arithmetic mean of S_jenis over 'available' facility types in that pillar.
        - Types marked 'insufficient' or 'not_available' are EXCLUDED from the mean, never scored as 0.
@@ -252,8 +300,7 @@ def calculate_pillar_and_composite_scores(
          W'_p = BaseWeight_p / sum(BaseWeight_q for q in EligiblePillars).
     3. Composite Note explicitly states which pillars were excluded and why.
     """
-    if availability_map is None:
-        availability_map = get_city_wide_standards_availability()
+    default_avail_map = get_city_wide_standards_availability() if availability_map is None else None
 
     # Group metrics by pillar
     pillar_metrics: Dict[str, List[Dict[str, Any]]] = {
@@ -290,11 +337,24 @@ def calculate_pillar_and_composite_scores(
             if is_scored is None:
                 is_scored = STANDARDS_AVAILABILITY_SPEC.get(ftype, {}).get("scored", False)
 
-            if availability_map and ftype in availability_map:
-                avail, reason = availability_map[ftype]
+            if m.get("data_availability") == "insufficient_local":
+                avail = "insufficient_local"
+                reason = m.get("availability_reason") or LOCAL_GATE_REASON
+            elif availability_map is not None:
+                if ftype in availability_map:
+                    avail, reason = availability_map[ftype]
+                else:
+                    avail = m.get("data_availability", "available")
+                    reason = m.get("availability_reason", "")
             else:
-                avail = m.get("data_availability", "available")
-                reason = m.get("availability_reason", "")
+                if m.get("data_availability"):
+                    avail = m["data_availability"]
+                    reason = m.get("availability_reason", "")
+                elif default_avail_map and ftype in default_avail_map:
+                    avail, reason = default_avail_map[ftype]
+                else:
+                    avail = "available"
+                    reason = ""
 
             # Informational types (§6.3) are never scored and never produce deficit
             if not is_scored:
@@ -317,8 +377,8 @@ def calculate_pillar_and_composite_scores(
 
         coverage = round(len(types_scored) / max(1, total_scored_types), 4) if total_scored_types > 0 else 0.0
 
-        # README §8: A pillar enters the composite ONLY if types_scored >= 2.
-        # Fewer than 2 scored+available types: no score number at all (null), status 'cakupan data rendah', weight 0.
+        # README §8 & VALID-1 §B.3: A pillar enters the composite ONLY if types_scored >= 2.
+        # Fewer than 2 scored+available types: no score number at all (null), status 'cakupan data rendah' (or 'data tidak memadai' if locally gated), weight 0.
         if len(types_scored) >= 2:
             p_score = round(sum(scored_values) / len(scored_values), 2)
             pillar_scores_res[pillar] = {
@@ -331,9 +391,10 @@ def calculate_pillar_and_composite_scores(
                 "data_coverage": coverage
             }
         else:
+            has_local_gate = any(e.get("availability") == "insufficient_local" for e in types_excluded)
             pillar_scores_res[pillar] = {
                 "score": None,
-                "status": "cakupan data rendah",
+                "status": "data tidak memadai" if has_local_gate else "cakupan data rendah",
                 "included_in_composite": False,
                 "label": PILLAR_LABELS.get(pillar, pillar),
                 "types_scored": types_scored,
@@ -411,7 +472,10 @@ def calculate_pillar_and_composite_scores(
         composite_note = ". ".join(note_parts)
     else:
         composite = None
-        composite_note = "Tidak ada pilar dengan cakupan data memadai (minimal 2 jenis) untuk menghitung skor komposit."
+        if any(m.get("data_availability") == "insufficient_local" for m in metrics_detail):
+            composite_note = LOCAL_GATE_COMPOSITE_NOTE
+        else:
+            composite_note = "Tidak ada pilar dengan cakupan data memadai (minimal 2 jenis) untuk menghitung skor komposit."
 
     return {
         "composite_score": composite,
@@ -419,4 +483,72 @@ def calculate_pillar_and_composite_scores(
         "composite_note": composite_note,
         "pillar_scores": pillar_scores_res,
         "availability_source": get_current_availability_source()
+    }
+
+
+def build_district_metrics_and_scores(
+    pop: int,
+    fac_counts: Dict[str, int],
+    standards: List[Tuple[Any, ...]],
+    availability_map: Dict[str, Tuple[str, str]],
+) -> Dict[str, Any]:
+    """
+    Computes metrics_detail, pillar/composite scores, and osm_coverage flag for one kecamatan.
+    Applies the kecamatan-level OSM coverage gate when population >= 1,600 and mapped SD == 0.
+    """
+    sd_threshold = SD_POPULATION_THRESHOLD
+    for std in standards:
+        if std[0] == "sekolah_dasar" and std[2]:
+            sd_threshold = int(std[2])
+            break
+
+    mapped_sd = int(fac_counts.get("sekolah_dasar", 0))
+    local_gated = is_local_coverage_gated(pop, mapped_sd, sd_threshold)
+    osm_coverage = build_osm_coverage(pop, mapped_sd, sd_threshold)
+
+    metrics_detail: List[Dict[str, Any]] = []
+    for std in standards:
+        ftype, pillar, threshold, radius, scored, source = std
+        existing = int(fac_counts.get(ftype, 0))
+        avail, reason = availability_map.get(ftype, ("available", ""))
+
+        if scored and threshold:
+            if local_gated:
+                required = max(1, math.ceil(pop / threshold))
+                pct = None
+                deficit = None
+                avail = "insufficient_local"
+                reason = LOCAL_GATE_REASON
+            elif avail == "available":
+                required = max(1, math.ceil(pop / threshold))
+                pct = min(100.0, round((existing / required) * 100.0, 2))
+                deficit = existing - required
+            else:
+                required = None
+                pct = None
+                deficit = None
+        else:
+            required = None
+            pct = None
+            deficit = None
+
+        metrics_detail.append({
+            "facility_type": ftype,
+            "pillar": pillar,
+            "existing": existing,
+            "required": required,
+            "compliance_pct": pct,
+            "deficit": deficit,
+            "data_availability": avail,
+            "availability_reason": reason,
+            "scored": scored,
+            "source": source,
+        })
+
+    scores_res = calculate_pillar_and_composite_scores(metrics_detail, availability_map)
+    return {
+        "metrics_detail": metrics_detail,
+        "scores_res": scores_res,
+        "coverage": {"osm_coverage": osm_coverage},
+        "local_gated": local_gated,
     }

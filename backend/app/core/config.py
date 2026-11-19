@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # Redis Cache Settings
     REDIS_HOST: str = os.getenv("REDIS_HOST", "127.0.0.1")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_CACHE_TTL: int = 86400
 
     # Ambang dampak simulasi (lihat README). Nilai masih TODO-DECIDE (team).

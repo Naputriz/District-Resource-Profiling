@@ -166,7 +166,7 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
                            k.population, k.area_km2, k.density_per_km2,
                            s.health_score, s.education_score, s.livability_score,
                            s.mobility_score, s.composite_livability_score, s.composite_note,
-                           s.metrics_payload
+                           s.metrics_payload, s.coverage
                     FROM kecamatan k
                     JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
                     LEFT JOIN district_compliance_scores s ON s.district_id = k.id
@@ -183,13 +183,22 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
                     except Exception:
                         pass
 
+                cov = row.get("coverage")
+                if isinstance(cov, str):
+                    try:
+                        cov = json.loads(cov)
+                    except Exception:
+                        pass
+
                 from backend.app.engine.standards_availability import calculate_pillar_and_composite_scores
                 scores_breakdown = calculate_pillar_and_composite_scores(metrics if isinstance(metrics, list) else [])
                 enriched_pillars = scores_breakdown["pillar_scores"]
                 composite = float(row["composite_livability_score"]) if row["composite_livability_score"] is not None else scores_breakdown["composite_score"]
                 composite_note = row.get("composite_note") or scores_breakdown["composite_note"]
+                if composite is None and not composite_note:
+                    composite_note = "Data tidak memadai"
 
-                return {
+                result_payload = {
                     "kemendagri_code": row["kemendagri_code"],
                     "district_code": row["kemendagri_code"],
                     "district_name": row["name"],
@@ -200,11 +209,15 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
                     "density_per_km2": float(row["density_per_km2"]) if row["density_per_km2"] is not None else 0.0,
                     "composite_score": composite,
                     "composite_livability_score": composite,  # keep for backward compatibility
+                    "score_status": "Data tidak memadai" if composite is None else "Tersedia",
                     "composite_note": composite_note,
                     "availability_source": scores_breakdown.get("availability_source", "database"),
                     "pillar_scores": enriched_pillars,
                     "metrics_payload": metrics
                 }
+                if cov is not None:
+                    result_payload["coverage"] = cov
+                return result_payload
 
         elif tool_name == "get_unserved_blank_spots":
             code = arguments["district_code"]
