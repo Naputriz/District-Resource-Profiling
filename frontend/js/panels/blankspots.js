@@ -4,15 +4,39 @@
  * displaying coverage statistics, cross-border notes, and triggering map layer rendering.
  */
 
+import { state } from "../state.js";
 import { fetchBlankSpots, fetchBuffers } from "../api.js";
 import { escapeHtml } from "../utils/dom.js";
 import { renderBufferLayer, renderBlankSpotLayer, clearBlankSpotLayers } from "../map/layers.js";
+
+export function resetBlankSpotsPanel() {
+  clearBlankSpotLayers();
+  const ids = [
+    "bs-area-total",
+    "bs-area-unserved",
+    "bs-coverage-pct",
+    "bs-coverage-no-neigh",
+    "bs-fac-inside",
+    "bs-fac-neighbours",
+    "bs-cross-border-scope",
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "--";
+  });
+  const warnBox = document.getElementById("bs-area-warning-box");
+  if (warnBox) {
+    warnBox.style.display = "none";
+    warnBox.innerHTML = "";
+  }
+}
 
 export async function loadDistrictBlankSpots(districtCode, facilityType = "puskesmas_kelurahan") {
   clearBlankSpotLayers();
 
   try {
-    const data = await fetchBlankSpots(districtCode, facilityType);
+    const prov = state.activeProvince || "31";
+    const data = await fetchBlankSpots(districtCode, facilityType, prov);
     if (!data) return;
 
     const areaTotal = document.getElementById("bs-area-total");
@@ -36,7 +60,9 @@ export async function loadDistrictBlankSpots(districtCode, facilityType = "puske
     if (facNeighbours) facNeighbours.textContent = `${data.facilities_from_neighbours !== undefined ? data.facilities_from_neighbours : '--'}`;
 
     const cbScope = document.getElementById("bs-cross-border-scope");
-    if (cbScope) cbScope.textContent = `${data.cross_border_scope || 'DKI Jakarta only'}`;
+    if (cbScope) {
+      cbScope.textContent = data.cross_border_scope || state.activeRegion?.name || "DKI Jakarta only";
+    }
 
     // Area note warning
     const warnBox = document.getElementById("bs-area-warning-box");
@@ -51,7 +77,7 @@ export async function loadDistrictBlankSpots(districtCode, facilityType = "puske
 
     // Render facility buffers
     try {
-      const bufData = await fetchBuffers(districtCode, facilityType);
+      const bufData = await fetchBuffers(districtCode, facilityType, prov);
       if (bufData) {
         renderBufferLayer(bufData);
       }

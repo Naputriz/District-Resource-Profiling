@@ -1,26 +1,162 @@
 /**
  * panels/scorecard.js
- * Renders district score dial, verbatim composite note, 4-pillar progress bars
- * with effective weights and exclusion tags, and granular facility compliance audit list.
+ * Renders district score dial, coverage gate badge, province OSM caveat note,
+ * verbatim composite note, 4-pillar progress bars with effective weights and exclusion tags,
+ * and granular facility compliance audit list.
  */
 
 import { state } from "../state.js";
 import { BASE_PILLAR_WEIGHTS } from "../config.js";
 import { getChoroplethColor, escapeHtml } from "../utils/dom.js";
 
-export function renderScorecard(data) {
-  const score = data.composite_livability_score !== undefined ? data.composite_livability_score : (data.composite_score || 0);
+const PROVINCE_OSM_CAVEAT =
+  "Data fasilitas OSM di luar DKI belum lengkap; skor cenderung lebih rendah dari kondisi nyata.";
+
+export function updateProvinceOsmNote(provinceCode) {
+  const noteEl = document.getElementById("province-osm-note");
+  if (!noteEl) return;
+  const prov = String(provinceCode || state.activeProvince || "31");
+  if (prov !== "31") {
+    noteEl.textContent = PROVINCE_OSM_CAVEAT;
+    noteEl.style.display = "block";
+  } else {
+    noteEl.textContent = "";
+    noteEl.style.display = "none";
+  }
+}
+
+export function resetScorecardPanel() {
+  updateProvinceOsmNote(state.activeProvince);
+
+  const covBadge = document.getElementById("district-coverage-badge");
+  if (covBadge) {
+    covBadge.style.display = "none";
+    covBadge.textContent = "";
+    covBadge.className = "coverage-badge";
+  }
+
   const dial = document.getElementById("score-dial-val");
   if (dial) {
-    dial.textContent = typeof score === "number" ? score.toFixed(1) : score;
-    dial.style.borderColor = getChoroplethColor(Number(score) || 0);
-    dial.style.boxShadow = `0 0 16px ${getChoroplethColor(Number(score) || 0)}55`;
+    dial.textContent = "--";
+    dial.classList.remove("insufficient");
+    dial.style.borderColor = "";
+    dial.style.boxShadow = "";
+  }
+
+  const titleEl = document.getElementById("score-meta-title");
+  if (titleEl) titleEl.textContent = "Indeks Kecukupan Fasilitas Dasar (0-100)";
+
+  const gatedBox = document.getElementById("gated-coverage-box");
+  if (gatedBox) {
+    gatedBox.style.display = "none";
+    gatedBox.innerHTML = "";
+  }
+
+  const noteBox = document.getElementById("composite-note-box");
+  if (noteBox) {
+    noteBox.style.display = "none";
+    noteBox.innerHTML = "";
+  }
+
+  const singlePillarNotice = document.getElementById("single-pillar-notice");
+  if (singlePillarNotice) {
+    singlePillarNotice.style.display = "none";
+    singlePillarNotice.textContent = "";
+  }
+
+  const excludedBlock = document.getElementById("excluded-types-block");
+  if (excludedBlock) excludedBlock.style.display = "none";
+  const excludedList = document.getElementById("excluded-types-list");
+  if (excludedList) excludedList.innerHTML = "";
+
+  const listContainer = document.getElementById("metrics-breakdown-list");
+  if (listContainer) listContainer.innerHTML = "";
+
+  const pillarDefaults = [
+    { cardId: "pillar-card-health", valId: "score-h-val", barId: "score-h-bar", metaId: "pillar-h-meta", titleId: "pillar-title-health", title: "🏥 Lifeline & Kesehatan (30%)" },
+    { cardId: "pillar-card-education", valId: "score-e-val", barId: "score-e-bar", metaId: "pillar-e-meta", titleId: "pillar-title-education", title: "🎓 Human Capital & Pendidikan (25%)" },
+    { cardId: "pillar-card-livability", valId: "score-l-val", barId: "score-l-bar", metaId: "pillar-l-meta", titleId: "pillar-title-livability", title: "🌳 Kualitas Hidup & RTH (25%)" },
+    { cardId: "pillar-card-mobility", valId: "score-m-val", barId: "score-m-bar", metaId: "pillar-m-meta", titleId: "pillar-title-mobility", title: "🚆 Mobilitas & Transit (20%)" },
+  ];
+  pillarDefaults.forEach(p => {
+    const card = document.getElementById(p.cardId);
+    if (card) card.classList.remove("pillar-excluded");
+    const val = document.getElementById(p.valId);
+    if (val) val.textContent = "--";
+    const bar = document.getElementById(p.barId);
+    if (bar) bar.style.width = "0%";
+    const meta = document.getElementById(p.metaId);
+    if (meta) meta.innerHTML = "";
+    const t = document.getElementById(p.titleId);
+    if (t) t.textContent = p.title;
+  });
+}
+
+export function renderScorecard(data) {
+  updateProvinceOsmNote(data.province_code || state.activeProvince);
+
+  // Coverage badge for every kecamatan (memadai / tidak memadai, mapped SD vs required SD)
+  const covBadge = document.getElementById("district-coverage-badge");
+  const osmCov = data.coverage?.osm_coverage;
+  if (covBadge) {
+    if (osmCov) {
+      const isMemadai = osmCov.status === "memadai";
+      const mapped = osmCov.mapped_sd ?? 0;
+      const required = osmCov.required_sd ?? 0;
+      covBadge.className = `coverage-badge ${isMemadai ? "memadai" : "tidak-memadai"}`;
+      covBadge.textContent = `Cakupan OSM: ${isMemadai ? "memadai" : "tidak memadai"} (SD: ${mapped} / ${required} dibutuhkan)`;
+      covBadge.style.display = "inline-flex";
+    } else {
+      covBadge.style.display = "none";
+    }
+  }
+
+  const rawScore = data.composite_livability_score !== undefined ? data.composite_livability_score : data.composite_score;
+  const isGatedOrNull = rawScore === null || rawScore === undefined || data.score_status === "Data tidak memadai";
+
+  const dial = document.getElementById("score-dial-val");
+  const titleEl = document.getElementById("score-meta-title");
+  if (dial) {
+    if (isGatedOrNull) {
+      dial.textContent = "N/A";
+      dial.classList.add("insufficient");
+      dial.style.borderColor = "#64748b";
+      dial.style.boxShadow = "none";
+      if (titleEl) titleEl.textContent = "Data tidak memadai";
+    } else {
+      const numScore = Number(rawScore);
+      dial.textContent = Number.isFinite(numScore) ? numScore.toFixed(1) : String(rawScore);
+      dial.classList.remove("insufficient");
+      dial.style.borderColor = getChoroplethColor(numScore);
+      dial.style.boxShadow = `0 0 16px ${getChoroplethColor(numScore)}55`;
+      if (titleEl) titleEl.textContent = "Indeks Kecukupan Fasilitas Dasar (0-100)";
+    }
+  }
+
+  // Gated coverage reason box
+  const gatedBox = document.getElementById("gated-coverage-box");
+  if (gatedBox) {
+    if (isGatedOrNull) {
+      const gatedMetric = (data.metrics_payload || []).find(
+        m => m.data_availability === "insufficient_local"
+      );
+      const reason =
+        gatedMetric?.availability_reason ||
+        data.composite_note ||
+        osmCov?.rule ||
+        "Cakupan data OSM tidak memadai untuk perhitungan skor.";
+      gatedBox.style.display = "block";
+      gatedBox.innerHTML = `<strong>Data tidak memadai</strong> — ${escapeHtml(reason)}`;
+    } else {
+      gatedBox.style.display = "none";
+      gatedBox.innerHTML = "";
+    }
   }
 
   // Verbatim Composite Note
   const noteBox = document.getElementById("composite-note-box");
   if (noteBox) {
-    if (data.composite_note) {
+    if (data.composite_note && !isGatedOrNull) {
       noteBox.style.display = "block";
       noteBox.innerHTML = `<strong>Catatan Skor Komposit:</strong> ${escapeHtml(data.composite_note)}`;
     } else {
@@ -67,25 +203,25 @@ export function renderScorecard(data) {
 
     const scoreVal = pData.score !== undefined ? pData.score : cfg.defaultScore;
     const isExcluded = pData.included_in_composite === false || scoreVal === null || scoreVal === undefined;
-    const status = pData.status || (isExcluded ? "cakupan data rendah" : "tersedia");
+    const status = pData.status || (isExcluded ? (isGatedOrNull ? "data tidak memadai" : "cakupan data rendah") : "tersedia");
     const dataCoverage = pData.data_coverage !== undefined ? pData.data_coverage : 1.0;
 
     // Update pillar header with effective weight
     const isIncluded = !isExcluded && activeWeightSum > 0;
     const effWeight = isIncluded ? ((BASE_PILLAR_WEIGHTS[cfg.key] || 0) / activeWeightSum * 100) : 0;
     const effWeightStr = effWeight.toFixed(1).replace(".", ",");
-    const titleEl = document.getElementById(cfg.titleId);
-    if (titleEl) {
+    const pTitleEl = document.getElementById(cfg.titleId);
+    if (pTitleEl) {
       if (isIncluded) {
-        titleEl.textContent = `${cfg.icon} ${cfg.name} (bobot efektif ${effWeightStr}%)`;
+        pTitleEl.textContent = `${cfg.icon} ${cfg.name} (bobot efektif ${effWeightStr}%)`;
       } else {
-        titleEl.textContent = `${cfg.icon} ${cfg.name} (bobot efektif 0%)`;
+        pTitleEl.textContent = `${cfg.icon} ${cfg.name} (bobot efektif 0%)`;
       }
     }
 
     let statusClass = "tersedia";
     if (status === "cakupan data rendah") statusClass = "cakupan-rendah";
-    else if (status === "data tidak tersedia") statusClass = "tidak-tersedia";
+    else if (status === "data tidak tersedia" || status === "data tidak memadai") statusClass = "tidak-tersedia";
 
     if (valEl && barEl && cardEl && metaEl) {
       if (isExcluded) {
@@ -114,7 +250,7 @@ export function renderScorecard(data) {
         allExcluded.push({
           pillar: cfg.key,
           type: ex.facility_type || ex.type || String(ex),
-          reason: ex.reason || "Kelengkapan data kota tidak memadai (<44 kecamatan)"
+          reason: ex.reason || "Kelengkapan data provinsi tidak memadai"
         });
       });
     }
@@ -153,6 +289,17 @@ export function renderScorecard(data) {
     const el = document.createElement("div");
     el.className = "pillar-progress-card";
 
+    let sourceStr = item.source || "";
+    if (!sourceStr && state.standardsMetadata) {
+      const found = state.standardsMetadata.find(s => s.facility_type === item.facility_type);
+      if (found) sourceStr = found.source || "";
+    }
+    let tableLabel = "SNI";
+    const m = sourceStr.match(/Tabel\s+\d+/i);
+    if (m) {
+      tableLabel = `SNI ${m[0]}`;
+    }
+
     if (!isScored) {
       el.innerHTML = `
         <div class="pillar-card-header">
@@ -163,22 +310,35 @@ export function renderScorecard(data) {
           ${item.existing} titik OSM - tidak dinilai
         </div>
       `;
+    } else if (item.data_availability === "insufficient_local") {
+      el.innerHTML = `
+        <div class="pillar-card-header">
+          <span>${escapeHtml(item.facility_type.replace(/_/g, ' ').toUpperCase())}</span>
+          <span style="color: #94a3b8; font-weight: 700;">Data tidak memadai</span>
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-dim);">
+          Eksisting: ${item.existing} • Kebutuhan (${escapeHtml(tableLabel)}): ${item.required ?? "-"} • Rasio & defisit tidak dihitung (cakupan OSM tidak memadai)
+        </div>
+      `;
+    } else if (
+      item.compliance_pct === null ||
+      item.compliance_pct === undefined ||
+      item.data_availability === "insufficient" ||
+      item.data_availability === "not_available"
+    ) {
+      const reasonText = item.availability_reason || "Kelengkapan data provinsi tidak memadai";
+      el.innerHTML = `
+        <div class="pillar-card-header">
+          <span>${escapeHtml(item.facility_type.replace(/_/g, ' ').toUpperCase())}</span>
+          <span style="color: #94a3b8; font-weight: 600;">Tidak dinilai</span>
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-dim);">
+          ${item.existing} titik OSM • ${escapeHtml(reasonText)}
+        </div>
+      `;
     } else {
       const isDeficit = item.deficit < 0;
       const badgeColor = isDeficit ? "#f43f5e" : "#10b981";
-
-      let sourceStr = item.source || "";
-      if (!sourceStr && state.standardsMetadata) {
-        const found = state.standardsMetadata.find(s => s.facility_type === item.facility_type);
-        if (found) sourceStr = found.source || "";
-      }
-
-      let tableLabel = "SNI";
-      const m = sourceStr.match(/Tabel\s+\d+/i);
-      if (m) {
-        tableLabel = `SNI ${m[0]}`;
-      }
-
       el.innerHTML = `
         <div class="pillar-card-header">
           <span>${escapeHtml(item.facility_type.replace(/_/g, ' ').toUpperCase())}</span>

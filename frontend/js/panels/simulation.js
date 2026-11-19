@@ -17,6 +17,16 @@ export function syncSimulationDistrict() {
   }
 }
 
+export function resetSimulationPanel() {
+  const resBox = document.getElementById("sim-result-box");
+  if (resBox) resBox.style.display = "none";
+  const obList = document.getElementById("res-obligations-list");
+  if (obList) obList.innerHTML = "";
+  const assumpBody = document.querySelector("#res-assumptions-table tbody");
+  if (assumpBody) assumpBody.innerHTML = "";
+  syncSimulationDistrict();
+}
+
 export function initSimulationControls() {
   const popSlider = document.getElementById("sim-pop-slider");
   const popVal = document.getElementById("sim-pop-slider-val");

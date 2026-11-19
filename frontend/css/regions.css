@@ -1,0 +1,102 @@
+/* ==============================================================================
+   MULTI-REGION SWITCHER, COVERAGE GATE & OSM CAVEAT STYLES (J1b)
+   (Kept separate from style.css per J1b rules)
+   ============================================================================== */
+
+.region-select {
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.region-select:hover,
+.region-select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+.region-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.region-select option:disabled {
+  color: #64748b;
+}
+
+.legend-swatch-insufficient {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px dashed #cbd5e1;
+  background-color: #64748b;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(203, 213, 225, 0.35),
+    rgba(203, 213, 225, 0.35) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+  flex-shrink: 0;
+}
+
+.coverage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+
+.coverage-badge.memadai {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.coverage-badge.tidak-memadai {
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px dashed rgba(203, 213, 225, 0.5);
+  color: #e2e8f0;
+}
+
+.province-osm-note {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #fde68a;
+}
+
+.gated-reason-box {
+  background: rgba(100, 116, 139, 0.18);
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #e2e8f0;
+}
+
+.score-dial-circle.insufficient {
+  background: rgba(100, 116, 139, 0.18);
+  border-color: #64748b;
+  color: #cbd5e1;
+  font-size: 13px;
+  box-shadow: none;
+}

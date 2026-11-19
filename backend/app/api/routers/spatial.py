@@ -19,20 +19,26 @@ router = APIRouter()
 @router.get(f"{settings.API_V1_STR}/spatial/buffers", tags=["Spatial Calculations"])
 def get_district_facility_buffers(
     district_code: str = Query(
-        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet)"
+        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet) or 35.78.180 (Tegalsari)"
     ),
     facility_type: Optional[str] = Query(
         None, description="e.g. puskesmas_kelurahan, sekolah_dasar"
     ),
     pillar: Optional[str] = None,
+    province_code: Optional[str] = Query(
+        None, description="Opsional: kode provinsi untuk resolusi nama kecamatan"
+    ),
 ):
     """
     Returns exact service coverage buffers (FeatureCollection) projected to WGS 84 GeoJSON.
-    Calculated via PostGIS metric UTM Zone 48S.
+    Calculated via PostGIS per-district metric UTM SRID.
     """
     try:
         buffers = PostGISSpatialEngine.compute_facility_buffers(
-            district_code=district_code, facility_type=facility_type, pillar=pillar
+            district_code=district_code,
+            facility_type=facility_type,
+            pillar=pillar,
+            province_code=province_code,
         )
         return buffers
     except ValueError as ve:
@@ -51,10 +57,13 @@ def get_district_facility_buffers(
 )
 def get_district_blank_spots(
     district_code: str = Query(
-        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet)"
+        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet) or 35.78.180 (Tegalsari)"
     ),
     facility_type: str = Query(
         "puskesmas_kelurahan", description="facility_type to analyze"
+    ),
+    province_code: Optional[str] = Query(
+        None, description="Opsional: kode provinsi untuk resolusi nama kecamatan"
     ),
 ):
     """
@@ -63,7 +72,7 @@ def get_district_blank_spots(
     """
     try:
         result = PostGISSpatialEngine.calculate_blank_spots(
-            district_code, facility_type
+            district_code, facility_type, province_code=province_code
         )
         return result
     except ValueError as ve:

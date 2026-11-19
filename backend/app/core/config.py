@@ -7,7 +7,20 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
+
+
+def parse_active_provinces(raw: Optional[str]) -> List[str]:
+    """Parses comma-separated province codes into an ordered deduplicated list."""
+    if not raw:
+        return []
+    codes: List[str] = []
+    for part in str(raw).split(","):
+        code = part.strip()
+        if code and code not in codes:
+            codes.append(code)
+    return codes
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "District Resource Profiling"
@@ -47,9 +60,16 @@ class Settings(BaseSettings):
     SUPERBLOCK_RTH_RATIO: float = 0.20 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
     SUPERBLOCK_STORMWATER_DEPTH_M: float = 0.150 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
 
-    # Multi-Region Configuration (TODO-3)
+    # Multi-Region Configuration (TODO-3 & J1b)
     DEFAULT_PROVINCE_CODE: str = os.getenv("DEFAULT_PROVINCE_CODE", "31")
     DEFAULT_PROVINCE_NAME: str = os.getenv("DEFAULT_PROVINCE_NAME", "DKI Jakarta")
+    ACTIVE_PROVINCES: str = os.getenv("ACTIVE_PROVINCES", "31")
+
+    @property
+    def active_provinces(self) -> List[str]:
+        """Returns active province codes parsed from ACTIVE_PROVINCES."""
+        parsed = parse_active_provinces(self.ACTIVE_PROVINCES)
+        return parsed if parsed else [self.DEFAULT_PROVINCE_CODE]
 
     # Authentication & Authorization Settings (TODO-4)
     AUTH_ALLOW_REGISTER: bool = os.getenv("AUTH_ALLOW_REGISTER", "true").lower() in ("true", "1", "yes")

@@ -15,6 +15,7 @@
 
   <!-- Design System CSS -->
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/regions.css">
 </head>
 <body>
 
@@ -27,6 +28,7 @@
       <div class="brand-title">
         District Resource Profiling
         <span class="brand-badge">DKI Jakarta</span>
+        <select id="region-select" class="region-select" aria-label="Pilih Provinsi"></select>
       </div>
     </div>
 
@@ -45,7 +47,7 @@
       </div>
       <div class="telemetry-chip">
         <span class="dot-indicator" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span>
-        <span>44 Kecamatan Loaded</span>
+        <span id="nav-district-count">44 Kecamatan Loaded</span>
       </div>
     </div>
 
@@ -104,7 +106,7 @@
         <div class="chat-history-scroll" id="chat-history">
           <div class="chat-message-row assistant">
             <div class="chat-bubble">
-              Halo! Saya adalah <strong>Asisten Tata Ruang</strong> DKI Jakarta. Saya menganalisis kepatuhan regulasi nasional (<strong>SNI 03-1733-2004</strong>), menghitung area <em>blank spot</em> via PostGIS, dan menjalankan simulasi dampak skenario urban. Anda dapat bertanya atau memilih opsi di bawah:
+              Halo! Saya adalah <strong>Asisten Tata Ruang</strong> <span id="chat-welcome-region">DKI Jakarta</span>. Saya menganalisis kepatuhan regulasi nasional (<strong>SNI 03-1733-2004</strong>), menghitung area <em>blank spot</em> via PostGIS, dan menjalankan simulasi dampak skenario urban. Anda dapat bertanya atau memilih opsi di bawah:
             </div>
           </div>
         </div>
@@ -135,10 +137,11 @@
         <div>
           <h1 class="info-district-name" id="info-district-name">DKI Jakarta</h1>
           <div class="info-district-code" id="info-district-code">Pilih kecamatan pada peta atau cari di atas</div>
+          <div id="district-coverage-badge" class="coverage-badge" style="display: none;"></div>
         </div>
         <div style="text-align: right;">
           <div style="font-size: 14px; font-weight: 800; color: #fff;" id="info-district-pop">--</div>
-          <div style="font-size: 10px; color: #fbbf24;" id="info-district-pop-note">Sumber data penduduk belum terverifikasi (TODO-VERIFY)</div>
+          <div style="font-size: 10px; color: #fbbf24;" id="info-district-pop-note">BPS 2024</div>
           <div style="font-size: 11.5px; color: var(--text-dim);" id="info-district-area">44 Kecamatan DKI Jakarta</div>
         </div>
       </div>
@@ -156,13 +159,17 @@
         
         <!-- TAB 1: SCORECARD VIEW -->
         <div class="tab-pane-view" id="tab-pane-scorecard" style="display: flex; flex-direction: column; gap: 14px;">
+          <div id="province-osm-note" class="province-osm-note" style="display: none;"></div>
+
           <div class="score-overview-card">
             <div class="score-dial-circle" id="score-dial-val">--</div>
             <div class="score-meta-text">
-              <div class="score-meta-title">Indeks Kecukupan Fasilitas Dasar (0-100)</div>
+              <div class="score-meta-title" id="score-meta-title">Indeks Kecukupan Fasilitas Dasar (0-100)</div>
               <div class="score-meta-desc" id="score-meta-standards-desc">Dihitung deterministik via PostGIS berdasarkan standar SNI 03-1733-2004.</div>
             </div>
           </div>
+
+          <div id="gated-coverage-box" class="gated-reason-box" style="display: none;"></div>
 
           <!-- Composite Note (Verbatim from API) -->
           <div id="composite-note-box" class="composite-note-card" style="display: none;"></div>

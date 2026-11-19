@@ -104,7 +104,8 @@ export async function handleSendMessage() {
   try {
     const payload = {
       messages: state.chatMessages.map(m => ({ role: m.role, content: m.content })),
-      district_context: state.selectedDistrict ? state.selectedDistrict.kemendagri_code : null
+      district_context: state.selectedDistrict ? state.selectedDistrict.kemendagri_code : null,
+      province_code: state.activeProvince || "31"
     };
 
     const data = await postChatMessage(payload);

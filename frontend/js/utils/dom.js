@@ -37,9 +37,13 @@ export function formatAssumptionValue(v) {
 }
 
 export function getChoroplethColor(score) {
-  if (score >= 70) return "#10b981"; // Emerald
-  if (score >= 50) return "#84cc16"; // Lime
-  if (score >= 35) return "#f59e0b"; // Amber
-  if (score >= 20) return "#f97316"; // Orange
-  return "#f43f5e";                  // Rose/Red
+  if (score === null || score === undefined || Number.isNaN(Number(score))) {
+    return "#64748b"; // Neutral slate grey (Data tidak memadai)
+  }
+  const numScore = Number(score);
+  if (numScore >= 70) return "#10b981"; // Emerald
+  if (numScore >= 50) return "#84cc16"; // Lime
+  if (numScore >= 35) return "#f59e0b"; // Amber
+  if (numScore >= 20) return "#f97316"; // Orange
+  return "#f43f5e";                     // Rose/Red
 }

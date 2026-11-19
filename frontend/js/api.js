@@ -102,30 +102,25 @@ export async function fetchBoundariesGeoJSON(geojsonUrl = null) {
   if (geoRes && geoRes.ok) {
     return geoRes.json();
   }
-  // Fallback: fetch boundary from sample district
-  const sample = await fetch(`${API_BASE}/api/v1/districts/31.71.09`);
-  const sampleData = await sample.json();
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: { kemendagri_code: "31.71.09", name: sampleData.name },
-        geometry: sampleData.boundary_geojson,
-      },
-    ],
-  };
+  throw new Error(`API error [boundaries] failed to load GeoJSON from ${targetUrl}`);
 }
 
-export async function fetchDistrictDetail(districtCode) {
-  const res = await fetch(`${API_BASE}/api/v1/districts/${districtCode}`);
+export async function fetchDistrictDetail(districtCode, provinceCode = null) {
+  let url = `${API_BASE}/api/v1/districts/${encodeURIComponent(districtCode)}`;
+  if (provinceCode) {
+    url += `?province_code=${encodeURIComponent(provinceCode)}`;
+  }
+  const res = await fetch(url);
   return handleResponse(res, `districts/${districtCode}`);
 }
 
-export async function fetchDistrictFacilities(districtCode, pillar = null) {
-  let url = `${API_BASE}/api/v1/facilities?district_code=${districtCode}&limit=100`;
+export async function fetchDistrictFacilities(districtCode, pillar = null, provinceCode = null) {
+  let url = `${API_BASE}/api/v1/facilities?district_code=${encodeURIComponent(districtCode)}&limit=100`;
   if (pillar) {
     url += `&pillar=${encodeURIComponent(pillar)}`;
+  }
+  if (provinceCode) {
+    url += `&province_code=${encodeURIComponent(provinceCode)}`;
   }
   const res = await fetch(url);
   return handleResponse(res, "facilities");
@@ -133,22 +128,30 @@ export async function fetchDistrictFacilities(districtCode, pillar = null) {
 
 export async function fetchBlankSpots(
   districtCode,
-  facilityType = "puskesmas_kelurahan"
+  facilityType = "puskesmas_kelurahan",
+  provinceCode = null
 ) {
-  const url = `${API_BASE}/api/v1/spatial/blank-spots?district_code=${districtCode}&facility_type=${encodeURIComponent(
+  let url = `${API_BASE}/api/v1/spatial/blank-spots?district_code=${encodeURIComponent(districtCode)}&facility_type=${encodeURIComponent(
     facilityType
   )}`;
+  if (provinceCode) {
+    url += `&province_code=${encodeURIComponent(provinceCode)}`;
+  }
   const res = await fetch(url);
   return handleResponse(res, "spatial/blank-spots");
 }
 
 export async function fetchBuffers(
   districtCode,
-  facilityType = "puskesmas_kelurahan"
+  facilityType = "puskesmas_kelurahan",
+  provinceCode = null
 ) {
-  const url = `${API_BASE}/api/v1/spatial/buffers?district_code=${districtCode}&facility_type=${encodeURIComponent(
+  let url = `${API_BASE}/api/v1/spatial/buffers?district_code=${encodeURIComponent(districtCode)}&facility_type=${encodeURIComponent(
     facilityType
   )}`;
+  if (provinceCode) {
+    url += `&province_code=${encodeURIComponent(provinceCode)}`;
+  }
   const res = await fetch(url);
   return handleResponse(res, "spatial/buffers");
 }
