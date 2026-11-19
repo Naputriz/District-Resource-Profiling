@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS: int = int(os.getenv("AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS", "600"))
     AUTH_BRUTE_FORCE_MAX_ATTEMPTS: int = int(os.getenv("AUTH_BRUTE_FORCE_MAX_ATTEMPTS", "5"))
     AUTH_BRUTE_FORCE_LOCKOUT_SECONDS: int = int(os.getenv("AUTH_BRUTE_FORCE_LOCKOUT_SECONDS", "900"))
+    EDGE_SHARED_SECRET: str = os.getenv("EDGE_SHARED_SECRET", "")
 
     # CORS
     CORS_ORIGINS: List[str] = ["*"]

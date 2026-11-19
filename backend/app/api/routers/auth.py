@@ -18,6 +18,7 @@ from backend.app.core.auth import (
     is_brute_force_locked,
     record_failed_login,
     reset_failed_login,
+    get_client_ip,
     _DUMMY_BCRYPT_HASH,
 )
 from backend.app.api.deps import get_current_user
@@ -110,7 +111,7 @@ def login_user(req: UserLoginRequest, request: Request):
     Dilindungi perlindungan brute-force per-email dan per-IP.
     Pesan kegagalan identik untuk email tidak terdaftar dan sandi salah.
     """
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     clean_email = req.email.lower().strip()
 
     if is_brute_force_locked(clean_email, client_ip):

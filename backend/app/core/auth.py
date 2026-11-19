@@ -8,6 +8,8 @@ Enforces TODO-4 requirements:
 - Chat audit logging (privacy preserving: no raw question text)
 """
 
+import hmac
+import ipaddress
 import time
 import logging
 from typing import Optional, Tuple, Dict, List
@@ -28,6 +30,64 @@ _in_memory_rate_limits: Dict[str, List[float]] = {}
 _DUMMY_BCRYPT_HASH = bcrypt.hashpw(
     b"dummy-timing-equalizer-password", bcrypt.gensalt()
 ).decode("utf-8")
+
+
+def _get_header(request, name: str) -> Optional[str]:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return None
+    val = headers.get(name)
+    if isinstance(val, str):
+        return val
+    if isinstance(headers, dict):
+        target = name.lower()
+        for k, v in headers.items():
+            if isinstance(k, str) and k.lower() == target and isinstance(v, str):
+                return v
+    return None
+
+
+def _parse_ip(raw: Optional[str]) -> Optional[str]:
+    if not raw or not isinstance(raw, str):
+        return None
+    candidate = raw.strip()
+    if not candidate:
+        return None
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except (ValueError, TypeError):
+        return None
+
+
+def get_client_ip(request) -> str:
+    """
+    Resolve the real client IP behind Cloudflare Worker + Tunnel.
+
+    Precedence:
+    1. Validated edge header: X-DRP-Edge-Secret matches non-empty
+       settings.EDGE_SHARED_SECRET (constant-time) and X-DRP-Client-IP is a valid IP.
+    2. Cloudflare edge header: CF-Connecting-IP is a valid IP.
+    3. Direct peer address: request.client.host, falling back to "127.0.0.1".
+
+    X-Forwarded-For is never trusted. Invalid header values fall through safely.
+    """
+    secret = getattr(settings, "EDGE_SHARED_SECRET", "")
+    if isinstance(secret, str) and secret:
+        provided = _get_header(request, "X-DRP-Edge-Secret")
+        if provided and hmac.compare_digest(provided.encode("utf-8"), secret.encode("utf-8")):
+            edge_ip = _parse_ip(_get_header(request, "X-DRP-Client-IP"))
+            if edge_ip:
+                return edge_ip
+
+    cf_ip = _parse_ip(_get_header(request, "CF-Connecting-IP"))
+    if cf_ip:
+        return cf_ip
+
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", None) if client is not None else None
+    if isinstance(host, str) and host.strip():
+        return host.strip()
+    return "127.0.0.1"
 
 
 def hash_password(password: str) -> str:

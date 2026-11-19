@@ -20,6 +20,7 @@ from backend.app.core.auth import (
     record_failed_login,
     reset_failed_login,
     check_chat_rate_limit,
+    get_client_ip,
     _in_memory_failed_attempts,
     _in_memory_rate_limits,
     _DUMMY_BCRYPT_HASH,
@@ -297,3 +298,131 @@ def test_chat_audit_failure_never_breaks_chat_response():
                 assert res.json()["reply"] == "Jawaban asisten tata ruang."
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def _make_request(headers=None, client=("172.18.0.1", 12345)):
+    from starlette.requests import Request
+
+    raw_headers = [
+        (k.lower().encode("latin-1"), v.encode("latin-1"))
+        for k, v in (headers or {}).items()
+    ]
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "headers": raw_headers,
+    }
+    if client is not None:
+        scope["client"] = client
+    return Request(scope)
+
+
+def test_get_client_ip_rule_a_valid_secret(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "edge-secret-123")
+    req = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "edge-secret-123",
+            "X-DRP-Client-IP": "203.0.113.42",
+            "CF-Connecting-IP": "198.51.100.9",
+        }
+    )
+    assert get_client_ip(req) == "203.0.113.42"
+
+
+def test_get_client_ip_wrong_secret_falls_to_cf_or_client(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "edge-secret-123")
+    req_cf = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "wrong-secret",
+            "X-DRP-Client-IP": "203.0.113.42",
+            "CF-Connecting-IP": "198.51.100.9",
+        }
+    )
+    assert get_client_ip(req_cf) == "198.51.100.9"
+
+    req_no_cf = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "wrong-secret",
+            "X-DRP-Client-IP": "203.0.113.42",
+        },
+        client=("172.18.0.1", 4321),
+    )
+    assert get_client_ip(req_no_cf) == "172.18.0.1"
+
+
+def test_get_client_ip_empty_secret_disables_rule_a(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "")
+    req = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "",
+            "X-DRP-Client-IP": "203.0.113.42",
+            "CF-Connecting-IP": "198.51.100.9",
+        }
+    )
+    assert get_client_ip(req) == "198.51.100.9"
+
+    req_no_cf = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "",
+            "X-DRP-Client-IP": "203.0.113.42",
+        },
+        client=("172.18.0.1", 4321),
+    )
+    assert get_client_ip(req_no_cf) == "172.18.0.1"
+
+
+def test_get_client_ip_invalid_ip_ignored(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "edge-secret-123")
+    req_bad_edge = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "edge-secret-123",
+            "X-DRP-Client-IP": "not-an-ip",
+            "CF-Connecting-IP": "198.51.100.10",
+        }
+    )
+    assert get_client_ip(req_bad_edge) == "198.51.100.10"
+
+    req_all_bad = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "edge-secret-123",
+            "X-DRP-Client-IP": "203.0.113.1, 10.0.0.1",
+            "CF-Connecting-IP": "999.999.999.999",
+        },
+        client=("172.18.0.1", 4321),
+    )
+    assert get_client_ip(req_all_bad) == "172.18.0.1"
+
+
+def test_get_client_ip_ipv6_accepted(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "edge-secret-123")
+    req_edge_v6 = _make_request(
+        headers={
+            "X-DRP-Edge-Secret": "edge-secret-123",
+            "X-DRP-Client-IP": "2001:0db8::1",
+        }
+    )
+    assert get_client_ip(req_edge_v6) == "2001:db8::1"
+
+    req_cf_v6 = _make_request(
+        headers={"CF-Connecting-IP": "2001:db8:85a3::8a2e:370:7334"}
+    )
+    assert get_client_ip(req_cf_v6) == "2001:db8:85a3::8a2e:370:7334"
+
+
+def test_get_client_ip_x_forwarded_for_ignored(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "")
+    req = _make_request(
+        headers={"X-Forwarded-For": "203.0.113.99"},
+        client=("172.18.0.1", 4321),
+    )
+    assert get_client_ip(req) == "172.18.0.1"
+
+
+def test_get_client_ip_no_headers_and_no_client(monkeypatch):
+    monkeypatch.setattr(settings, "EDGE_SHARED_SECRET", "")
+    req_client = _make_request(client=("10.20.30.40", 5555))
+    assert get_client_ip(req_client) == "10.20.30.40"
+
+    req_none = _make_request(client=None)
+    assert get_client_ip(req_none) == "127.0.0.1"
