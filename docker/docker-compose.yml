@@ -60,6 +60,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_spatial_dev}
       REDIS_HOST: cache
       REDIS_PORT: 6379
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       PYTHONPATH: /app
     ports:
@@ -97,6 +98,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_spatial_dev}
       REDIS_HOST: cache
       REDIS_PORT: 6379
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       PYTHONPATH: /app
     depends_on:

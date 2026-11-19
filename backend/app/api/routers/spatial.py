@@ -3,8 +3,9 @@ Deterministic PostGIS spatial calculations: facility buffers and blank spots.
 """
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from backend.app.core.config import settings
+from backend.app.api.deps import get_current_user
 from backend.app.engine.spatial import (
     PostGISSpatialEngine,
     BlankSpotAnalysisResult,
@@ -71,7 +72,9 @@ def get_district_blank_spots(
     response_model=BlankSpotSimulationDelta,
     tags=["Spatial Calculations"],
 )
-def simulate_blank_spot_reduction(req: BlankSpotSimRequest):
+def simulate_blank_spot_reduction(
+    req: BlankSpotSimRequest, current_user: dict = Depends(get_current_user)
+):
     """
     Simulates how placing a new hypothetical amenity reduces the unserved blank spot polygon.
     Runs transiently in PostGIS memory without persisting to master database.
