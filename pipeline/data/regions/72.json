@@ -1,0 +1,44 @@
+{
+  "province_code": "72",
+  "province_name": "Sulawesi Tengah",
+  "has_data": true,
+  "status": "Staging",
+  "center": [
+    -0.9985,
+    121.2058
+  ],
+  "zoom": 7,
+  "bbox": [
+    119.4469,
+    -3.6407,
+    124.1815,
+    1.3752
+  ],
+  "utm_srid": 32751,
+  "utm_zone": "51S",
+  "total_districts": 175,
+  "boundaries": {
+    "source": "HDX COD-AB Indonesia (BPS/BIG)",
+    "url": "https://data.humdata.org/dataset/cod-ab-idn",
+    "local_path": "frontend/data/boundaries/72_kecamatan.geojson",
+    "licence": "CC BY-IGO",
+    "total_districts": 175,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "WorldPop R2025A 2024 (model estimate)",
+    "url": "https://hub.worldpop.org/rest/data/pop/G2_CN_POP_R25A_100m?iso3=IDN",
+    "local_path": "/mnt/data/rpl/data_raw/idn_pop_2024_CN_100m_R2025A_v1.tif",
+    "licence": "CC BY 4.0",
+    "snapshot_date": "2024",
+    "verification_status": "model_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors via Geofabrik Sulawesi & Maluku PBFs (ODbL)",
+    "url": "https://download.geofabrik.de/asia/indonesia/sulawesi-latest.osm.pbf",
+    "local_path": "/mnt/data/rpl/data_raw/sulawesi-latest.osm.pbf, /mnt/data/rpl/data_raw/maluku-latest.osm.pbf",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-11-18",
+    "verification_status": "verified_osm_snapshot"
+  }
+}

@@ -60,16 +60,174 @@ CODAB_GDB_PATH = RAW_DATA_DIR / "cod_ab_idn" / "idn_admin_boundaries.gdb"
 WORLDPOP_TIF_PATH = RAW_DATA_DIR / "idn_pop_2024_CN_100m_R2025A_v1.tif"
 JAVA_PBF_PATH = RAW_DATA_DIR / "java-latest.osm.pbf"
 JAVA_FACILITIES_CACHE = RAW_DATA_DIR / "java_facilities_raw_classified.json"
+SUMATRA_PBF_PATH = RAW_DATA_DIR / "sumatra-latest.osm.pbf"
+SUMATRA_FACILITIES_CACHE = RAW_DATA_DIR / "sumatra_facilities_raw_classified.json"
+KALIMANTAN_PBF_PATH = RAW_DATA_DIR / "kalimantan-latest.osm.pbf"
+KALIMANTAN_FACILITIES_CACHE = RAW_DATA_DIR / "kalimantan_facilities_raw_classified.json"
+SULAWESI_PBF_PATH = RAW_DATA_DIR / "sulawesi-latest.osm.pbf"
+SULAWESI_FACILITIES_CACHE = RAW_DATA_DIR / "sulawesi_facilities_raw_classified.json"
+MALUKU_PBF_PATH = RAW_DATA_DIR / "maluku-latest.osm.pbf"
+MALUKU_FACILITIES_CACHE = RAW_DATA_DIR / "maluku_facilities_raw_classified.json"
+PAPUA_PBF_PATH = RAW_DATA_DIR / "papua-latest.osm.pbf"
+PAPUA_FACILITIES_CACHE = RAW_DATA_DIR / "papua_facilities_raw_classified.json"
+NUSA_TENGGARA_PBF_PATH = RAW_DATA_DIR / "nusa-tenggara-latest.osm.pbf"
+NUSA_TENGGARA_FACILITIES_CACHE = RAW_DATA_DIR / "nusa_tenggara_facilities_raw_classified.json"
+
+PBF_SOURCES: Dict[str, Dict[str, Any]] = {
+    "java": {
+        "label": "Java",
+        "path": JAVA_PBF_PATH,
+        "cache": JAVA_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Java PBF (ODbL)",
+    },
+    "sumatra": {
+        "label": "Sumatra",
+        "path": SUMATRA_PBF_PATH,
+        "cache": SUMATRA_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/sumatra-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Sumatra PBF (ODbL)",
+    },
+    "kalimantan": {
+        "label": "Kalimantan",
+        "path": KALIMANTAN_PBF_PATH,
+        "cache": KALIMANTAN_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/kalimantan-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Kalimantan PBF (ODbL)",
+    },
+    "sulawesi": {
+        "label": "Sulawesi",
+        "path": SULAWESI_PBF_PATH,
+        "cache": SULAWESI_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/sulawesi-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Sulawesi PBF (ODbL)",
+    },
+    "nusa-tenggara": {
+        "label": "Nusa Tenggara",
+        "path": NUSA_TENGGARA_PBF_PATH,
+        "cache": NUSA_TENGGARA_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/nusa-tenggara-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Nusa Tenggara PBF (ODbL)",
+    },
+    "maluku": {
+        "label": "Maluku",
+        "path": MALUKU_PBF_PATH,
+        "cache": MALUKU_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/maluku-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Maluku PBF (ODbL)",
+    },
+    "papua": {
+        "label": "Papua",
+        "path": PAPUA_PBF_PATH,
+        "cache": PAPUA_FACILITIES_CACHE,
+        "url": "https://download.geofabrik.de/asia/indonesia/papua-latest.osm.pbf",
+        "source": "OpenStreetMap contributors via Geofabrik Papua PBF (ODbL)",
+    },
+}
 
 REGIONS_DIR = BASE_DIR / "data" / "regions"
 FRONTEND_BOUNDARIES_DIR = REPO_ROOT / "frontend" / "data" / "boundaries"
 
 SUPPORTED_PROVINCES: Dict[str, Dict[str, Any]] = {
-    "32": {"name": "Jawa Barat", "zoom": 9},
-    "33": {"name": "Jawa Tengah", "zoom": 9},
-    "34": {"name": "DI Yogyakarta", "zoom": 10},
-    "35": {"name": "Jawa Timur", "zoom": 8},
-    "36": {"name": "Banten", "zoom": 9},
+    # Java (32-36)
+    "32": {"name": "Jawa Barat", "zoom": 9, "island": "java", "pbfs": ["java"]},
+    "33": {"name": "Jawa Tengah", "zoom": 9, "island": "java", "pbfs": ["java"]},
+    "34": {"name": "DI Yogyakarta", "zoom": 10, "island": "java", "pbfs": ["java"]},
+    "35": {"name": "Jawa Timur", "zoom": 8, "island": "java", "pbfs": ["java"]},
+    "36": {"name": "Banten", "zoom": 9, "island": "java", "pbfs": ["java"]},
+    # Sumatra (11-19, 21)
+    "11": {"name": "Aceh", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "12": {"name": "Sumatera Utara", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "13": {"name": "Sumatera Barat", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "14": {"name": "Riau", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "15": {"name": "Jambi", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "16": {"name": "Sumatera Selatan", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "17": {"name": "Bengkulu", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "18": {"name": "Lampung", "zoom": 8, "island": "sumatra", "pbfs": ["sumatra"]},
+    "19": {"name": "Kepulauan Bangka Belitung", "zoom": 8, "island": "sumatra", "pbfs": ["kalimantan"]},
+    "21": {"name": "Kepulauan Riau", "zoom": 7, "island": "sumatra", "pbfs": ["sumatra", "kalimantan"]},
+    # Bali & Nusa Tenggara (51-53)
+    "51": {"name": "Bali", "zoom": 9, "island": "nusa-tenggara", "pbfs": ["nusa-tenggara"]},
+    "52": {"name": "Nusa Tenggara Barat", "zoom": 8, "island": "nusa-tenggara", "pbfs": ["nusa-tenggara"]},
+    "53": {"name": "Nusa Tenggara Timur", "zoom": 7, "island": "nusa-tenggara", "pbfs": ["nusa-tenggara"]},
+    # Kalimantan (61-65)
+    "61": {"name": "Kalimantan Barat", "zoom": 7, "island": "kalimantan", "pbfs": ["kalimantan"]},
+    "62": {"name": "Kalimantan Tengah", "zoom": 7, "island": "kalimantan", "pbfs": ["kalimantan"]},
+    "63": {"name": "Kalimantan Selatan", "zoom": 8, "island": "kalimantan", "pbfs": ["kalimantan"]},
+    "64": {"name": "Kalimantan Timur", "zoom": 7, "island": "kalimantan", "pbfs": ["kalimantan"]},
+    "65": {"name": "Kalimantan Utara", "zoom": 7, "island": "kalimantan", "pbfs": ["kalimantan"]},
+    # Sulawesi (71-76)
+    "71": {"name": "Sulawesi Utara", "zoom": 7, "island": "sulawesi", "pbfs": ["sulawesi"]},
+    "72": {"name": "Sulawesi Tengah", "zoom": 7, "island": "sulawesi", "pbfs": ["sulawesi", "maluku"]},
+    "73": {"name": "Sulawesi Selatan", "zoom": 8, "island": "sulawesi", "pbfs": ["sulawesi"]},
+    "74": {"name": "Sulawesi Tenggara", "zoom": 8, "island": "sulawesi", "pbfs": ["sulawesi"]},
+    "75": {"name": "Gorontalo", "zoom": 9, "island": "sulawesi", "pbfs": ["sulawesi"]},
+    "76": {"name": "Sulawesi Barat", "zoom": 8, "island": "sulawesi", "pbfs": ["sulawesi", "kalimantan"]},
+    # Maluku (81-82)
+    "81": {"name": "Maluku", "zoom": 7, "island": "maluku", "pbfs": ["maluku"]},
+    "82": {"name": "Maluku Utara", "zoom": 7, "island": "maluku", "pbfs": ["maluku"]},
+    # Papua (91-96; post-2022 6-province layout via UU 14, 15, 16 & UU 29 of 2022)
+    "91": {"name": "Papua", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+    "92": {"name": "Papua Barat", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+    "93": {"name": "Papua Selatan", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+    "94": {"name": "Papua Tengah", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+    "95": {"name": "Papua Pegunungan", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+    "96": {"name": "Papua Barat Daya", "zoom": 7, "island": "papua", "pbfs": ["papua"]},
+}
+
+# COD-AB idn_admin2/admin3 still uses the pre-2022 2-province Papua layout (ID91 Papua Barat, ID94 Papua).
+# Map every COD-AB adm2_pcode to (current_province_code, official_kemendagri_kab_code) per:
+# - UU 14/2022 (Papua Selatan 93), UU 15/2022 (Papua Tengah 94), UU 16/2022 (Papua Pegunungan 95),
+# - UU 29/2022 (Papua Barat Daya 96), and Kepmendagri 100.1.1-6117 Tahun 2022.
+PAPUA_KABUPATEN_MAP: Dict[str, Tuple[str, str]] = {
+    # 91 Papua (remaining 9 kab/kota)
+    "ID9403": ("91", "91.03"),  # Jayapura
+    "ID9408": ("91", "91.05"),  # Kepulauan Yapen
+    "ID9409": ("91", "91.06"),  # Biak Numfor
+    "ID9419": ("91", "91.10"),  # Sarmi
+    "ID9420": ("91", "91.11"),  # Keerom
+    "ID9426": ("91", "91.15"),  # Waropen
+    "ID9427": ("91", "91.19"),  # Supiori
+    "ID9428": ("91", "91.20"),  # Mamberamo Raya
+    "ID9471": ("91", "91.71"),  # Kota Jayapura
+    # 92 Papua Barat (remaining 7 kab)
+    "ID9105": ("92", "92.02"),  # Manokwari
+    "ID9101": ("92", "92.03"),  # Fakfak
+    "ID9104": ("92", "92.06"),  # Teluk Bintuni
+    "ID9103": ("92", "92.07"),  # Teluk Wondama
+    "ID9102": ("92", "92.08"),  # Kaimana
+    "ID9111": ("92", "92.11"),  # Manokwari Selatan
+    "ID9112": ("92", "92.12"),  # Pegunungan Arfak
+    # 93 Papua Selatan (UU 14 Tahun 2022)
+    "ID9401": ("93", "93.01"),  # Merauke
+    "ID9413": ("93", "93.02"),  # Boven Digoel
+    "ID9414": ("93", "93.03"),  # Mappi
+    "ID9415": ("93", "93.04"),  # Asmat
+    # 94 Papua Tengah (UU 15 Tahun 2022)
+    "ID9404": ("94", "94.01"),  # Nabire
+    "ID9411": ("94", "94.02"),  # Puncak Jaya
+    "ID9410": ("94", "94.03"),  # Paniai
+    "ID9412": ("94", "94.04"),  # Mimika
+    "ID9433": ("94", "94.05"),  # Puncak
+    "ID9434": ("94", "94.06"),  # Dogiyai
+    "ID9435": ("94", "94.07"),  # Intan Jaya
+    "ID9436": ("94", "94.08"),  # Deiyai
+    # 95 Papua Pegunungan (UU 16 Tahun 2022)
+    "ID9402": ("95", "95.01"),  # Jayawijaya
+    "ID9417": ("95", "95.02"),  # Pegunungan Bintang
+    "ID9416": ("95", "95.03"),  # Yahukimo
+    "ID9418": ("95", "95.04"),  # Tolikara
+    "ID9431": ("95", "95.05"),  # Mamberamo Tengah
+    "ID9432": ("95", "95.06"),  # Yalimo
+    "ID9430": ("95", "95.07"),  # Lanny Jaya
+    "ID9429": ("95", "95.08"),  # Nduga
+    # 96 Papua Barat Daya (UU 29 Tahun 2022)
+    "ID9107": ("96", "96.01"),  # Sorong
+    "ID9106": ("96", "96.02"),  # Sorong Selatan
+    "ID9108": ("96", "96.03"),  # Raja Ampat
+    "ID9109": ("96", "96.04"),  # Tambrauw
+    "ID9110": ("96", "96.05"),  # Maybrat
+    "ID9171": ("96", "96.71"),  # Kota Sorong
 }
 
 POPULATION_SOURCE = "WorldPop R2025A 2024 (model estimate)"
@@ -150,11 +308,19 @@ def load_codab_province_districts(province_code: str, gdb_path: Path = CODAB_GDB
     if not gdb_path.exists():
         raise FileNotFoundError(f"COD-AB FileGDB not found at {gdb_path}")
 
-    adm1_pcode = f"ID{province_code}"
+    is_papua_split = str(province_code) in ("91", "92", "93", "94", "95", "96")
+    if is_papua_split:
+        target_adm2s = sorted(k for k, (prov, _) in PAPUA_KABUPATEN_MAP.items() if prov == str(province_code))
+        in_clause = ", ".join(f"'{k}'" for k in target_adm2s)
+        where_clause = f"adm2_pcode IN ({in_clause})"
+    else:
+        adm1_pcode = f"ID{province_code}"
+        where_clause = f"adm1_pcode = '{adm1_pcode}'"
+
     meta, _, geom_wkb, field_data = pyogrio.raw.read(
         gdb_path,
         layer="idn_admin3",
-        where=f"adm1_pcode = '{adm1_pcode}'",
+        where=where_clause,
     )
     fields = list(meta["fields"])
     n_rows = len(field_data[0]) if field_data else 0
@@ -174,6 +340,13 @@ def load_codab_province_districts(province_code: str, gdb_path: Path = CODAB_GDB
             geom = geom.buffer(0)
 
         codes = codab_pcode_to_codes(pcode)
+        if is_papua_split:
+            adm2_pcode = str(row["adm2_pcode"]).strip()
+            _, official_kab_code = PAPUA_KABUPATEN_MAP[adm2_pcode]
+            ddd = pcode[6:9]
+            codes["kab_code"] = official_kab_code
+            codes["kemendagri_code"] = f"{official_kab_code}.{ddd}"
+
         geod_area_m2, _ = _GEOD.geometry_area_perimeter(geom)
         area_km2 = round(abs(geod_area_m2) / 1_000_000.0, 4)
 
@@ -192,7 +365,7 @@ def load_codab_province_districts(province_code: str, gdb_path: Path = CODAB_GDB
         })
 
     if excluded_non_district:
-        logger.info(f"Excluded {len(excluded_non_district)} non-district polygons in {adm1_pcode}: {excluded_non_district}")
+        logger.info(f"Excluded {len(excluded_non_district)} non-district polygons in province {province_code}: {excluded_non_district}")
     districts.sort(key=lambda d: d["kemendagri_code"])
     return districts
 
@@ -231,18 +404,18 @@ def compute_worldpop_zonal_sums(districts: List[Dict[str, Any]], tif_path: Path 
             d["density_per_km2"] = round(pop_int / d["area_km2"], 2) if d["area_km2"] > 0 else 0.0
 
 
-def extract_all_java_facilities_from_pbf(
-    pbf_path: Path = JAVA_PBF_PATH,
-    cache_path: Optional[Path] = JAVA_FACILITIES_CACHE,
+def extract_facilities_from_pbf(
+    pbf_path: Path,
+    cache_path: Optional[Path] = None,
     use_cache: bool = True,
 ) -> List[Dict[str, Any]]:
     """
-    Two-pass pyosmium extractor from Geofabrik java-latest.osm.pbf using
+    Two-pass pyosmium extractor from a Geofabrik `.osm.pbf` file using
     matching_query_groups + classify_osm_element_auto from pipeline/osm_extractor.py.
     """
     if use_cache and cache_path and cache_path.exists():
         if cache_path.stat().st_mtime >= pbf_path.stat().st_mtime:
-            logger.info(f"Loading cached extracted Java OSM facilities from {cache_path}...")
+            logger.info(f"Loading cached extracted OSM facilities from {cache_path}...")
             with open(cache_path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
@@ -251,7 +424,7 @@ def extract_all_java_facilities_from_pbf(
 
     t0 = time.time()
     snap_date = time.strftime("%Y%m%d", time.gmtime(pbf_path.stat().st_mtime))
-    logger.info(f"Extracting Java OSM facilities from {pbf_path} (snapshot {snap_date})...")
+    logger.info(f"Extracting OSM facilities from {pbf_path} (snapshot {snap_date})...")
 
     nodes: List[Dict[str, Any]] = []
     ways: List[Tuple[int, Dict[str, str], List[int]]] = []
@@ -318,15 +491,24 @@ def extract_all_java_facilities_from_pbf(
             way_items.append(item)
 
     all_items = nodes + way_items
-    logger.info(f"Extracted {len(all_items):,} total classified Java facilities in {time.time() - t0:.1f}s.")
+    logger.info(f"Extracted {len(all_items):,} total classified facilities from {pbf_path.name} in {time.time() - t0:.1f}s.")
 
     if cache_path:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(all_items, f, ensure_ascii=False)
-        logger.info(f"Cached extracted Java facilities to {cache_path}.")
+        logger.info(f"Cached extracted facilities to {cache_path}.")
 
     return all_items
+
+
+def extract_all_java_facilities_from_pbf(
+    pbf_path: Path = JAVA_PBF_PATH,
+    cache_path: Optional[Path] = JAVA_FACILITIES_CACHE,
+    use_cache: bool = True,
+) -> List[Dict[str, Any]]:
+    """Backwards-compatible wrapper for extracting Java OSM facilities."""
+    return extract_facilities_from_pbf(pbf_path=pbf_path, cache_path=cache_path, use_cache=use_cache)
 
 
 def filter_and_dedup_facilities_for_province(
@@ -347,7 +529,11 @@ def filter_and_dedup_facilities_for_province(
     maxy = max(g.bounds[3] for g in geoms)
 
     inside: List[Dict[str, Any]] = []
+    seen_sids = set()
     for item in all_facilities:
+        sid = item["source_id"]
+        if sid in seen_sids:
+            continue
         coords = item["coordinates"]["coordinates"]
         lon, lat = coords[0], coords[1]
         if lon < minx or lon > maxx or lat < miny or lat > maxy:
@@ -360,6 +546,7 @@ def filter_and_dedup_facilities_for_province(
                 matched = True
                 break
         if matched:
+            seen_sids.add(sid)
             inside.append(item)
 
     deduped, removed = deduplicate_facilities(inside)
@@ -378,7 +565,7 @@ def simplify_geojson_under_limit(
     expected by the frontend (kemendagri_code, bps_code, name, city_name, population,
     area_km2, density_per_km2, plus cod_ab_pcode).
     """
-    tolerances = [0.0002, 0.0004, 0.0008, 0.0012, 0.0018, 0.0025, 0.004, 0.006]
+    tolerances = [0.0002, 0.0004, 0.0008, 0.0012, 0.0018, 0.0025, 0.004, 0.006, 0.008, 0.012]
 
     def round_coords(obj: Any, precision: int = 5) -> Any:
         if isinstance(obj, list):
@@ -387,18 +574,14 @@ def simplify_geojson_under_limit(
             return [round_coords(x, precision) for x in obj]
         return obj
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    chosen_tol = tolerances[-1]
-    chosen_bytes = 0
-
-    for tol in tolerances:
+    def build_payload(tol: float, precision: int) -> bytes:
         features = []
         for d in districts:
             simp = d["geom"].simplify(tol, preserve_topology=True)
             if simp.is_empty:
                 simp = d["geom"]
             geom_dict = mapping(simp)
-            geom_dict["coordinates"] = round_coords(geom_dict["coordinates"], 5)
+            geom_dict["coordinates"] = round_coords(geom_dict["coordinates"], precision)
             features.append({
                 "type": "Feature",
                 "properties": {
@@ -419,7 +602,15 @@ def simplify_geojson_under_limit(
             "name": f"{province_code}_kecamatan",
             "features": features,
         }
-        payload = json.dumps(fc, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        return json.dumps(fc, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    chosen_tol = tolerances[-1]
+    chosen_bytes = 0
+    payload = b""
+
+    for tol in tolerances:
+        payload = build_payload(tol, precision=5)
         chosen_tol = tol
         chosen_bytes = len(payload)
         if chosen_bytes <= max_bytes:
@@ -427,10 +618,40 @@ def simplify_geojson_under_limit(
                 f.write(payload)
             return chosen_bytes, chosen_tol
 
-    # If still slightly over on last tolerance, write with 4-decimal precision
+    # Fallback with 4-decimal coordinate precision if still above max_bytes
+    for tol in tolerances[-4:]:
+        payload = build_payload(tol, precision=4)
+        chosen_tol = tol
+        chosen_bytes = len(payload)
+        if chosen_bytes <= max_bytes:
+            with open(out_path, "wb") as f:
+                f.write(payload)
+            return chosen_bytes, chosen_tol
+
     with open(out_path, "wb") as f:
         f.write(payload)
     return chosen_bytes, chosen_tol
+
+
+def resolve_pbf_specs_for_province(
+    province_code: str,
+    pbf_override: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Returns list of PBF source descriptors for `province_code` (or an explicit `--pbf` override)."""
+    if pbf_override:
+        key = str(pbf_override).strip().lower()
+        if key in PBF_SOURCES:
+            return [PBF_SOURCES[key]]
+        p = Path(pbf_override)
+        stem = p.name.replace(".osm.pbf", "").replace(".pbf", "")
+        return [{
+            "path": p,
+            "cache": RAW_DATA_DIR / f"{stem}_facilities_raw_classified.json",
+            "url": f"file://{p}",
+            "source": f"OpenStreetMap contributors via {p.name} (ODbL)",
+        }]
+    pbf_keys = SUPPORTED_PROVINCES[province_code].get("pbfs", ["java"])
+    return [PBF_SOURCES[k] for k in pbf_keys]
 
 
 def write_region_manifest(
@@ -438,6 +659,7 @@ def write_region_manifest(
     province_name: str,
     districts: List[Dict[str, Any]],
     snapshot_date_iso: str,
+    amenities_meta: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Writes pipeline/data/regions/<code>.json following the 31.json template with status='Staging'."""
     REGIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -448,6 +670,15 @@ def write_region_manifest(
     utm_srid = calculate_utm_srid(c.x, c.y)
     utm_zone_num = calculate_utm_zone(c.x)
     utm_zone = f"{utm_zone_num}{'S' if c.y < 0 else 'N'}"
+
+    default_amenities = {
+        "source": "OpenStreetMap contributors via Geofabrik Java PBF (ODbL)",
+        "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+        "local_path": str(JAVA_PBF_PATH),
+        "licence": "ODbL 1.0",
+        "snapshot_date": snapshot_date_iso,
+        "verification_status": "verified_osm_snapshot",
+    }
 
     manifest = {
         "province_code": province_code,
@@ -476,14 +707,7 @@ def write_region_manifest(
             "snapshot_date": "2024",
             "verification_status": POPULATION_VERIFICATION_STATUS,
         },
-        "amenities": {
-            "source": "OpenStreetMap contributors via Geofabrik Java PBF (ODbL)",
-            "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
-            "local_path": str(JAVA_PBF_PATH),
-            "licence": "ODbL 1.0",
-            "snapshot_date": snapshot_date_iso,
-            "verification_status": "verified_osm_snapshot",
-        },
+        "amenities": amenities_meta or default_amenities,
     }
     manifest_path = REGIONS_DIR / f"{province_code}.json"
     with open(manifest_path, "w", encoding="utf-8") as f:
@@ -892,7 +1116,7 @@ def compute_province_compliance_scores(
                     FROM kecamatan k
                     JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
                     JOIN provinces p ON p.id = c.province_id
-                    JOIN district_compliance_scores s ON s.district_id = k.id
+                    LEFT JOIN district_compliance_scores s ON s.district_id = k.id
                     WHERE p.kemendagri_code = %s
                     ORDER BY k.kemendagri_code;
                     """,
@@ -997,11 +1221,12 @@ def run_province(
     dry_run: bool = False,
     allow_live: bool = False,
     use_pbf_cache: bool = True,
+    pbf_override: Optional[str] = None,
 ) -> Dict[str, Any]:
     province_code = str(province_code).strip()
     if province_code not in SUPPORTED_PROVINCES:
         raise ValueError(
-            f"Unsupported province '{province_code}'. Supported Java staging provinces: {sorted(SUPPORTED_PROVINCES.keys())}"
+            f"Unsupported province '{province_code}'. Supported staging provinces: {sorted(SUPPORTED_PROVINCES.keys())}"
         )
 
     db_name, db_config, redis_host, redis_port, redis_db = _get_runtime_db_redis_config(allow_live=allow_live)
@@ -1014,7 +1239,16 @@ def run_province(
     total_pop = sum(d["population"] for d in districts)
     logger.info(f"[{province_code}] Loaded {len(districts)} districts, WorldPop 2024 total={total_pop:,}")
 
-    all_facilities = extract_all_java_facilities_from_pbf(use_cache=use_pbf_cache)
+    pbf_specs = resolve_pbf_specs_for_province(province_code, pbf_override=pbf_override)
+    all_facilities: List[Dict[str, Any]] = []
+    for spec in pbf_specs:
+        all_facilities.extend(
+            extract_facilities_from_pbf(
+                pbf_path=spec["path"],
+                cache_path=spec["cache"],
+                use_cache=use_pbf_cache,
+            )
+        )
     prov_facilities, dedup_removed = filter_and_dedup_facilities_for_province(all_facilities, districts)
     logger.info(
         f"[{province_code}] Filtered {len(prov_facilities):,} deduplicated facilities "
@@ -1029,6 +1263,7 @@ def run_province(
             "districts": len(districts),
             "population_total": total_pop,
             "facilities": len(prov_facilities),
+            "pbfs": [str(s["path"]) for s in pbf_specs],
         }
 
     db_res = load_province_to_db(
@@ -1050,12 +1285,34 @@ def run_province(
     )
     logger.info(f"[{province_code}] Wrote {geojson_path} ({gj_bytes:,} bytes, tol={gj_tol}).")
 
-    snap_iso = time.strftime("%Y-%m-%d", time.gmtime(JAVA_PBF_PATH.stat().st_mtime))
+    primary_pbf = pbf_specs[0]
+    snap_iso = time.strftime("%Y-%m-%d", time.gmtime(primary_pbf["path"].stat().st_mtime))
+    if len(pbf_specs) == 1:
+        amenities_meta = {
+            "source": primary_pbf["source"],
+            "url": primary_pbf["url"],
+            "local_path": str(primary_pbf["path"]),
+            "licence": "ODbL 1.0",
+            "snapshot_date": snap_iso,
+            "verification_status": "verified_osm_snapshot",
+        }
+    else:
+        labels = " & ".join(s.get("label", s["path"].name) for s in pbf_specs)
+        amenities_meta = {
+            "source": f"OpenStreetMap contributors via Geofabrik {labels} PBFs (ODbL)",
+            "url": primary_pbf["url"],
+            "local_path": ", ".join(str(s["path"]) for s in pbf_specs),
+            "licence": "ODbL 1.0",
+            "snapshot_date": snap_iso,
+            "verification_status": "verified_osm_snapshot",
+        }
+
     manifest_path = write_region_manifest(
         province_code=province_code,
         province_name=prov_name,
         districts=districts,
         snapshot_date_iso=snap_iso,
+        amenities_meta=amenities_meta,
     )
     logger.info(f"[{province_code}] Wrote region manifest {manifest_path}.")
 
@@ -1070,15 +1327,31 @@ def run_province(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Load Java province data into staging DB")
-    parser.add_argument("--province", required=True, help="Province code: 32, 33, 34, 35, 36 (or 'all')")
+    parser = argparse.ArgumentParser(description="Load province data into staging DB")
+    parser.add_argument(
+        "--province",
+        required=True,
+        help="Province code(s): e.g. 11, 34, 51, 61, 71, 81, 91, 'sumatra', 'java', 'nusa-tenggara', 'kalimantan', 'sulawesi', 'maluku', 'papua', 'all', or comma-separated",
+    )
+    parser.add_argument(
+        "--pbf",
+        default=None,
+        help="Optional Geofabrik PBF path or key ('java', 'sumatra', 'kalimantan', 'sulawesi', 'nusa-tenggara', 'maluku', 'papua') overriding province default",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Compute and log counts without writing to DB or files")
     parser.add_argument("--rescore-only", action="store_true", help="Re-compute compliance scores from existing DB records only")
     parser.add_argument("--allow-live", action="store_true", help="Allow running against live district_profiling DB")
-    parser.add_argument("--no-pbf-cache", action="store_true", help="Force re-reading java-latest.osm.pbf instead of cache")
+    parser.add_argument("--no-pbf-cache", action="store_true", help="Force re-reading PBF instead of cache")
     args = parser.parse_args()
 
-    codes = sorted(SUPPORTED_PROVINCES.keys()) if args.province == "all" else [args.province]
+    raw_prov = str(args.province).strip().lower()
+    if raw_prov == "all":
+        codes = sorted(SUPPORTED_PROVINCES.keys())
+    elif raw_prov in ("java", "sumatra", "nusa-tenggara", "kalimantan", "sulawesi", "maluku", "papua"):
+        codes = sorted(k for k, v in SUPPORTED_PROVINCES.items() if v.get("island") == raw_prov)
+    else:
+        codes = [c.strip() for c in str(args.province).split(",") if c.strip()]
+
     for code in codes:
         if args.rescore_only:
             res = rescore_province(province_code=code, allow_live=args.allow_live)
@@ -1088,6 +1361,7 @@ def main():
                 dry_run=args.dry_run,
                 allow_live=args.allow_live,
                 use_pbf_cache=not args.no_pbf_cache,
+                pbf_override=args.pbf,
             )
         logger.info(f"SUMMARY {code}: {res}")
 
