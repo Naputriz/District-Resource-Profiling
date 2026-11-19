@@ -1056,15 +1056,27 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
             name = out.get("district_name") or out.get("name") or "Kecamatan"
             code = out.get("district_code") or out.get("kemendagri_code") or ""
             pop = out.get("population", 0)
+            pop_src = out.get("population_source") or out.get("population_note")
             comp = out.get("composite_score", out.get("composite_livability_score"))
 
             lines.append(f"**Profil Wilayah {name} ({code}):**")
-            lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa")
+            if pop_src:
+                lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa ({pop_src})")
+            else:
+                lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa")
+            metrics = out.get("metrics_payload", [])
+            has_local_gate = isinstance(metrics, list) and any(
+                isinstance(m, dict) and m.get("data_availability") == "insufficient_local"
+                for m in metrics
+            )
             if comp is not None:
                 lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** **{comp:.2f}**")
             else:
-                comp_note = out.get("composite_note") or "tidak dinilai (cakupan data rendah)"
-                lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** tidak dinilai ({comp_note})")
+                comp_note = out.get("coverage_reason") or out.get("composite_note") or "tidak dinilai (cakupan data rendah)"
+                if out.get("score_status") == "Data tidak memadai" or has_local_gate or "tidak memadai" in comp_note.lower():
+                    lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** Data tidak memadai ({comp_note})")
+                else:
+                    lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** tidak dinilai ({comp_note})")
             lines.append("")
 
             pillars = out.get("pillar_scores")
@@ -1082,14 +1094,16 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
                                 excl = pdata.get("types_excluded")
                                 if len(excl) > 0 and isinstance(excl[0], dict) and excl[0].get("reason"):
                                     p_reason = excl[0].get("reason")
-                            lines.append(f"- {lbl}: tidak dinilai ({p_reason})")
+                            if pdata.get("status") == "data tidak memadai":
+                                lines.append(f"- {lbl}: Data tidak memadai ({p_reason})")
+                            else:
+                                lines.append(f"- {lbl}: tidak dinilai ({p_reason})")
                     elif isinstance(pdata, (int, float)):
                         lines.append(f"- {pk}: {float(pdata):.2f}%")
                     else:
                         lines.append(f"- {pk}: tidak dinilai (cakupan data rendah)")
                 lines.append("")
 
-            metrics = out.get("metrics_payload", [])
             if isinstance(metrics, list) and metrics:
                 lines.append("**Status Defisit Fasilitas Utama:**")
                 for m in metrics[:8]:
@@ -1099,8 +1113,14 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
                     pct = m.get("compliance_pct")
                     defic = m.get("deficit")
                     is_scored = m.get("scored", True)
-                    if not is_scored or pct is None or req is None:
+                    avail = m.get("data_availability", "")
+                    if not is_scored:
                         lines.append(f"- `{ft}`: Ada {exist} unit (Fasilitas informasi - tidak dinilai)")
+                    elif pct is None or req is None:
+                        if avail == "insufficient_local" and req is not None:
+                            lines.append(f"- `{ft}`: Ada {exist} unit / Standar {req} unit (Data tidak memadai - cakupan OSM lokal tidak memadai)")
+                        else:
+                            lines.append(f"- `{ft}`: Ada {exist} unit (Data tidak memadai - tidak dinilai)")
                     else:
                         lines.append(f"- `{ft}`: Ada {exist} unit / Standar {req} unit (Kepatuhan: {pct:.1f}%, Defisit: {defic} unit)")
                 lines.append("")
@@ -1166,11 +1186,13 @@ def build_simulation_deterministic_block(tool_name: str, out: Dict[str, Any]) ->
     base_pop = delta_data.get("baseline_population")
     sim_pop = delta_data.get("simulated_population") or out.get("new_total_population")
     delta_pop = delta_data.get("population_delta")
+    pop_note = delta_data.get("population_note") or out.get("population_note")
+    note_suffix = f" *({pop_note})*" if pop_note else ""
     if base_pop is not None and sim_pop is not None:
         delta_val = delta_pop if delta_pop is not None else (sim_pop - base_pop)
-        lines.append(f"- **Populasi:** {base_pop:,} jiwa ➔ {sim_pop:,} jiwa (+{delta_val:,} jiwa) *(Sumber data penduduk belum terverifikasi (TODO-VERIFY))*")
+        lines.append(f"- **Populasi:** {base_pop:,} jiwa ➔ {sim_pop:,} jiwa (+{delta_val:,} jiwa){note_suffix}")
     elif delta_pop is not None:
-        lines.append(f"- **Pertambahan Populasi:** +{delta_pop:,} jiwa *(Sumber data penduduk belum terverifikasi (TODO-VERIFY))*")
+        lines.append(f"- **Pertambahan Populasi:** +{delta_pop:,} jiwa{note_suffix}")
 
     base_score = delta_data.get("baseline_composite_score")
     sim_score = delta_data.get("simulated_composite_score")

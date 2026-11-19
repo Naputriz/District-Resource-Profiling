@@ -1,9 +1,26 @@
 import os
+import secrets
+import logging
 from dotenv import load_dotenv
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
+
+
+def parse_active_provinces(raw: Optional[str]) -> List[str]:
+    """Parses comma-separated province codes into an ordered deduplicated list."""
+    if not raw:
+        return []
+    codes: List[str] = []
+    for part in str(raw).split(","):
+        code = part.strip()
+        if code and code not in codes:
+            codes.append(code)
+    return codes
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "District Resource Profiling"
@@ -21,6 +38,7 @@ class Settings(BaseSettings):
     # Redis Cache Settings
     REDIS_HOST: str = os.getenv("REDIS_HOST", "127.0.0.1")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_CACHE_TTL: int = 86400
 
     # Ambang dampak simulasi (lihat README). Nilai masih TODO-DECIDE (team).
@@ -42,6 +60,29 @@ class Settings(BaseSettings):
     SUPERBLOCK_RTH_RATIO: float = 0.20 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
     SUPERBLOCK_STORMWATER_DEPTH_M: float = 0.150 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
 
+    # Multi-Region Configuration (TODO-3 & J1b)
+    DEFAULT_PROVINCE_CODE: str = os.getenv("DEFAULT_PROVINCE_CODE", "31")
+    DEFAULT_PROVINCE_NAME: str = os.getenv("DEFAULT_PROVINCE_NAME", "DKI Jakarta")
+    ACTIVE_PROVINCES: str = os.getenv("ACTIVE_PROVINCES", "31")
+
+    @property
+    def active_provinces(self) -> List[str]:
+        """Returns active province codes parsed from ACTIVE_PROVINCES."""
+        parsed = parse_active_provinces(self.ACTIVE_PROVINCES)
+        return parsed if parsed else [self.DEFAULT_PROVINCE_CODE]
+
+    # Authentication & Authorization Settings (TODO-4)
+    AUTH_ALLOW_REGISTER: bool = os.getenv("AUTH_ALLOW_REGISTER", "true").lower() in ("true", "1", "yes")
+    AUTH_JWT_SECRET: str = os.getenv("AUTH_JWT_SECRET", "")
+    AUTH_JWT_ALGORITHM: str = "HS256"
+    AUTH_JWT_EXPIRE_MINUTES: int = int(os.getenv("AUTH_JWT_EXPIRE_MINUTES", "60"))
+    AUTH_PASSWORD_MIN_LENGTH: int = 10
+    AUTH_CHAT_RATE_LIMIT_REQUESTS: int = int(os.getenv("AUTH_CHAT_RATE_LIMIT_REQUESTS", "20"))
+    AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS: int = int(os.getenv("AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS", "600"))
+    AUTH_BRUTE_FORCE_MAX_ATTEMPTS: int = int(os.getenv("AUTH_BRUTE_FORCE_MAX_ATTEMPTS", "5"))
+    AUTH_BRUTE_FORCE_LOCKOUT_SECONDS: int = int(os.getenv("AUTH_BRUTE_FORCE_LOCKOUT_SECONDS", "900"))
+    EDGE_SHARED_SECRET: str = os.getenv("EDGE_SHARED_SECRET", "")
+
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
@@ -50,3 +91,10 @@ class Settings(BaseSettings):
         extra = "allow"
 
 settings = Settings()
+if not settings.AUTH_JWT_SECRET:
+    settings.AUTH_JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning(
+        "AUTH_JWT_SECRET is not set in environment. Generated random ephemeral secret. "
+        "Tokens will be invalidated on server restart."
+    )
+

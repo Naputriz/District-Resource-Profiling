@@ -63,10 +63,10 @@ class SimulationDeltaDTO(BaseModel):
     baseline_population: int
     simulated_population: int
     population_delta: int
-    population_note: str = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
-    baseline_composite_score: float
-    simulated_composite_score: float
-    score_delta: float
+    population_note: str = "BPS 2024"
+    baseline_composite_score: Optional[float] = None
+    simulated_composite_score: Optional[float] = None
+    score_delta: Optional[float] = None
     abs_score_delta: float = 0.0
     baseline_pillar_scores: Dict[str, Any]
     simulated_pillar_scores: Dict[str, Any]
@@ -90,7 +90,7 @@ class SuperblockImpactDTO(BaseModel):
     site_area_m2: float
     baseline_population: int
     new_total_population: int
-    population_note: str = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
+    population_note: str = "BPS 2024"
     mandated_public_rth_m2: float # 20% alokasi RTH publik (parameter asumsi)
     mandated_water_retention_m3: float # 150mm retensi air hujan (parameter asumsi)
     school_children_estimate: int # ~25% of new population
@@ -116,7 +116,10 @@ class WhatIfSimulationEngine:
         regulatory_standards: List[Dict[str, Any]],
         pop_shock_pct: float = 0.0,
         pop_shock_count: int = 0,
-        staged_amenities: List[HypotheticalAmenity] = []
+        staged_amenities: List[HypotheticalAmenity] = [],
+        province_code: Optional[str] = None,
+        availability_map: Optional[Dict[str, Any]] = None,
+        population_note: Optional[str] = None,
     ) -> SimulationDeltaDTO:
         """
         Executes isolated delta simulation.
@@ -140,9 +143,21 @@ class WhatIfSimulationEngine:
 
         from backend.app.engine.standards_availability import (
             get_city_wide_standards_availability,
-            calculate_pillar_and_composite_scores
+            get_province_standards_availability,
+            calculate_pillar_and_composite_scores,
         )
-        avail_map = get_city_wide_standards_availability()
+        if availability_map is not None:
+            avail_map = availability_map
+        elif province_code and str(province_code).strip() != settings.DEFAULT_PROVINCE_CODE:
+            avail_map = get_province_standards_availability(province_code)
+        else:
+            avail_map = get_city_wide_standards_availability()
+
+        resolved_pop_note = population_note or (
+            "Estimasi model WorldPop R2025A 2024"
+            if province_code and str(province_code).strip() != settings.DEFAULT_PROVINCE_CODE
+            else "BPS 2024"
+        )
 
         base_metrics_list = []
         sim_metrics_list = []
@@ -249,12 +264,17 @@ class WhatIfSimulationEngine:
         scores_res_base = calculate_pillar_and_composite_scores(base_metrics_list, avail_map)
         scores_res_sim = calculate_pillar_and_composite_scores(sim_metrics_list, avail_map)
 
-        base_composite = scores_res_base["composite_score"] or 0.0
-        sim_composite = scores_res_sim["composite_score"] or 0.0
+        base_composite = scores_res_base["composite_score"]
+        sim_composite = scores_res_sim["composite_score"]
         base_p_scores = scores_res_base["pillar_scores"]
         sim_p_scores = scores_res_sim["pillar_scores"]
 
-        score_delta = round(sim_composite - base_composite, 2)
+        if base_composite is not None and sim_composite is not None:
+            score_delta = round(sim_composite - base_composite, 2)
+            abs_score_delta = round(abs(score_delta), 2)
+        else:
+            score_delta = None
+            abs_score_delta = 0.0
 
         # Compute per-pillar score deltas
         pillar_deltas: Dict[str, Dict[str, float]] = {}
@@ -297,15 +317,23 @@ class WhatIfSimulationEngine:
         # Rendah: delta > SIMULATION_IMPACT_DELTA_LOW (-1.0) AND new_deficit_units <= SIMULATION_IMPACT_DEFICIT_LOW (0)
         # Tinggi: delta <= SIMULATION_IMPACT_DELTA_HIGH (-5.0) OR new_deficit_units >= SIMULATION_IMPACT_DEFICIT_HIGH (3)
         # Else: Sedang
-        if score_delta > settings.SIMULATION_IMPACT_DELTA_LOW and new_deficit_units <= settings.SIMULATION_IMPACT_DEFICIT_LOW:
-            impact_level = "Rendah"
-        elif score_delta <= settings.SIMULATION_IMPACT_DELTA_HIGH or new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
-            impact_level = "Tinggi"
+        if score_delta is not None:
+            if score_delta > settings.SIMULATION_IMPACT_DELTA_LOW and new_deficit_units <= settings.SIMULATION_IMPACT_DEFICIT_LOW:
+                impact_level = "Rendah"
+            elif score_delta <= settings.SIMULATION_IMPACT_DELTA_HIGH or new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
+                impact_level = "Tinggi"
+            else:
+                impact_level = "Sedang"
         else:
-            impact_level = "Sedang"
+            if new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
+                impact_level = "Tinggi"
+            elif new_deficit_units > settings.SIMULATION_IMPACT_DEFICIT_LOW:
+                impact_level = "Sedang"
+            else:
+                impact_level = "Rendah"
 
         assumptions = {
-            "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
+            "population_note": resolved_pop_note,
             "pop_shock_pct": pop_shock_pct,
             "pop_shock_count": pop_shock_count,
             "delta_formula": "ceil(P_new / threshold) - ceil(P_old / threshold)",
@@ -326,10 +354,11 @@ class WhatIfSimulationEngine:
             baseline_population=baseline_population,
             simulated_population=simulated_pop,
             population_delta=total_pop_delta,
+            population_note=resolved_pop_note,
             baseline_composite_score=base_composite,
             simulated_composite_score=sim_composite,
             score_delta=score_delta,
-            abs_score_delta=round(abs(score_delta), 2),
+            abs_score_delta=abs_score_delta,
             baseline_pillar_scores=base_p_scores,
             simulated_pillar_scores=sim_p_scores,
             pillar_deltas=pillar_deltas,
@@ -350,7 +379,10 @@ class WhatIfSimulationEngine:
         baseline_population: int,
         district_name: str,
         existing_facility_counts: Dict[str, int],
-        regulatory_standards: List[Dict[str, Any]]
+        regulatory_standards: List[Dict[str, Any]],
+        province_code: Optional[str] = None,
+        availability_map: Optional[Dict[str, Any]] = None,
+        population_note: Optional[str] = None,
     ) -> SuperblockImpactDTO:
         """
         Simulates the comprehensive urban impact of a new superblock or apartment project.
@@ -381,7 +413,10 @@ class WhatIfSimulationEngine:
             existing_facility_counts=existing_facility_counts,
             regulatory_standards=regulatory_standards,
             pop_shock_count=new_occupants,
-            staged_amenities=req.staged_amenities
+            staged_amenities=req.staged_amenities,
+            province_code=province_code,
+            availability_map=availability_map,
+            population_note=population_note,
         )
 
         # Unified delta formula for all facility types:
@@ -436,7 +471,7 @@ class WhatIfSimulationEngine:
 
         assumptions = {
             "parameter_note": "Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%",
-            "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
+            "population_note": sim_delta.population_note,
             "occupants_per_unit": req.occupants_per_unit,
             "school_age_ratio": settings.SUPERBLOCK_SCHOOL_AGE_RATIO,
             "kdb_ratio": settings.SUPERBLOCK_KDB_RATIO,
@@ -460,6 +495,7 @@ class WhatIfSimulationEngine:
             site_area_m2=req.site_area_m2,
             baseline_population=baseline_population,
             new_total_population=new_total_pop,
+            population_note=sim_delta.population_note,
             mandated_public_rth_m2=mandated_rth_m2,
             mandated_water_retention_m3=retention_m3,
             school_children_estimate=school_children,

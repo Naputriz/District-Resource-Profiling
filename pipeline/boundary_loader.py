@@ -1,14 +1,15 @@
 """
-Master Ingestion & Spatial Sync Pipeline for District Resource Profiling (DKI Jakarta).
+Master Ingestion & Spatial Sync Pipeline for District Spatial Intelligence (DKI Jakarta).
 Handles:
 1. Administrative Hierarchy (DKI Jakarta + 6 Jurisdictions + 44 Districts).
 2. 4 Pillars Public Amenities Ingestion with idempotent UPSERT.
 3. Spatial Containment Mapping (ST_Contains).
-4. Regulatory Legal Chunks Seeding (korpus regulasi).
+4. Regulatory Legal Chunks Seeding (Multi-Stage RAG Corpus).
 5. Baseline Deterministic Compliance & Livability Scoring.
-6. Redis scorecard cache.
+6. Redis Geohash & GeoJSON In-Memory Caching.
 """
 
+import argparse
 import os
 import json
 import logging
@@ -28,6 +29,18 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
+REGIONS_DIR = DATA_DIR / "regions"
+
+def load_region_manifest(province_code: str) -> Dict[str, Any]:
+    manifest_path = REGIONS_DIR / f"{province_code}.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Region manifest for province '{province_code}' not found at {manifest_path}. "
+            f"Currently only province 31 (DKI Jakarta) has verified data sources (rencana v1.1)."
+        )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 BOUNDARIES_FILE = DATA_DIR / "boundaries" / "jakarta_44_kecamatan.geojson"
 FACILITIES_DIR = DATA_DIR / "facilities"
 REGULATIONS_DIR = DATA_DIR / "regulations"
@@ -43,7 +56,10 @@ KABUPATEN_KOTA_JAKARTA = [
 ]
 
 class DistrictDataIngestionPipeline:
-    def __init__(self):
+    def __init__(self, province_code: str = "31"):
+        self.province_code = str(province_code).strip()
+        self.manifest = load_region_manifest(self.province_code)
+        logger.info(f"Initialized ingestion pipeline for province {self.province_code} ({self.manifest.get('province_name')})")
         self.db_config = {
             "dbname": os.getenv("POSTGRES_DB", "district_profiling"),
             "user": os.getenv("POSTGRES_USER", "postgres"),
@@ -60,7 +76,8 @@ class DistrictDataIngestionPipeline:
         try:
             r_host = os.getenv("REDIS_HOST", "localhost")
             r_port = int(os.getenv("REDIS_PORT", 6379))
-            self.redis_client = redis.Redis(host=r_host, port=r_port, decode_responses=True)
+            r_db = int(os.getenv("REDIS_DB", "0"))
+            self.redis_client = redis.Redis(host=r_host, port=r_port, db=r_db, decode_responses=True)
             self.redis_client.ping()
             logger.info("Connected to Redis 7 Caching Layer successfully.")
         except Exception as e:
@@ -272,7 +289,7 @@ class DistrictDataIngestionPipeline:
                 with open(osm_file, "r", encoding="utf-8") as f:
                     osm_facilities = json.load(f)
 
-                logger.info("Deactivating seed_manual records (setting is_active = FALSE)...")
+                logger.info("Deactivating seed_manual records (setting is_active = FALSE per README.md §6/§14)...")
                 cur.execute("UPDATE public_facilities SET is_active = FALSE WHERE source = 'seed_manual';")
                 logger.info("Resetting is_active on OSM facilities prior to fresh deduplicated load...")
                 cur.execute("UPDATE public_facilities SET is_active = FALSE WHERE source = 'osm';")
@@ -365,29 +382,56 @@ class DistrictDataIngestionPipeline:
     def compute_baseline_compliance(self, conn) -> int:
         """Calculates deterministic compliance scores (0-100) per kecamatan across 4 pillars using standards availability."""
         from backend.app.engine.standards_availability import (
+            build_district_metrics_and_scores,
             evaluate_availability,
-            calculate_pillar_and_composite_scores,
-            STANDARDS_AVAILABILITY_SPEC
+            STANDARDS_AVAILABILITY_SPEC,
         )
 
         logger.info("Computing mathematical compliance scores per kecamatan with data availability rules...")
         computed = 0
         with conn.cursor() as cur:
-            # 1. Update city-wide classified counts and availability in regulatory_standards
-            cur.execute("""
-                SELECT facility_type, COUNT(*) 
-                FROM public_facilities 
-                WHERE is_active = TRUE 
-                GROUP BY facility_type;
-            """)
+            cur.execute("ALTER TABLE district_compliance_scores ADD COLUMN IF NOT EXISTS coverage JSONB DEFAULT NULL;")
+
+            # 1. Fetch all kecamatan for this province (for province-scaled threshold)
+            cur.execute(
+                """
+                SELECT k.id, k.name, k.kemendagri_code, k.population, k.area_km2
+                FROM kecamatan k
+                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                JOIN provinces p ON p.id = c.province_id
+                WHERE p.kemendagri_code = %s
+                ORDER BY k.kemendagri_code;
+                """,
+                (self.province_code,),
+            )
+            districts = cur.fetchall()
+            province_kec_count = max(1, len(districts))
+
+            # 2. Update province-wide classified counts and availability in regulatory_standards (for DKI 31)
+            cur.execute(
+                """
+                SELECT f.facility_type, COUNT(*)
+                FROM public_facilities f
+                JOIN kecamatan k ON k.id = f.kecamatan_id
+                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                JOIN provinces p ON p.id = c.province_id
+                WHERE f.is_active = TRUE AND p.kemendagri_code = %s
+                GROUP BY f.facility_type;
+                """,
+                (self.province_code,),
+            )
             city_counts = dict(cur.fetchall())
 
-            # Fetch all standards
-            cur.execute("""
+            # Fetch standards applicable to this province
+            cur.execute(
+                """
                 SELECT facility_type, pillar, population_threshold, service_radius_meters, scored, source
                 FROM regulatory_standards
+                WHERE province_code IS NULL OR province_code = %s
                 ORDER BY pillar, facility_type;
-            """)
+                """,
+                (self.province_code,),
+            )
             standards = cur.fetchall()
 
             availability_map = {}
@@ -397,21 +441,24 @@ class DistrictDataIngestionPipeline:
                 spec = STANDARDS_AVAILABILITY_SPEC.get(ftype, {})
                 conf = spec.get("confidence", "Medium")
                 is_not_avail = spec.get("is_not_available_from_osm", False)
-                avail, reason = evaluate_availability(ftype, cnt, conf, is_not_avail)
+                avail, reason = evaluate_availability(
+                    ftype,
+                    cnt,
+                    conf,
+                    is_not_avail,
+                    min_records_threshold=province_kec_count,
+                )
                 availability_map[ftype] = (avail, reason)
 
-                cur.execute("""
-                    UPDATE regulatory_standards
-                    SET classified_count = %s,
-                        confidence = %s,
-                        data_availability = %s,
-                        availability_reason = %s
-                    WHERE facility_type = %s;
-                """, (cnt, conf, avail, reason, ftype))
-
-            # 2. Fetch all kecamatan
-            cur.execute("SELECT id, name, kemendagri_code, population, area_km2 FROM kecamatan;")
-            districts = cur.fetchall()
+                if self.province_code == "31":
+                    cur.execute("""
+                        UPDATE regulatory_standards
+                        SET classified_count = %s,
+                            confidence = %s,
+                            data_availability = %s,
+                            availability_reason = %s
+                        WHERE facility_type = %s;
+                    """, (cnt, conf, avail, reason, ftype))
 
             for dist in districts:
                 dist_id, name, code, pop, area = dist
@@ -428,41 +475,13 @@ class DistrictDataIngestionPipeline:
                 """, (dist_id,))
                 fac_counts = dict(cur.fetchall())
 
-                metrics_detail = []
-
-                for std in standards:
-                    ftype, pillar, threshold, radius, scored, source = std
-                    existing = fac_counts.get(ftype, 0)
-                    avail, reason = availability_map.get(ftype, ("available", ""))
-
-                    # only scored=True and available types produce need/deficit/score
-                    if scored and avail == "available" and threshold:
-                        required = max(1, math.ceil(pop / threshold))
-                        pct = min(100.0, round((existing / required) * 100.0, 2))
-                        deficit = existing - required
-                    else:
-                        required = None
-                        pct = None
-                        deficit = None
-
-                    metrics_detail.append({
-                        "facility_type": ftype,
-                        "pillar": pillar,
-                        "existing": existing,
-                        "required": required,
-                        "compliance_pct": pct,
-                        "deficit": deficit,
-                        "data_availability": avail,
-                        "availability_reason": reason,
-                        "scored": scored,
-                        "source": source
-                    })
-
-                # Calculate pillar and composite scores using proportional re-weighting
-                scores_res = calculate_pillar_and_composite_scores(metrics_detail, availability_map)
+                res = build_district_metrics_and_scores(pop, fac_counts, standards, availability_map)
+                metrics_detail = res["metrics_detail"]
+                scores_res = res["scores_res"]
                 p_scores = scores_res["pillar_scores"]
                 composite = scores_res["composite_score"]
                 comp_note = scores_res["composite_note"]
+                coverage_obj = res["coverage"]
 
                 p_health = p_scores["lifeline_health"]["score"]
                 p_edu = p_scores["education"]["score"]
@@ -473,9 +492,9 @@ class DistrictDataIngestionPipeline:
                     INSERT INTO district_compliance_scores (
                         district_id, health_score, education_score, livability_score,
                         mobility_score, composite_livability_score, composite_note,
-                        unserved_area_km2, metrics_payload, calculated_at
+                        unserved_area_km2, metrics_payload, coverage, calculated_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, CURRENT_TIMESTAMP)
                     ON CONFLICT (district_id) DO UPDATE SET
                         health_score = EXCLUDED.health_score,
                         education_score = EXCLUDED.education_score,
@@ -484,10 +503,11 @@ class DistrictDataIngestionPipeline:
                         composite_livability_score = EXCLUDED.composite_livability_score,
                         composite_note = EXCLUDED.composite_note,
                         metrics_payload = EXCLUDED.metrics_payload,
+                        coverage = EXCLUDED.coverage,
                         calculated_at = CURRENT_TIMESTAMP;
                 """, (
                     dist_id, p_health, p_edu, p_liv, p_mob, composite, comp_note, 0.0,
-                    json.dumps(metrics_detail)
+                    json.dumps(metrics_detail), json.dumps(coverage_obj)
                 ))
                 computed += 1
 
@@ -507,16 +527,19 @@ class DistrictDataIngestionPipeline:
                     k.kemendagri_code, k.name, k.population, k.area_km2,
                     s.health_score, s.education_score, s.livability_score,
                     s.mobility_score, s.composite_livability_score, s.composite_note,
-                    s.metrics_payload
+                    s.metrics_payload, s.coverage
                 FROM kecamatan k
-                JOIN district_compliance_scores s ON s.district_id = k.id;
-            """)
+                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                JOIN provinces p ON p.id = c.province_id
+                JOIN district_compliance_scores s ON s.district_id = k.id
+                WHERE p.kemendagri_code = %s;
+            """, (self.province_code,))
             rows = cur.fetchall()
 
             scorecards = {}
             for r in rows:
-                code, name, pop, area, h, e, l, m, comp, note, payload = r
-                scorecards[code] = {
+                code, name, pop, area, h, e, l, m, comp, note, payload, cov = r
+                entry = {
                     "kemendagri_code": code,
                     "name": name,
                     "population": pop,
@@ -529,10 +552,15 @@ class DistrictDataIngestionPipeline:
                     "composite_note": note,
                     "metrics": payload
                 }
+                if cov is not None:
+                    entry["coverage"] = cov
+                scorecards[code] = entry
 
-            # Cache with 24h TTL (86400s)
+            # Cache with 24h TTL (86400s) - province scoped key per TODO-3 and legacy key
+            cache_key_scoped = f"cache:compliance:scores:{self.province_code}"
+            self.redis_client.setex(cache_key_scoped, 86400, json.dumps(scorecards))
             self.redis_client.setex("cache:compliance:scores", 86400, json.dumps(scorecards))
-            logger.info(f"Cached {len(scorecards)} district compliance scorecards into Redis key 'cache:compliance:scores' (TTL 24h).")
+            logger.info(f"Cached {len(scorecards)} district compliance scorecards into Redis keys '{cache_key_scoped}' and 'cache:compliance:scores' (TTL 24h).")
 
     def run_all(self):
         """Executes full ingestion, validation, scoring, and caching cycle."""
@@ -559,5 +587,8 @@ class DistrictDataIngestionPipeline:
             conn.close()
 
 if __name__ == "__main__":
-    pipeline = DistrictDataIngestionPipeline()
+    parser = argparse.ArgumentParser(description="Master spatial ingestion and scoring pipeline per province")
+    parser.add_argument("--province", default="31", help="Kemendagri province code (default: 31 for DKI Jakarta)")
+    args = parser.parse_args()
+    pipeline = DistrictDataIngestionPipeline(province_code=args.province)
     pipeline.run_all()

@@ -1,0 +1,44 @@
+{
+  "province_code": "35",
+  "province_name": "Jawa Timur",
+  "has_data": true,
+  "status": "Staging",
+  "center": [
+    -7.7197,
+    112.7339
+  ],
+  "zoom": 8,
+  "bbox": [
+    110.8987,
+    -8.7804,
+    116.2702,
+    -5.0489
+  ],
+  "utm_srid": 32749,
+  "utm_zone": "49S",
+  "total_districts": 666,
+  "boundaries": {
+    "source": "HDX COD-AB Indonesia (BPS/BIG)",
+    "url": "https://data.humdata.org/dataset/cod-ab-idn",
+    "local_path": "frontend/data/boundaries/35_kecamatan.geojson",
+    "licence": "CC BY-IGO",
+    "total_districts": 666,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "WorldPop R2025A 2024 (model estimate)",
+    "url": "https://hub.worldpop.org/rest/data/pop/G2_CN_POP_R25A_100m?iso3=IDN",
+    "local_path": "/mnt/data/rpl/data_raw/idn_pop_2024_CN_100m_R2025A_v1.tif",
+    "licence": "CC BY 4.0",
+    "snapshot_date": "2024",
+    "verification_status": "model_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors via Geofabrik Java PBF (ODbL)",
+    "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+    "local_path": "/mnt/data/rpl/data_raw/java-latest.osm.pbf",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-11-17",
+    "verification_status": "verified_osm_snapshot"
+  }
+}

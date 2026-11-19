@@ -38,6 +38,7 @@ def init_db_pool():
     redis_client = redis.Redis(
         host=r_host,
         port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
         decode_responses=True
     )
 
@@ -49,8 +50,10 @@ def close_db_pool():
     global db_pool, redis_client
     if db_pool:
         db_pool.closeall()
+        db_pool = None
     if redis_client:
         redis_client.close()
+        redis_client = None
 
 @contextmanager
 def get_db_cursor():

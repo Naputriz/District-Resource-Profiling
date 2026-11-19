@@ -3,9 +3,9 @@ Regulatory hybrid RAG and legal provision retrieval endpoints.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Query, Response, Depends
 from backend.app.core.config import settings
-from backend.app.api.deps import get_db_cursor
+from backend.app.api.deps import get_db_cursor, get_current_user
 from backend.app.rag.hybrid_search import (
     HybridRegulationRetriever,
 )
@@ -19,11 +19,13 @@ router = APIRouter()
     tags=["Regulatory RAG"],
     summary="Pencarian leksikal (trigram + hashed bag-of-words + sinonim)",
 )
-def search_regulations(req: HybridSearchRequest):
+def search_regulations(
+    req: HybridSearchRequest, current_user: dict = Depends(get_current_user)
+):
     """
     Pencarian leksikal (trigram + hashed bag-of-words + sinonim) pada standar nasional dan regulasi tata ruang.
     Menggabungkan vektor fitur leksikal ter-hash via pgvector dan kemiripan trigram via Reciprocal Rank Fusion (RRF).
-    Target endpoint aligned with README.revised.md §13.
+    Target endpoint aligned with README.md §13.
     """
     citations = HybridRegulationRetriever.search_regulations(
         query=req.query,
@@ -47,12 +49,16 @@ def search_regulations(req: HybridSearchRequest):
     summary="Pencarian leksikal (alias deprecated)",
     deprecated=True,
 )
-def hybrid_search_regulations_alias(req: HybridSearchRequest, response: Response):
+def hybrid_search_regulations_alias(
+    req: HybridSearchRequest,
+    response: Response,
+    current_user: dict = Depends(get_current_user),
+):
     """
-    Deprecated alias for /api/v1/rag/search (README.revised.md §13).
+    Deprecated alias for /api/v1/rag/search (README.md §13).
     """
     response.headers["Deprecation"] = "true"
-    return search_regulations(req)
+    return search_regulations(req, current_user=current_user)
 
 
 @router.get(f"{settings.API_V1_STR}/rag/legal-chunks", tags=["Regulatory RAG"])

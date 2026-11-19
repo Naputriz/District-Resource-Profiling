@@ -18,13 +18,13 @@
 | **Final Answer Number Leaks** | 0 | 0.0 | - | PASS |
 | **Final Answer Citations Consistent with Verified Corpus** | 0 | 0.0 | - | PASS |
 | **Refusal Accuracy** | 100% | 100.0% | - | PASS |
-| **Expected Values Present Rate** | Tracked | 91.1% | 90.0% - 93.3% | Reported |
-| **Raw Unsupported Numbers Caught** | Tracked | 0.0 | - | Reported |
-| **Raw Citation Hallucination Rate** | Tracked | 35.6% | - | Reported |
-| **Guardrail Fallback Rate** | Tracked | 0.0% | 0.0% - 0.0% | Reported |
+| **Expected Values Present Rate** | Tracked | 88.9% | 86.7% - 90.0% | Reported |
+| **Raw Unsupported Numbers Caught** | Tracked | 0.3 | - | Reported |
+| **Raw Citation Hallucination Rate** | Tracked | 34.4% | - | Reported |
+| **Guardrail Fallback Rate** | Tracked | 1.1% | 0.0% - 3.3% | Reported |
 | **Guardrail Retry Rate** | Tracked | 1.1% | - | Reported |
-| **p50 Latency** | Dilaporkan apa adanya | 5.81s | - | Reported |
-| **p95 Latency** | Dilaporkan apa adanya | 18.36s | - | Reported |
+| **p50 Latency** | Dilaporkan apa adanya | 3.21s | - | Reported |
+| **p95 Latency** | Dilaporkan apa adanya | 16.06s | - | Reported |
 
 ---
 
@@ -32,20 +32,37 @@
 
 Below are the 5 items that accumulated the most failure penalties across the runs, showing the raw LLM output before the guardrail and the root cause:
 
-### Item 1: `scorecard_tebet_composite` (Category: scorecard)
+### Item 1: `scorecard_senen_composite` (Category: scorecard)
+- **Penalty Score:** 5.0
+- **Tool Selection Correct:** True
+- **Guardrail Final Status:** `numeric_fallback`
+- **Unsupported Numbers:** `['153']`
+- **Mislabeled Numbers:** `[]`
+- **Raw LLM Answer (before guardrail):**
+> Skor indeks kecukupan fasilitas di Kecamatan Senen adalah **42.2**.
+
+Berikut rincian skor pilar-pilarnya:
+- Pilar 1: Kesehatan & Keselamatan (lifeline_health) = 60.0
+- Pilar 2: Pendidikan (education) = 20.85
+
+Pilar Ruang Hidup dan Mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai, sehingga bobot pilar lainny...
+- **Root Cause & Diagnosis:**
+  Question: `scorecard_senen_composite` triggered `numeric_fallback`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
+
+### Item 2: `scorecard_tebet_composite` (Category: scorecard)
 - **Penalty Score:** 0.0
 - **Tool Selection Correct:** True
 - **Guardrail Final Status:** `passed`
 - **Unsupported Numbers:** `[]`
 - **Mislabeled Numbers:** `[]`
 - **Raw LLM Answer (before guardrail):**
-> Skor indeks kecukupan fasilitas di Kecamatan Tebet adalah 54.61. Skor ini merupakan hasil dari penilaian pilar kesehatan dan keselamatan (79.17) serta pendidikan (25.14), karena data untuk pilar ruang hidup dan mobilitas belum lengkap sehingga tidak termasuk dalam perhitungan skor komposit.
+> Skor indeks kecukupan fasilitas di Kecamatan Tebet adalah 54.61. Skor ini merupakan hasil dari penilaian pilar kesehatan dan keselamatan (79.17) serta pendidikan (25.14), karena data untuk pilar ruang hidup dan mobilitas belum lengkap sehingga tidak dihitung dalam skor komposit.
 
-Berikut adalah detail skor untuk setiap jenis fasilitas y...
+Berikut adalah detail skor untuk setiap jenis fasilitas yang dinilai:...
 - **Root Cause & Diagnosis:**
   Question: `scorecard_tebet_composite` triggered `passed`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
 
-### Item 2: `scorecard_tebet_health` (Category: pillar)
+### Item 3: `scorecard_tebet_health` (Category: pillar)
 - **Penalty Score:** 0.0
 - **Tool Selection Correct:** True
 - **Guardrail Final Status:** `passed`
@@ -54,48 +71,39 @@ Berikut adalah detail skor untuk setiap jenis fasilitas y...
 - **Raw LLM Answer (before guardrail):**
 > Skor pilar kesehatan di Kecamatan Tebet adalah 79.17%. Pilar ini mencakup tiga jenis fasilitas: pos_damkar, puskesmas_kecamatan, dan puskesmas_kelurahan.
 
-- **Pos Damkar**: Skor sempurna dengan 2 unit yang diperlukan sudah ada (defisit = 0).
-- **Puskesmas Kecamatan**: Memiliki 1 dari 2 unit yang dibutuhkan (defisit = -1, atau kebutuhan <N> unit, ek...
+- **Pos Damkar**: Skor sempurna dengan 2 unit yang diperlukan dan ada 2 unit yang tersedia.
+- **Puskesmas Kecamatan**: Ada defisit satu unit (kebutuhan: 2 unit, eksisting: 1 unit).
+- **Puskesmas ...
 - **Root Cause & Diagnosis:**
   Question: `scorecard_tebet_health` triggered `passed`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
 
-### Item 3: `scorecard_gambir_composite` (Category: scorecard)
+### Item 4: `scorecard_gambir_composite` (Category: scorecard)
 - **Penalty Score:** 0.0
 - **Tool Selection Correct:** True
 - **Guardrail Final Status:** `passed`
 - **Unsupported Numbers:** `[]`
 - **Mislabeled Numbers:** `[]`
 - **Raw LLM Answer (before guardrail):**
-> Skor indeks kecukupan fasilitas untuk Kecamatan Gambir adalah 65.2. Skor ini mencerminkan ketersediaan dan layanan dari empat pilar utama: kesehatan & keselamatan, pendidikan, mobilitas & aksesibilitas, serta ruang hidup & rekreasi.
+> Skor indeks kecukupan fasilitas untuk Kecamatan Gambir adalah 65.2. Skor ini merupakan hasil dari penilaian pilar kesehatan dan keselamatan serta pendidikan, karena data untuk pilar ruang hidup dan mobilitas tidak tersedia sehingga tidak dihitung dalam skor komposit.
 
-Namun, perlu diperhatikan bahwa skor komposit tidak mencakup Pilar 3 (Ruang Hidup) dan Pilar 4 (Mobilitas & Aksesibi...
+Berikut rincian skor pilar yang dinilai:
+
+- **Pilar 1: Kesehatan & Keselamatan** ...
 - **Root Cause & Diagnosis:**
   Question: `scorecard_gambir_composite` triggered `passed`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
 
-### Item 4: `scorecard_gambir_education` (Category: pillar)
+### Item 5: `scorecard_gambir_education` (Category: pillar)
 - **Penalty Score:** 0.0
 - **Tool Selection Correct:** True
-- **Guardrail Final Status:** `passed`
+- **Guardrail Final Status:** `retried`
 - **Unsupported Numbers:** `[]`
 - **Mislabeled Numbers:** `[]`
 - **Raw LLM Answer (before guardrail):**
-> Skor pilar pendidikan di Kecamatan Gambir adalah 23.43%. Ini berarti kecamatan tersebut memiliki tingkat ketercapaian standar fasilitas pendidikan yang rendah, dengan defisit unit sekolah dasar sebanyak 49 unit (kebutuhan: 60 unit, eksisting: 11 unit), sekolah menengah atas sebanyak 12 unit (kebutuhan: 20 unit, eksisting: 8 unit), dan taman kanak-k...
-- **Root Cause & Diagnosis:**
-  Question: `scorecard_gambir_education` triggered `passed`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
+> Skor pilar pendidikan di Kecamatan Gambir adalah **23.43**.
 
-### Item 5: `scorecard_cilandak_composite` (Category: scorecard)
-- **Penalty Score:** 0.0
-- **Tool Selection Correct:** True
-- **Guardrail Final Status:** `passed`
-- **Unsupported Numbers:** `[]`
-- **Mislabeled Numbers:** `[]`
-- **Raw LLM Answer (before guardrail):**
-> Skor indeks kecukupan fasilitas untuk Kecamatan Cilandak adalah 44.41, dengan detail sebagai berikut:
-
-- **Pilar Kesehatan & Keselamatan (Lifeline Health)**: Skor 54.17.
-- **Pilar Pendidikan**: Skor 32.69.
-- **Pilar Ruang Hidup & Rekreasi (Urban Livability)**: Data cakupan rendah, tidak dihitung dalam skor komposit.
-- **Pilar Mobilitas & Aksesibili...
+Informasi lebih lanjut:
+- Skor ini didasarkan pada standar yang ditentukan oleh SNI 03-1733-2004.
+- Defisit unit fasilitas pendidikan di Kecamatan Gambir mencakup sekolah dasar, sekolah menengah atas, sekolah menengah pertama, dan taman kanak-kanak. Total kebutuhan adalah 157 unit (60 SD ...
 - **Root Cause & Diagnosis:**
-  Question: `scorecard_cilandak_composite` triggered `passed`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
+  Question: `scorecard_gambir_education` triggered `retried`. The tool was correctly invoked, but the generated textual response introduced numbers or labels not backed by the database outputs.
 

@@ -1,13 +1,14 @@
-name: Unit Tests
+name: Automated Test Suite
 
-'on':
+on:
   push:
     branches: [ "**" ]
   pull_request:
     branches: [ "**" ]
 
 jobs:
-  unit-tests:
+  unit:
+    name: Unit Tests (Offline / Pure Logic)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -22,11 +23,159 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r pipeline/requirements.txt
 
-      - name: Run offline unit test suite
+      - name: Run unit test suite
         env:
           POSTGRES_HOST: invalid.local
+          POSTGRES_PORT: 54321
+          REDIS_HOST: invalid.local
+          REDIS_PORT: 63799
           OLLAMA_BASE_URL: http://invalid.local:1
+          AUTH_JWT_SECRET: "ci-unit-ephemeral-secret-${{ github.run_id }}"
         run: |
-          pytest -m unit --cov=backend/app/engine --cov=backend/app/agent -v
+          pytest backend/tests/unit -m unit --cov=backend/app --cov=watchdog --cov-report=term-missing -v
+
+  integration:
+    name: Integration Tests (PostGIS + Redis)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r pipeline/requirements.txt
+
+      - name: Build custom PostGIS + pgvector database image
+        run: |
+          docker build -t drp-postgres:ci -f docker/Dockerfile.db .
+
+      - name: Start PostgreSQL container with init scripts
+        run: |
+          docker run -d --name postgres -p 5432:5432 \
+            -e POSTGRES_DB=district_profiling \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgrespassword \
+            -v ${{ github.workspace }}/docker/init-db:/docker-entrypoint-initdb.d:ro \
+            drp-postgres:ci
+
+      - name: Start Redis 7 container
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+      - name: Wait for PostgreSQL readiness
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec postgres pg_isready -h 127.0.0.1 -p 5432 -U postgres -d district_profiling; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 1
+          done
+
+      - name: Seed database with boundaries and standards
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: district_profiling
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          PYTHONPATH: .
+        run: |
+          python pipeline/boundary_loader.py
+          python pipeline/migrate_multiregion.py
+
+      - name: Run integration tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: district_profiling
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          OLLAMA_BASE_URL: http://localhost:11434
+          AUTH_JWT_SECRET: "ci-integration-secret-${{ github.run_id }}"
+        run: |
+          pytest backend/tests/integration -m "db and not llm" -v
+
+  system-api:
+    name: System API Tests (Live Uvicorn Server)
+    runs-on: ubuntu-latest
+    needs: [unit, integration]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r pipeline/requirements.txt
+
+      - name: Build custom PostGIS + pgvector database image
+        run: |
+          docker build -t drp-postgres:ci -f docker/Dockerfile.db .
+
+      - name: Start PostgreSQL container with init scripts
+        run: |
+          docker run -d --name postgres -p 5432:5432 \
+            -e POSTGRES_DB=district_profiling \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgrespassword \
+            -v ${{ github.workspace }}/docker/init-db:/docker-entrypoint-initdb.d:ro \
+            drp-postgres:ci
+
+      - name: Start Redis 7 container
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+      - name: Wait for PostgreSQL readiness
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec postgres pg_isready -h 127.0.0.1 -p 5432 -U postgres -d district_profiling; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 1
+          done
+
+      - name: Seed database with boundaries and standards
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: district_profiling
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          PYTHONPATH: .
+        run: |
+          python pipeline/boundary_loader.py
+          python pipeline/migrate_multiregion.py
+
+      - name: Run System API tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: district_profiling
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          AUTH_JWT_SECRET: "ci-system-api-secret-${{ github.run_id }}"
+        run: |
+          pytest backend/tests/system/test_system_api.py -v
