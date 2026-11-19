@@ -23,6 +23,7 @@ Implements Phase 4.2 & Phase 5.1 (REBUILD_PROMPT_P5_1_P7.md) & README.revised.md
 import json
 import logging
 import math
+import time
 from typing import Dict, Any, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -250,6 +251,103 @@ def get_current_availability_source() -> str:
     """Returns 'database' or 'snapshot' indicating the source of standards availability."""
     global _CURRENT_AVAILABILITY_SOURCE
     return _CURRENT_AVAILABILITY_SOURCE
+
+
+_PROVINCE_AVAILABILITY_CACHE: Dict[Tuple[str, str], Tuple[float, Dict[str, Tuple[str, str]]]] = {}
+
+
+def get_province_standards_availability(
+    province_code: Optional[str] = None,
+    force_refresh: bool = False,
+) -> Dict[str, Tuple[str, str]]:
+    """
+    Returns standards availability map scoped to `province_code` using
+    province-scaled record threshold (= number of kecamatan in that province).
+    For default province '31' (DKI Jakarta) or None, delegates to
+    `get_city_wide_standards_availability()`.
+    """
+    from backend.app.core.config import settings
+
+    prov = str(province_code or settings.DEFAULT_PROVINCE_CODE).strip()
+    if prov == settings.DEFAULT_PROVINCE_CODE:
+        return get_city_wide_standards_availability(force_refresh=force_refresh)
+
+    cache_key = (settings.POSTGRES_DB, prov)
+    now = time.monotonic()
+    if not force_refresh and cache_key in _PROVINCE_AVAILABILITY_CACHE:
+        ts, cached_map = _PROVINCE_AVAILABILITY_CACHE[cache_key]
+        if (now - ts) < 60.0:
+            return cached_map
+
+    avail_map: Dict[str, Tuple[str, str]] = {}
+    try:
+        from backend.app.core.db import get_db_cursor
+
+        with get_db_cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)::int AS kec_cnt
+                FROM kecamatan k
+                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                JOIN provinces p ON p.id = c.province_id
+                WHERE p.kemendagri_code = %s;
+                """,
+                (prov,),
+            )
+            row = cur.fetchone()
+            kec_count = max(1, int((row or {}).get("kec_cnt") or 0))
+            if not row or not row.get("kec_cnt"):
+                return get_city_wide_standards_availability(force_refresh=force_refresh)
+
+            cur.execute(
+                """
+                SELECT f.facility_type, COUNT(*)::int AS cnt
+                FROM public_facilities f
+                JOIN kecamatan k ON k.id = f.kecamatan_id
+                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                JOIN provinces p ON p.id = c.province_id
+                WHERE f.is_active = TRUE AND p.kemendagri_code = %s
+                GROUP BY f.facility_type;
+                """,
+                (prov,),
+            )
+            prov_counts = {r["facility_type"]: int(r["cnt"]) for r in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT facility_type, confidence
+                FROM regulatory_standards
+                WHERE province_code IS NULL OR province_code = %s;
+                """,
+                (prov,),
+            )
+            std_rows = cur.fetchall()
+            for r in std_rows:
+                ft = r["facility_type"]
+                spec = STANDARDS_AVAILABILITY_SPEC.get(ft, {})
+                conf = r.get("confidence") or spec.get("confidence", "Medium")
+                is_not_avail = spec.get("is_not_available_from_osm", False)
+                avail, reason = evaluate_availability(
+                    ft,
+                    prov_counts.get(ft, 0),
+                    conf,
+                    is_not_avail,
+                    min_records_threshold=kec_count,
+                )
+                avail_map[ft] = (avail, reason)
+
+        for ft, spec in STANDARDS_AVAILABILITY_SPEC.items():
+            if ft not in avail_map:
+                avail_map[ft] = (
+                    "not_available",
+                    f"Tidak berlaku / 0 record di provinsi {prov}",
+                )
+
+        _PROVINCE_AVAILABILITY_CACHE[cache_key] = (now, avail_map)
+        return avail_map
+    except Exception as exc:
+        logger.warning("Failed to compute province availability for %s: %s", prov, exc)
+        return get_city_wide_standards_availability(force_refresh=force_refresh)
 
 
 def record_availability_fallback_incident(error_msg: str):

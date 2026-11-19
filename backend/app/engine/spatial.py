@@ -55,45 +55,102 @@ def calculate_utm_srid(longitude: float, latitude: float) -> int:
         return 32600 + zone
 
 
-def resolve_district_candidates(
+def format_ambiguous_district_detail(
     identifier: str,
-    province_code: Optional[str] = None
-) -> List[Dict[str, Any]]:
-    """Returns all matching districts for identifier (by Kemendagri code or name)."""
+    candidates: List[Dict[str, Any]],
+) -> str:
+    """Formats a deterministic 400 error detail listing candidate codes, kab/kota, and province."""
+    parts: List[str] = []
+    for c in candidates:
+        code = c.get("kemendagri_code", "")
+        city = c.get("city_name") or ""
+        prov = c.get("province_name") or ""
+        loc = ", ".join(x for x in (city, prov) if x)
+        parts.append(f"{code} ({loc})" if loc else code)
+    cand_str = "; ".join(parts)
+    return (
+        f"Nama kecamatan '{identifier}' ambigu (ditemukan {len(candidates)} wilayah: {cand_str}). "
+        "Mohon tentukan kode kecamatan spesifik."
+    )
+
+
+def _format_cross_border_scope(province_code: str, province_name: Optional[str] = None) -> str:
+    if str(province_code) == "31":
+        return "DKI Jakarta only"
+    pname = province_name or f"Provinsi {province_code}"
+    return f"{pname} & wilayah aktif (lintas batas)"
+
+
+def _resolve_district_rows(
+    identifier: str,
+    province_code: Optional[str] = None,
+) -> Tuple[List[Dict[str, Any]], bool]:
+    """
+    Shared lookup for kecamatan by Kemendagri code or name:
+    1. Canonical Kemendagri code (e.g. '31.71.09' or '32.73.230') resolves directly.
+    2. Name lookup searches requested `province_code` first (if active), then all ACTIVE_PROVINCES.
+    """
     if not identifier:
-        return []
+        return [], False
 
     target = str(identifier).strip()
     clean_name = re.sub(r"^(kecamatan|kec\.)\s+", "", target, flags=re.IGNORECASE).strip()
     is_code = bool(re.match(r"^\d{2}(\.\d{2})+(\.\d{2,4})?$", target))
 
+    base_select = """
+        SELECT k.id, k.kemendagri_code, k.bps_code, k.name, k.population,
+               k.area_km2, k.density_per_km2, COALESCE(k.utm_srid, 32748) as utm_srid,
+               c.name as city_name, p.name as province_name, p.kemendagri_code as province_code
+        FROM kecamatan k
+        JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+        JOIN provinces p ON p.id = c.province_id
+    """
+
     with get_db_cursor() as cur:
         if is_code:
-            cur.execute("""
-                SELECT k.id, k.kemendagri_code, k.bps_code, k.name, k.population,
-                       k.area_km2, k.density_per_km2, COALESCE(k.utm_srid, 32748) as utm_srid,
-                       c.name as city_name, p.name as province_name, p.kemendagri_code as province_code
-                FROM kecamatan k
-                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-                JOIN provinces p ON p.id = c.province_id
-                WHERE k.kemendagri_code = %s;
-            """, (target,))
+            cur.execute(
+                base_select + " WHERE k.kemendagri_code = %s;",
+                (target,),
+            )
             row = cur.fetchone()
-            return [dict(row)] if row else []
+            return ([dict(row)] if row else []), True
 
-        # Search by name scoped to province
-        prov = province_code or settings.DEFAULT_PROVINCE_CODE
-        cur.execute("""
-            SELECT k.id, k.kemendagri_code, k.bps_code, k.name, k.population,
-                   k.area_km2, k.density_per_km2, COALESCE(k.utm_srid, 32748) as utm_srid,
-                   c.name as city_name, p.name as province_name, p.kemendagri_code as province_code
-            FROM kecamatan k
-            JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-            JOIN provinces p ON p.id = c.province_id
+        active_provs = settings.active_provinces
+        if province_code:
+            req_prov = str(province_code).strip()
+            if req_prov in active_provs:
+                cur.execute(
+                    base_select
+                    + """
+                    WHERE (LOWER(k.name) = LOWER(%s) OR LOWER(k.name) = LOWER(%s))
+                      AND p.kemendagri_code = %s
+                    ORDER BY k.kemendagri_code;
+                    """,
+                    (target, clean_name, req_prov),
+                )
+                rows = [dict(r) for r in cur.fetchall()]
+                if rows:
+                    return rows, False
+
+        cur.execute(
+            base_select
+            + """
             WHERE (LOWER(k.name) = LOWER(%s) OR LOWER(k.name) = LOWER(%s))
-              AND (%s IS NULL OR p.kemendagri_code = %s);
-        """, (target, clean_name, prov, prov))
-        return [dict(r) for r in cur.fetchall()]
+              AND p.kemendagri_code = ANY(%s)
+            ORDER BY k.kemendagri_code;
+            """,
+            (target, clean_name, active_provs),
+        )
+        return [dict(r) for r in cur.fetchall()], False
+
+
+def resolve_district_candidates(
+    identifier: str,
+    province_code: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Returns all matching districts for identifier (by Kemendagri code or name)."""
+    rows, _ = _resolve_district_rows(identifier, province_code=province_code)
+    return rows
 
 
 def resolve_district_record(
@@ -101,56 +158,29 @@ def resolve_district_record(
     province_code: Optional[str] = None
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
-    Resolves district record deterministically per TODO-3:
+    Resolves district record deterministically:
     1. If identifier matches Kemendagri code format, looks up by canonical kemendagri_code.
-    2. If identifier is a name, scopes by province_code (default settings.DEFAULT_PROVINCE_CODE).
+    2. If identifier is a name, searches requested `province_code` first (if active),
+       then all ACTIVE_PROVINCES.
     3. If multiple records match (>1), returns (None, 'ambiguous') (no guessing).
     4. If no records match, returns (None, 'not_found').
     """
     if not identifier:
         return None, "not_found"
 
-    target = str(identifier).strip()
-    clean_name = re.sub(r"^(kecamatan|kec\.)\s+", "", target, flags=re.IGNORECASE).strip()
-    is_code = bool(re.match(r"^\d{2}(\.\d{2})+(\.\d{2,4})?$", target))
+    rows, is_code = _resolve_district_rows(identifier, province_code=province_code)
+    if is_code:
+        return (rows[0], None) if rows else (None, "not_found")
 
-    with get_db_cursor() as cur:
-        if is_code:
-            cur.execute("""
-                SELECT k.id, k.kemendagri_code, k.bps_code, k.name, k.population,
-                       k.area_km2, k.density_per_km2, COALESCE(k.utm_srid, 32748) as utm_srid,
-                       c.name as city_name, p.name as province_name, p.kemendagri_code as province_code
-                FROM kecamatan k
-                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-                JOIN provinces p ON p.id = c.province_id
-                WHERE k.kemendagri_code = %s;
-            """, (target,))
-            row = cur.fetchone()
-            if row:
-                return dict(row), None
-            return None, "not_found"
-
-        # Search by name scoped to province
-        prov = province_code or settings.DEFAULT_PROVINCE_CODE
-        cur.execute("""
-            SELECT k.id, k.kemendagri_code, k.bps_code, k.name, k.population,
-                   k.area_km2, k.density_per_km2, COALESCE(k.utm_srid, 32748) as utm_srid,
-                   c.name as city_name, p.name as province_name, p.kemendagri_code as province_code
-            FROM kecamatan k
-            JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-            JOIN provinces p ON p.id = c.province_id
-            WHERE (LOWER(k.name) = LOWER(%s) OR LOWER(k.name) = LOWER(%s))
-              AND (%s IS NULL OR p.kemendagri_code = %s);
-        """, (target, clean_name, prov, prov))
-        rows = [dict(r) for r in cur.fetchall()]
-
-        if len(rows) == 1:
-            return rows[0], None
-        elif len(rows) > 1:
-            logger.warning(f"Ambiguous district name '{identifier}': found {len(rows)} matching districts in province '{prov}'.")
-            return None, "ambiguous"
-        else:
-            return None, "not_found"
+    if len(rows) == 1:
+        return rows[0], None
+    elif len(rows) > 1:
+        logger.warning(
+            f"Ambiguous district name '{identifier}': found {len(rows)} matching districts."
+        )
+        return None, "ambiguous"
+    else:
+        return None, "not_found"
 
 class BlankSpotAnalysisResult(BaseModel):
     district_code: str
@@ -184,16 +214,16 @@ class BlankSpotSimulationDelta(BaseModel):
 
 class PostGISSpatialEngine:
     @staticmethod
-    def get_district_boundary_geojson(district_code: str) -> Optional[Dict[str, Any]]:
+    def get_district_boundary_geojson(
+        district_code: str,
+        province_code: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Returns standard GeoJSON geometry for a given district."""
-        record, err = resolve_district_record(district_code)
+        record, err = resolve_district_record(district_code, province_code=province_code)
         if not record:
             if err == "ambiguous":
-                candidates = resolve_district_candidates(district_code)
-                cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
-                raise ValueError(
-                    f"Nama kecamatan '{district_code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."
-                )
+                candidates = resolve_district_candidates(district_code, province_code=province_code)
+                raise ValueError(format_ambiguous_district_detail(district_code, candidates))
             return None
 
         with get_db_cursor() as cur:
@@ -209,21 +239,23 @@ class PostGISSpatialEngine:
     def compute_facility_buffers(
         district_code: str,
         facility_type: Optional[str] = None,
-        pillar: Optional[str] = None
+        pillar: Optional[str] = None,
+        province_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Computes service buffers in regional UTM projection and projects back to WGS 84 GeoJSON.
         Uses exact regulatory standard radius per facility type.
         """
-        record, err = resolve_district_record(district_code)
+        record, err = resolve_district_record(district_code, province_code=province_code)
         if not record:
             if err == "ambiguous":
-                candidates = resolve_district_candidates(district_code)
-                cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
-                raise ValueError(
-                    f"Nama kecamatan '{district_code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."
-                )
+                candidates = resolve_district_candidates(district_code, province_code=province_code)
+                raise ValueError(format_ambiguous_district_detail(district_code, candidates))
             raise ValueError(f"District '{district_code}' not found.")
+
+        rec_prov = record.get("province_code")
+        if rec_prov and rec_prov not in settings.active_provinces:
+            raise ValueError("Data wilayah ini belum tersedia (rencana v1.1)")
 
         sql = """
             SELECT 
@@ -281,27 +313,30 @@ class PostGISSpatialEngine:
     @staticmethod
     def calculate_blank_spots(
         district_code: str,
-        facility_type: str = "puskesmas_kelurahan"
+        facility_type: str = "puskesmas_kelurahan",
+        province_code: Optional[str] = None,
     ) -> BlankSpotAnalysisResult:
         """
         Calculates exact unserved polygons (blank spots) using PostGIS ST_Difference.
         ST_Difference(district_utm, ST_Union(amenity_buffer_utm)) -> Blank Spot MultiPolygon.
         """
-        record, err = resolve_district_record(district_code)
+        record, err = resolve_district_record(district_code, province_code=province_code)
         if not record:
             if err == "ambiguous":
-                candidates = resolve_district_candidates(district_code)
-                cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
-                raise ValueError(
-                    f"Nama kecamatan '{district_code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."
-                )
+                candidates = resolve_district_candidates(district_code, province_code=province_code)
+                raise ValueError(format_ambiguous_district_detail(district_code, candidates))
             raise ValueError(f"District '{district_code}' not found.")
+
+        rec_prov = record.get("province_code")
+        if rec_prov and rec_prov not in settings.active_provinces:
+            raise ValueError("Data wilayah ini belum tersedia (rencana v1.1)")
 
         dist_id = record["id"]
         code = record["kemendagri_code"]
         name = record["name"]
         area_km2 = float(record["area_km2"])
-        prov_code = record.get("province_code") or settings.DEFAULT_PROVINCE_CODE
+        prov_code = rec_prov or settings.DEFAULT_PROVINCE_CODE
+        cb_scope = _format_cross_border_scope(prov_code, record.get("province_name"))
 
         with get_db_cursor() as cur:
             # 1. Fetch regulatory radius
@@ -331,22 +366,34 @@ class PostGISSpatialEngine:
             # 2. Compute spatial difference in metric UTM including cross-border reaching facilities
             spatial_query = """
                 WITH district_geom AS (
-                    SELECT id, boundary_utm, utm_srid, ST_Area(boundary_utm) / 1000000.0 as geom_area_km2
+                    SELECT id, boundary, boundary_utm, utm_srid, ST_Area(boundary_utm) / 1000000.0 as geom_area_km2
                     FROM kecamatan 
                     WHERE id = %s
                 ),
-                facilities_in_reach AS (
+                candidate_facilities AS (
                     SELECT 
                         f.id,
                         f.kecamatan_id,
-                        f.coordinates_utm,
-                        (f.kecamatan_id = dg.id) as is_inside
+                        CASE
+                            WHEN f.utm_srid = dg.utm_srid THEN f.coordinates_utm
+                            ELSE ST_Transform(f.coordinates, dg.utm_srid)
+                        END as coord_utm,
+                        (f.kecamatan_id = dg.id) as is_inside,
+                        dg.boundary_utm
                     FROM district_geom dg
-                    CROSS JOIN public_facilities f
-                    WHERE f.facility_type = %s
-                      AND f.is_active = TRUE
-                      AND f.utm_srid = dg.utm_srid
-                      AND ST_DWithin(f.coordinates_utm, dg.boundary_utm, %s)
+                    JOIN public_facilities f
+                      ON f.facility_type = %s
+                     AND f.is_active = TRUE
+                     AND ST_DWithin(f.coordinates, dg.boundary, 0.1)
+                ),
+                facilities_in_reach AS (
+                    SELECT
+                        cf.id,
+                        cf.kecamatan_id,
+                        cf.coord_utm,
+                        cf.is_inside
+                    FROM candidate_facilities cf
+                    WHERE ST_DWithin(cf.coord_utm, cf.boundary_utm, %s)
                 ),
                 counts AS (
                     SELECT 
@@ -355,11 +402,11 @@ class PostGISSpatialEngine:
                     FROM facilities_in_reach
                 ),
                 inside_buffer AS (
-                    SELECT ST_Union(ST_Buffer(coordinates_utm, %s)) as ubuf
+                    SELECT ST_Union(ST_Buffer(coord_utm, %s)) as ubuf
                     FROM facilities_in_reach WHERE is_inside
                 ),
                 all_buffer AS (
-                    SELECT ST_Union(ST_Buffer(coordinates_utm, %s)) as ubuf
+                    SELECT ST_Union(ST_Buffer(coord_utm, %s)) as ubuf
                     FROM facilities_in_reach
                 ),
                 diffs AS (
@@ -441,7 +488,7 @@ class PostGISSpatialEngine:
                 coverage_pct_without_neighbours=coverage_pct_without_neighbours,
                 facilities_inside=inside_cnt,
                 facilities_from_neighbours=neighbour_cnt,
-                cross_border_scope="DKI Jakarta only",
+                cross_border_scope=cb_scope,
                 blank_spot_geojson=geojson_geom or {},
                 bps_area_km2=area_km2,
                 area_ratio=ratio,
@@ -453,14 +500,17 @@ class PostGISSpatialEngine:
         district_code: str,
         facility_type: str,
         hypothetical_coords: List[float], # [lon, lat]
-        custom_radius_meters: Optional[int] = None
+        custom_radius_meters: Optional[int] = None,
+        province_code: Optional[str] = None,
     ) -> BlankSpotSimulationDelta:
         """
         Simulates how adding a hypothetical amenity at [lon, lat] reduces the unserved blank spot area.
         Runs entirely in transient memory context without saving to database.
         Includes cross-border active facilities within service radius.
         """
-        baseline = PostGISSpatialEngine.calculate_blank_spots(district_code, facility_type)
+        baseline = PostGISSpatialEngine.calculate_blank_spots(
+            district_code, facility_type, province_code=province_code
+        )
         radius_m = custom_radius_meters or baseline.service_radius_meters
 
         lon, lat = hypothetical_coords[0], hypothetical_coords[1]
@@ -474,19 +524,28 @@ class PostGISSpatialEngine:
         with get_db_cursor() as cur:
             sim_query = """
                 WITH district_geom AS (
-                    SELECT boundary_utm, utm_srid, ST_Area(boundary_utm) / 1000000.0 as geom_area_km2 FROM kecamatan WHERE id = %s
+                    SELECT boundary, boundary_utm, utm_srid, ST_Area(boundary_utm) / 1000000.0 as geom_area_km2 FROM kecamatan WHERE id = %s
+                ),
+                candidate_facilities AS (
+                    SELECT
+                        CASE
+                            WHEN f.utm_srid = dg.utm_srid THEN f.coordinates_utm
+                            ELSE ST_Transform(f.coordinates, dg.utm_srid)
+                        END as coord_utm,
+                        dg.boundary_utm
+                    FROM district_geom dg
+                    JOIN public_facilities f
+                      ON f.facility_type = %s
+                     AND f.is_active = TRUE
+                     AND ST_DWithin(f.coordinates, dg.boundary, 0.1)
                 ),
                 facilities_in_reach AS (
-                    SELECT f.coordinates_utm
-                    FROM district_geom dg
-                    CROSS JOIN public_facilities f
-                    WHERE f.facility_type = %s
-                      AND f.is_active = TRUE
-                      AND f.utm_srid = dg.utm_srid
-                      AND ST_DWithin(f.coordinates_utm, dg.boundary_utm, %s)
+                    SELECT coord_utm
+                    FROM candidate_facilities
+                    WHERE ST_DWithin(coord_utm, boundary_utm, %s)
                 ),
                 existing_buffers AS (
-                    SELECT ST_Union(ST_Buffer(coordinates_utm, %s)) as unioned_buffer
+                    SELECT ST_Union(ST_Buffer(coord_utm, %s)) as unioned_buffer
                     FROM facilities_in_reach
                 ),
                 hypothetical_point AS (
@@ -529,6 +588,6 @@ class PostGISSpatialEngine:
                 simulated_unserved_km2=sim_unserved,
                 area_recovered_km2=area_recovered,
                 coverage_improvement_pct=improvement_pct,
-                cross_border_scope="DKI Jakarta only",
+                cross_border_scope=baseline.cross_border_scope,
                 simulated_blank_spot_geojson=res["sim_blank_geojson"] if res else {}
             )

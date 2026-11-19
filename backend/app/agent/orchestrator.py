@@ -30,13 +30,43 @@ from backend.app.agent.guardrails import (
 )
 from backend.app.core.config import settings
 from backend.app.core.db import get_db_cursor
+from backend.app.api.routers.regions import (
+    REGIONS_CATALOG,
+    get_region_meta,
+    get_province_population_meta,
+)
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk wilayah aktif (Provinsi {settings.DEFAULT_PROVINCE_NAME}).
+
+def _validated_active_province(province_code: Optional[str]) -> Optional[str]:
+    """Returns stripped province_code only if known in REGIONS_CATALOG and active."""
+    if not province_code:
+        return None
+    code = str(province_code).strip()
+    if code in REGIONS_CATALOG and code in settings.active_provinces:
+        return code
+    return None
+
+
+def build_system_prompt(province_code: Optional[str] = None) -> str:
+    """Builds the system prompt describing the active region and population source."""
+    valid_prov = _validated_active_province(province_code)
+    prov_code = valid_prov or settings.DEFAULT_PROVINCE_CODE
+    meta = get_region_meta(prov_code)
+    region_name = meta.get("name") or settings.DEFAULT_PROVINCE_NAME
+    if valid_prov:
+        _, pop_source, _ = get_province_population_meta(prov_code)
+        region_header = f"wilayah aktif: Provinsi {region_name} (kode {prov_code}, sumber data penduduk: {pop_source})"
+        pop_hint = pop_source
+    else:
+        region_header = f"wilayah aktif (Provinsi {region_name})"
+        pop_hint = "sumber data penduduk resmi dari output tool"
+
+    return f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk {region_header}.
 
 TUGAS DAN ATURAN KETAT ANDA:
-1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri.
+1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri. Jika output tool menyatakan score_status = "Data tidak memadai" atau composite_score bernilai null, nyatakan secara eksplisit "Data tidak memadai" beserta alasan cakupan (coverage_reason / composite_note), dan DILARANG menyebut skor komposit atau defisit unit sebagai nol. Selalu sebutkan sumber data penduduk dari output tool ({pop_hint}).
 2. ATURAN #2 (ISOLASI SANDBOX): Jelaskan hasil simulasi dengan menyatakan bahwa data tersebut adalah skenario hipotetis terisolasi tanpa mengubah data master. Indikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif.
 3. ATURAN #3 (FORMAT SITASI REGULASI WAJIB): Anda HANYA boleh merujuk regulasi menggunakan format tag [REG:<chunk_id>] persis dengan chunk_id yang terdapat pada output tool search_regulations giliran ini. DILARANG membuat sitasi teks bebas di luar format tersebut.
 4. ATURAN #4 (PEMBEDAAN DEFISIT UNIT VS CAKUPAN RADIUS):
@@ -44,6 +74,9 @@ TUGAS DAN ATURAN KETAT ANDA:
    - "cakupan %" = luas terlayani radius (dari blank spot tool get_unserved_blank_spots). Ini BUKAN defisit unit fasilitas.
    DILARANG menukar defisit unit dengan persentase cakupan radius.
 5. Gaya Bahasa: Profesional, solutif, berbasis data spasial konkret, dan objektif sebagai analis tata ruang / perencana kota senior."""
+
+
+SYSTEM_PROMPT = build_system_prompt()
 
 # -----------------------------------------------------------------------------
 # Out-of-Scope Detection & Refusal (README.md §4, §11)
@@ -168,6 +201,7 @@ class ChatMessage(BaseModel):
 class AgentChatRequest(BaseModel):
     messages: List[ChatMessage]
     district_context: Optional[str] = None  # Current active district on map
+    province_code: Optional[str] = None  # Active province scope on map
 
 class AgentChatResponse(BaseModel):
     reply: str
@@ -277,7 +311,9 @@ class CognitiveSpatialAgentOrchestrator:
             )
 
         # Prepare messages: system prompt is never trimmed
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + trimmed_msgs
+        active_prov = _validated_active_province(req.province_code)
+        sys_prompt = build_system_prompt(active_prov)
+        messages = [{"role": "system", "content": sys_prompt}] + trimmed_msgs
 
         # Step 3: Multi-round Tool Loop (up to 4 rounds per user message)
         max_rounds = 4
@@ -469,7 +505,11 @@ class CognitiveSpatialAgentOrchestrator:
                     logger.info(f"[Round {round_num}] Agent invoking tool: {fn_name}({args})")
                     tool_ok = True
                     try:
-                        tool_output = execute_tool_call(fn_name, args)
+                        if active_prov:
+                            tool_output = execute_tool_call(fn_name, args, province_code=active_prov)
+                        else:
+                            tool_output = execute_tool_call(fn_name, args)
+                        tool_ok = not (isinstance(tool_output, dict) and bool(tool_output.get("error")))
                     except Exception as tool_err:
                         tool_ok = False
                         tool_output = {"error": str(tool_err)}
@@ -497,7 +537,9 @@ class CognitiveSpatialAgentOrchestrator:
 
                     # Deterministic map actions derived strictly from executed tools
                     if tool_ok:
-                        self._extract_map_actions(fn_name, args, tool_output, map_actions)
+                        self._extract_map_actions(
+                            fn_name, args, tool_output, map_actions, province_code=active_prov
+                        )
 
                     messages.append({
                         "role": "tool",
@@ -540,14 +582,22 @@ class CognitiveSpatialAgentOrchestrator:
             answer_mode=answer_mode
         )
 
-    def _resolve_district_code(self, raw_code: Optional[str], output: Optional[Dict[str, Any]]) -> Optional[str]:
+    def _resolve_district_code(
+        self,
+        raw_code: Optional[str],
+        output: Optional[Dict[str, Any]],
+        province_code: Optional[str] = None,
+    ) -> Optional[str]:
         """
         Resolves canonical Kemendagri code deterministically per W11 D2:
         1. Prefer canonical code in tool output.
         2. Else look it up by case-insensitive name or code from database.
         3. If unresolvable, returns None.
         """
-        if isinstance(output, dict) and not output.get("error"):
+        if isinstance(output, dict) and output.get("error"):
+            return None
+
+        if isinstance(output, dict):
             if output.get("kemendagri_code"):
                 return str(output["kemendagri_code"])
             out_dc = output.get("district_code")
@@ -564,8 +614,11 @@ class CognitiveSpatialAgentOrchestrator:
 
         from backend.app.engine.spatial import resolve_district_record
         try:
-            record, _ = resolve_district_record(str(target))
+            record, _ = resolve_district_record(str(target), province_code=province_code)
             if record and record.get("kemendagri_code"):
+                rec_prov = record.get("province_code") or str(record["kemendagri_code"])[:2]
+                if rec_prov not in settings.active_provinces:
+                    return None
                 return str(record["kemendagri_code"])
         except Exception as e:
             logger.warning(f"Database lookup for district code '{target}' failed: {e}")
@@ -577,7 +630,8 @@ class CognitiveSpatialAgentOrchestrator:
         tool_name: str,
         args: Dict[str, Any],
         output: Dict[str, Any],
-        map_actions: List[MapActionEvent]
+        map_actions: List[MapActionEvent],
+        province_code: Optional[str] = None,
     ):
         """
         Translates tool results into real-time frontend map actions deterministically.
@@ -585,7 +639,7 @@ class CognitiveSpatialAgentOrchestrator:
         Resolves canonical Kemendagri code deterministically; emits no action if unresolvable.
         """
         raw_code = args.get("district_code")
-        d_code = self._resolve_district_code(raw_code, output)
+        d_code = self._resolve_district_code(raw_code, output, province_code=province_code)
         if not d_code:
             logger.warning(f"Could not resolve canonical district_code for map action from args={args}, output={output}. Skipping map action.")
             return

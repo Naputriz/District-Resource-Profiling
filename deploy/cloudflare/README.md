@@ -50,7 +50,12 @@ Create `$DEPLOY_DIR/docker/.env` with at least:
 BACKEND_PORT=127.0.0.1:8000
 AUTH_JWT_SECRET=<random-secret>
 EDGE_SHARED_SECRET=<same-secret-as-worker>
+ACTIVE_PROVINCES=31,32,33,34,35,36
 ```
+
+(`ACTIVE_PROVINCES` defaults to `31` if omitted; list only provinces already loaded in the live database.)
+
+Run `migrate_multiregion.py` on the database before starting a new backend.
 
 Rebuild and restart only `backend` and `watchdog` (keeping `db` and `cache` running):
 
@@ -59,7 +64,11 @@ cd "$DEPLOY_DIR"
 docker compose -f docker/docker-compose.yml --env-file docker/.env up -d --build --no-deps backend watchdog
 ```
 
-## 4. Cloudflare Tunnel Container
+## 4. Adding a Region to Live
+
+For the full staging-to-live procedure (loading with `pipeline/load_region.py`, schema migration, single-transaction copy, Redis scorecard cache flush, and Worker/backend redeploy), see [`docs/REGIONS.md`](../../docs/REGIONS.md).
+
+## 5. Cloudflare Tunnel Container
 
 `cloudflared` runs in its own container with `--network host` so it can reach `127.0.0.1:8000` on the host, using a `tunnel.env` file (`TUNNEL_TOKEN=<token>`, mode `0600`) outside the repo:
 

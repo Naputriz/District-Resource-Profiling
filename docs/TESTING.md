@@ -262,3 +262,52 @@ Dokumentasi historis cacat (*defects*) yang pernah ditemukan pada fase integrasi
 | **TODO4-F5** | TODO-4 | Validasi JWT tidak memvalidasi klaim wajib `exp`, `sub`, dan `iat` atau menolak algoritma insecure | Validasi ketat klaim sub, exp, iat, dan whitelist algoritma HS256 pada decoding JWT | `test_jwt_missing_required_claims_and_bad_algorithms` | RESOLVED |
 | **TODO4-F6** | TODO-4 | Input password lebih dari 72 byte memicu crash HTTP 500 bcrypt alih-alih 422 Unprocessable Entity | Validasi panjang password maksimum 72 byte UTF-8 pada skema input sebelum hashing | `test_password_length_limits_and_72_bytes`<br>`test_password_73_bytes_rejected_with_422` | RESOLVED |
 | **TODO4-F7** | TODO-4 | `chat_audit` mengalami `AttributeError: 'dict' object has no attribute 'name'` saat mencatat tool call berupa dict | Ekstraksi nama tool mendukung format dict (`tc.get('name')`) maupun objek atribut (`getattr(tc, 'name')`) | `test_chat_audit_with_mocked_orchestrator_tool_calls_dict` | RESOLVED |
+
+---
+
+## 7. Multi-Region Java Tests (J1a / J1a2 / J1b)
+
+Automated tests for the multi-province Java release (`31`–`36`) cover pipeline loading, the OSM coverage gate, multi-province API routing, cross-province name resolution, chat `province_code` handling, and Playwright region-switching performance.
+
+### 7.1 J1 Test Files
+
+| Level | File | J1 Tests | Scope Covered |
+|---|---|---:|---|
+| **Unit** | [`backend/tests/unit/test_region_j1a_unit.py`](../backend/tests/unit/test_region_j1a_unit.py) | 4 | `REDIS_DB` client config, shared `osm_extractor` classification parity on DKI sample, COD-AB pcode mapping & water/forest suffix filter (`555`/`888`/`999`), live-DB guard (`ensure_safe_database`) |
+| **Unit** | [`backend/tests/unit/test_scoring_coverage_unit.py`](../backend/tests/unit/test_scoring_coverage_unit.py) | 3 (J1a2) | Province-scaled facility threshold (`test_province_scaled_threshold_reason_and_status`), local `sekolah_dasar` coverage gate & DKI-like parity (`test_local_coverage_gate_and_dki_like_unchanged`), API `NULL` composite `"Data tidak memadai"` & ranking exclusion (`test_api_null_composite_returns_data_tidak_memadai_and_excluded_from_ranking`) |
+| **Unit** | [`backend/tests/unit/test_region_j1b_unit.py`](../backend/tests/unit/test_region_j1b_unit.py) | 10 | `ACTIVE_PROVINCES` parsing & runtime property override, Active/Staging/Planned status computation, `/api/v1/regions` status & coverage summary, cross-province name resolution order & ambiguity (`400`), chat `province_code` forwarding & rejection of inactive/unknown codes, gated deterministic fallback, DB-row check when env active, `_resolve_district_code` error/inactive guard |
+| **Integration** | [`backend/tests/integration/test_region_j1a_db.py`](../backend/tests/integration/test_region_j1a_db.py) | 2 | DI Yogyakarta (`34`) loaded in staging (78 kecamatan, 0 NULL `utm_srid`, 12 gated / 66 scored) and DKI (`31`) unchanged (44 kecamatan, 44 scored, 16 standards) |
+| **Integration** | [`backend/tests/integration/test_region_j1b_db.py`](../backend/tests/integration/test_region_j1b_db.py) | 6 | List districts for `32` (627 rows, 306 gated) and `35` (666 rows, 339 gated); detail endpoints for Coblong (`32.73.230`), Tegalsari (`35.78.180`), Ciemas (`32.02.010`, gated), and Tebet (`31.71.09`); facilities + blank spots for Coblong (`32748`) and Tegalsari (`32749`); read-only what-if on Tegalsari; `404` for province `51` and live safety (`ACTIVE_PROVINCES=31`); straddling UTM zone border on Cipatujah (`32.06.010`) |
+| **System** | [`backend/tests/system/test_region_j1b_system.py`](../backend/tests/system/test_region_j1b_system.py) | 3 | Playwright UI switch to Jawa Barat (`32`, 627 canvas features, Coblong WorldPop scorecard, gated Ciemas `"Data tidak memadai"`) and Jawa Timur (`35`, 666 features); reload `/?prov=34` opening DI Yogyakarta (78 kecamatan); live Ollama chat `"Bagaimana skor Gondokusuman?"` (`province_code="34"`) resolving `34.71.060` |
+
+### 7.2 Running Against the Staging Database
+
+Never target the live `district_profiling` database or port `8000` when running J1 integration or system tests. Set the staging environment variables (`POSTGRES_DB=district_profiling_stage`, `REDIS_DB=1`) explicitly:
+
+```bash
+# 1. Unit tests (100% offline, defaults ACTIVE_PROVINCES=31 in unit conftest)
+ACTIVE_PROVINCES=31 /mnt/data/rpl/og/.venv/bin/pytest backend/tests/unit -q
+
+# 2. Integration tests against staging DB (all 6 Java provinces active)
+POSTGRES_DB=district_profiling_stage REDIS_DB=1 ACTIVE_PROVINCES=31,32,33,34,35,36 \
+  /mnt/data/rpl/og/.venv/bin/pytest backend/tests/integration -q
+
+# 3. Integration live-safety check (only DKI 31 active)
+POSTGRES_DB=district_profiling_stage REDIS_DB=1 ACTIVE_PROVINCES=31 \
+  /mnt/data/rpl/og/.venv/bin/pytest backend/tests/integration -q
+
+# 4. J1b System tests against staging DB (live_server_url starts uvicorn on a free ephemeral port)
+POSTGRES_DB=district_profiling_stage REDIS_DB=1 ACTIVE_PROVINCES=31,32,33,34,35,36 \
+  /mnt/data/rpl/og/.venv/bin/pytest backend/tests/system/test_region_j1b_system.py -q -s
+```
+
+### 7.3 Measured Staging Results & Province-Switch Timings
+
+Latest verified run after J1b fixes (local staging environment):
+- **Unit (`ACTIVE_PROVINCES=31`):** `122 passed` (1.24s–1.28s)
+- **Integration (`ACTIVE_PROVINCES=31,32,33,34,35,36`):** `32 passed` (2.48s)
+- **Integration (`ACTIVE_PROVINCES=31`):** `32 passed` (2.46s)
+- **J1b System (`test_region_j1b_system.py`, ephemeral port `37603`):** `3 passed in 9.86s`
+  - Province switch to **Jawa Barat (`32`, 627 polygons):** **264.8 ms**
+  - Province switch to **Jawa Timur (`35`, 666 polygons):** **332.5 ms**
+- **Live public smoke test (17 Nov 2026, commit `9ee346d`, `https://drp.digilabui.cloud`):** all 6 Java provinces Active; Coblong `29.23` (WorldPop estimate); Ciemas `"Data tidak memadai"`; Tebet unchanged `54.61`; chat `"Bagaimana skor Gondokusuman?"` (`province_code="34"`) answered `54.54` in `5.0 s`; Jawa Barat (`32`) district list `3.4 MB` (`0.9 s`); `35_kecamatan.geojson` `2.5 MB` (`2.8 s` over the internet).

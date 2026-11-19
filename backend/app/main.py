@@ -113,10 +113,10 @@ app.include_router(regions.router)
 # Frontend UI & Static Assets Serving
 _BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 _FRONTEND_DIR = os.path.join(_BASE_DIR, "frontend")
-_DATA_DIR = os.path.join(_BASE_DIR, "pipeline", "data")
+_FRONTEND_DATA_DIR = os.path.join(_FRONTEND_DIR, "data")
 
-if os.path.exists(_DATA_DIR):
-    app.mount("/data", StaticFiles(directory=_DATA_DIR), name="data")
+if os.path.exists(_FRONTEND_DATA_DIR):
+    app.mount("/data", StaticFiles(directory=_FRONTEND_DATA_DIR), name="data")
 
 if os.path.exists(_FRONTEND_DIR):
     app.mount("/", StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")

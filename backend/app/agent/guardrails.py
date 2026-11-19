@@ -1056,10 +1056,14 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
             name = out.get("district_name") or out.get("name") or "Kecamatan"
             code = out.get("district_code") or out.get("kemendagri_code") or ""
             pop = out.get("population", 0)
+            pop_src = out.get("population_source") or out.get("population_note")
             comp = out.get("composite_score", out.get("composite_livability_score"))
 
             lines.append(f"**Profil Wilayah {name} ({code}):**")
-            lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa")
+            if pop_src:
+                lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa ({pop_src})")
+            else:
+                lines.append(f"- **Jumlah Penduduk:** {pop:,} jiwa")
             metrics = out.get("metrics_payload", [])
             has_local_gate = isinstance(metrics, list) and any(
                 isinstance(m, dict) and m.get("data_availability") == "insufficient_local"
@@ -1068,7 +1072,7 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
             if comp is not None:
                 lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** **{comp:.2f}**")
             else:
-                comp_note = out.get("composite_note") or "tidak dinilai (cakupan data rendah)"
+                comp_note = out.get("coverage_reason") or out.get("composite_note") or "tidak dinilai (cakupan data rendah)"
                 if out.get("score_status") == "Data tidak memadai" or has_local_gate or "tidak memadai" in comp_note.lower():
                     lines.append(f"- **Indeks Kecukupan Fasilitas Dasar:** Data tidak memadai ({comp_note})")
                 else:
@@ -1182,11 +1186,13 @@ def build_simulation_deterministic_block(tool_name: str, out: Dict[str, Any]) ->
     base_pop = delta_data.get("baseline_population")
     sim_pop = delta_data.get("simulated_population") or out.get("new_total_population")
     delta_pop = delta_data.get("population_delta")
+    pop_note = delta_data.get("population_note") or out.get("population_note")
+    note_suffix = f" *({pop_note})*" if pop_note else ""
     if base_pop is not None and sim_pop is not None:
         delta_val = delta_pop if delta_pop is not None else (sim_pop - base_pop)
-        lines.append(f"- **Populasi:** {base_pop:,} jiwa ➔ {sim_pop:,} jiwa (+{delta_val:,} jiwa) *(Sumber data penduduk belum terverifikasi (TODO-VERIFY))*")
+        lines.append(f"- **Populasi:** {base_pop:,} jiwa ➔ {sim_pop:,} jiwa (+{delta_val:,} jiwa){note_suffix}")
     elif delta_pop is not None:
-        lines.append(f"- **Pertambahan Populasi:** +{delta_pop:,} jiwa *(Sumber data penduduk belum terverifikasi (TODO-VERIFY))*")
+        lines.append(f"- **Pertambahan Populasi:** +{delta_pop:,} jiwa{note_suffix}")
 
     base_score = delta_data.get("baseline_composite_score")
     sim_score = delta_data.get("simulated_composite_score")

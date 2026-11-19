@@ -22,10 +22,16 @@ def find_free_port() -> int:
 @pytest.fixture(scope="session")
 def live_server_url():
     """
-    Starts uvicorn on an ephemeral free port for the system test session.
+    Uses DRP_SYSTEM_SERVER_URL if provided by a staging runner, otherwise
+    starts uvicorn on an ephemeral free port for the system test session.
     Guarantees tests run against the current working tree code.
     Terminates cleanly in session teardown.
     """
+    external_url = os.getenv("DRP_SYSTEM_SERVER_URL")
+    if external_url:
+        yield external_url.rstrip("/")
+        return
+
     port = find_free_port()
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
