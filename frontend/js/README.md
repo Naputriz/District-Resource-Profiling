@@ -20,6 +20,7 @@ Native ES modules architecture (`<script type="module">`) with plain JavaScript 
 | `frontend/js/panels/watchdog.js`  | Watchdog telemetry panel: GPU metrics, AI engine status, PostGIS & Redis container states. |
 | `frontend/js/panels/tabs.js`      | Right sidebar tab navigation & view switching. |
 | `frontend/js/chat/chat.js`        | Asisten Tata Ruang chat dock, markdown rendering, guardrail badges, citations list. |
+| `frontend/js/auth/auth.js`        | Authentication manager: JWT in sessionStorage, modal dialogs, header badge, action gatekeeping. |
 
 ## Dependency Direction (Acyclic DAG)
 
@@ -44,7 +45,8 @@ All module dependencies flow strictly unidirectionally without circular referenc
    │      ├── [api.js]
    │      ├── [utils/dom.js]
    │      └── [map/actions.js] ──> [state.js], [map/map.js], [map/layers.js], [panels/tabs.js], [panels/blankspots.js]
-   └── [panels/watchdog.js] ──> [api.js] ──> [config.js]
+   ├── [panels/watchdog.js] ──> [api.js] ──> [config.js]
+   └── [auth/auth.js] ──> [api.js]
 ```
 
 Leaves (zero internal imports or importing other leaves only): `state.js`, `config.js`, `utils/dom.js`, `api.js`.

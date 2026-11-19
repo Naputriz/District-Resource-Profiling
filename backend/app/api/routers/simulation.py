@@ -2,9 +2,9 @@
 What-If urban scenario simulation endpoints: population shock and superblock projects.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from backend.app.core.config import settings
-from backend.app.api.deps import get_db_cursor
+from backend.app.api.deps import get_db_cursor, get_current_user
 from backend.app.engine.simulation import (
     WhatIfSimulationEngine,
     SimulationRequest,
@@ -21,7 +21,9 @@ router = APIRouter()
     response_model=SimulationDeltaDTO,
     tags=["What-If Urban Simulation"],
 )
-def run_what_if_simulation(req: SimulationRequest):
+def run_what_if_simulation(
+    req: SimulationRequest, current_user: dict = Depends(get_current_user)
+):
     """
     Simulates hypothetical urban changes (population shock + hypothetical amenities)
     in an isolated memory sandbox without mutating master data.
@@ -87,7 +89,10 @@ def run_what_if_simulation(req: SimulationRequest):
     response_model=SuperblockImpactDTO,
     tags=["What-If Urban Simulation"],
 )
-def run_superblock_simulation(req: SuperblockSimulationRequest):
+def run_superblock_simulation(
+    req: SuperblockSimulationRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """
     Simulates high-density superblock / apartment complex development.
     Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%.

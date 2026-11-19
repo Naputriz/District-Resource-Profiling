@@ -17,6 +17,7 @@ import { initTabNavigation } from "./panels/tabs.js";
 import { initSimulationControls } from "./panels/simulation.js";
 import { initChatbot } from "./chat/chat.js";
 import { loadWatchdogTelemetry, loadHealthStatus } from "./panels/watchdog.js";
+import { initAuth } from "./auth/auth.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   initResizableSplitter();
@@ -26,6 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initPillarFilters();
   initChatbot();
   initSimulationControls();
+  initAuth();
 
   await loadStandardsMetadata();
   await loadHealthStatus();

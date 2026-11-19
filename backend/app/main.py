@@ -19,6 +19,7 @@ from starlette.responses import JSONResponse
 
 from backend.app.core.config import settings
 from backend.app.core.db import init_db_pool, close_db_pool
+from backend.app.core.auth import decode_access_token
 from backend.app.api.schemas import BlankSpotSimRequest, HybridSearchRequest
 from backend.app.api.routers import (
     meta,
@@ -28,6 +29,7 @@ from backend.app.api.routers import (
     rag,
     chat,
     watchdog,
+    auth,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,17 +57,35 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Optional API Key Authentication Middleware (§13.1C)
+# Optional API Key Authentication Middleware (§13.1C & TODO-4)
 @app.middleware("http")
 async def optional_api_key_middleware(request: Request, call_next):
+    # Public auth endpoints do not require API_KEY
+    if request.url.path.startswith(f"{settings.API_V1_STR}/auth/"):
+        return await call_next(request)
+
     api_key = os.getenv("API_KEY")
     if api_key and request.method == "POST":
         client_key = request.headers.get("X-API-Key")
-        if not client_key or client_key != api_key:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Unauthorized: Invalid or missing X-API-Key header"},
-            )
+        auth_header = request.headers.get("Authorization")
+        # Allow service key match
+        if client_key and client_key == api_key:
+            return await call_next(request)
+        # Allow user bearer token (route dependencies will validate the JWT)
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            try:
+                decode_access_token(token)
+                return await call_next(request)
+            except Exception:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Unauthorized: Invalid or missing credentials"},
+                )
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized: Invalid or missing X-API-Key header"},
+        )
     return await call_next(request)
 
 
@@ -86,6 +106,7 @@ app.include_router(simulation.router)
 app.include_router(rag.router)
 app.include_router(chat.router)
 app.include_router(watchdog.router)
+app.include_router(auth.router)
 
 # Frontend UI & Static Assets Serving
 _BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

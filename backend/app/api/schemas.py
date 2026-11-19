@@ -2,8 +2,54 @@
 Pydantic schemas used across API routers.
 """
 
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+
+
+class UserRegisterRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=10, description="Minimal 10 karakter")
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Kata sandi maksimal 72 byte UTF-8.")
+        return v
+
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserInfo(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    role: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserInfo
+
+
+class UserLimits(BaseModel):
+    chat_requests_limit: int
+    chat_window_minutes: int
+
+
+class UserProfileResponse(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    role: str
+    limits: UserLimits
+
 
 
 class BlankSpotSimRequest(BaseModel):

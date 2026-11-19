@@ -1,6 +1,10 @@
 import os
+import secrets
+import logging
 from dotenv import load_dotenv
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 from pydantic_settings import BaseSettings
 from typing import List
@@ -42,6 +46,17 @@ class Settings(BaseSettings):
     SUPERBLOCK_RTH_RATIO: float = 0.20 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
     SUPERBLOCK_STORMWATER_DEPTH_M: float = 0.150 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
 
+    # Authentication & Authorization Settings (TODO-4)
+    AUTH_ALLOW_REGISTER: bool = os.getenv("AUTH_ALLOW_REGISTER", "true").lower() in ("true", "1", "yes")
+    AUTH_JWT_SECRET: str = os.getenv("AUTH_JWT_SECRET", "")
+    AUTH_JWT_ALGORITHM: str = "HS256"
+    AUTH_JWT_EXPIRE_MINUTES: int = int(os.getenv("AUTH_JWT_EXPIRE_MINUTES", "60"))
+    AUTH_PASSWORD_MIN_LENGTH: int = 10
+    AUTH_CHAT_RATE_LIMIT_REQUESTS: int = int(os.getenv("AUTH_CHAT_RATE_LIMIT_REQUESTS", "20"))
+    AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS: int = int(os.getenv("AUTH_CHAT_RATE_LIMIT_WINDOW_SECONDS", "600"))
+    AUTH_BRUTE_FORCE_MAX_ATTEMPTS: int = int(os.getenv("AUTH_BRUTE_FORCE_MAX_ATTEMPTS", "5"))
+    AUTH_BRUTE_FORCE_LOCKOUT_SECONDS: int = int(os.getenv("AUTH_BRUTE_FORCE_LOCKOUT_SECONDS", "900"))
+
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
@@ -50,3 +65,10 @@ class Settings(BaseSettings):
         extra = "allow"
 
 settings = Settings()
+if not settings.AUTH_JWT_SECRET:
+    settings.AUTH_JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning(
+        "AUTH_JWT_SECRET is not set in environment. Generated random ephemeral secret. "
+        "Tokens will be invalidated on server restart."
+    )
+

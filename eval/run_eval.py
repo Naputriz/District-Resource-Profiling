@@ -424,6 +424,20 @@ def run_full_eval(item_ids: Optional[List[str]] = None, num_runs: int = 3):
     init_db_pool()
     client = TestClient(app)
 
+    eval_api_key = os.getenv("API_KEY")
+    auth_headers = {}
+    if eval_api_key:
+        auth_headers["X-API-Key"] = eval_api_key
+    else:
+        from backend.app.core.auth import create_access_token
+        service_token = create_access_token({
+            "sub": "00000000-0000-0000-0000-000000000000",
+            "email": "eval@drp.local",
+            "role": "admin",
+            "is_service": True,
+        })
+        auth_headers["Authorization"] = f"Bearer {service_token}"
+
     all_runs_results = []
 
     print(f"\n=======================================================")
@@ -444,7 +458,7 @@ def run_full_eval(item_ids: Optional[List[str]] = None, num_runs: int = 3):
             }
 
             try:
-                res = client.post("/api/v1/chat", json=payload)
+                res = client.post("/api/v1/chat", json=payload, headers=auth_headers)
                 if res.status_code == 200:
                     chat_data = res.json()
                     eval_res = evaluate_item(item, chat_data)
@@ -584,7 +598,10 @@ def regenerate_from_existing(results_file_path: Path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--regenerate":
+    if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
+        print("Usage: python eval/run_eval.py [--regenerate [file]]")
+        sys.exit(0)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--regenerate":
         res_file = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parent / "results_20261014.json"
         regenerate_from_existing(res_file)
     else:
