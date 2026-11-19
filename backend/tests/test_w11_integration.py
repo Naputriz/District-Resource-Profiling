@@ -107,17 +107,23 @@ def test_d1_simulation_assumptions_shape():
 @pytest.mark.unit
 def test_d1_frontend_assumptions_and_obligations_xss_prevention():
     """
-    Static check verifying that frontend/js/app.js:
-    1. Uses formatAssumptionValue and textContent without raw ${v} innerHTML interpolation.
-    2. Renders res-obligations-list using textContent / safe DOM nodes (no innerHTML with API strings).
+    Static check verifying that:
+    1. frontend/js/utils/dom.js defines formatAssumptionValue.
+    2. frontend/js/panels/simulation.js imports formatAssumptionValue and uses it with textContent (no raw ${v} innerHTML).
+    3. Renders res-obligations-list using textContent / safe DOM nodes (no innerHTML with API strings).
     """
     import os
-    app_js_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "js", "app.js")
-    with open(app_js_path, "r", encoding="utf-8") as f:
+    sim_js_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "js", "panels", "simulation.js")
+    with open(sim_js_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 1. formatAssumptionValue exists and is used
-    assert "function formatAssumptionValue" in content
+    dom_js_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "js", "utils", "dom.js")
+    with open(dom_js_path, "r", encoding="utf-8") as f:
+        dom_content = f.read()
+
+    # 1. formatAssumptionValue exists in utils/dom.js and is imported/used in simulation.js
+    assert "function formatAssumptionValue" in dom_content
+    assert "formatAssumptionValue" in content
     assert "strong.textContent = formatAssumptionValue(v)" in content
 
     # 2. No raw ${v} interpolation in assumption table innerHTML
