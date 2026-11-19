@@ -1,5 +1,5 @@
 """
-Unit Tests for Read-Only Watchdog Agent & Observability (README.revised.md §12).
+Unit Tests for Read-Only Watchdog Agent & Observability (README.md §12).
 Verifies:
 1. Safe fallback when GPU or nvidia-smi is missing.
 2. Incident logging when Ollama AI engine is down, with 0 subprocess restart commands.

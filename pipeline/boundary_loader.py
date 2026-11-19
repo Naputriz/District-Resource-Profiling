@@ -289,7 +289,7 @@ class DistrictDataIngestionPipeline:
                 with open(osm_file, "r", encoding="utf-8") as f:
                     osm_facilities = json.load(f)
 
-                logger.info("Deactivating seed_manual records (setting is_active = FALSE per README.revised.md §6/§14)...")
+                logger.info("Deactivating seed_manual records (setting is_active = FALSE per README.md §6/§14)...")
                 cur.execute("UPDATE public_facilities SET is_active = FALSE WHERE source = 'seed_manual';")
                 logger.info("Resetting is_active on OSM facilities prior to fresh deduplicated load...")
                 cur.execute("UPDATE public_facilities SET is_active = FALSE WHERE source = 'osm';")

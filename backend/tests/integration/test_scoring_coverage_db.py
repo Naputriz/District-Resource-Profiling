@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.db, pytest.mark.usefixtures("requires_seed")]
 
 def test_simulation_what_if_zero_shock_matches_scorecard_phase_5_1():
     """
-    Test 5.1A.2 / VALID-1:
+    Composite coverage rule:
     For Gambir, Setiabudi, Tebet, Kebon Jeruk, Kepulauan Seribu Selatan,
     a what-if simulation with population_shock_count = 0 returns
     baseline_composite_score equal to the scorecard composite (exact, 2 decimals),

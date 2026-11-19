@@ -1,5 +1,5 @@
 """
-Unit tests for deterministic simulation answers per REBUILD_PROMPT_P13_1 §13.1B:
+Unit tests for deterministic simulation answers:
 Validates:
 1. build_simulation_deterministic_block output structure.
 2. CognitiveSpatialAgentOrchestrator answer_mode: "template+narrative" when LLM writes text without digits.
@@ -92,7 +92,7 @@ SAMPLE_SUPERBLOCK_OUTPUT = {
 
 
 def test_build_simulation_deterministic_block_structure():
-    """Verify deterministic block contents per REBUILD_PROMPT_P13_1 §13.1B."""
+    """Verify deterministic block contents."""
     block = build_simulation_deterministic_block("run_what_if_simulation", SAMPLE_WHAT_IF_OUTPUT)
 
     assert "### 📈 Hasil Simulasi Perubahan Populasi (Tebet)" in block
