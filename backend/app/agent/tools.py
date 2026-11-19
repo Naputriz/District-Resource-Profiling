@@ -36,13 +36,13 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_district_scorecard",
-            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di wilayah provinsi aktif (DKI Jakarta / Jawa). Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
+            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di provinsi aktif. Jika pengguna menyebut nama tempat tanpa kata 'kecamatan', anggap itu nama kecamatan di provinsi aktif dan langsung panggil tool ini sebelum meminta klarifikasi. Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "district_code": {
                         "type": "string",
-                        "description": "Kode Kemendagri kecamatan atau nama kecamatan (misal 'Tebet', 'Coblong', 'Gondokusuman')"
+                        "description": "Kode Kemendagri kecamatan atau nama tempat/kecamatan di provinsi aktif (misal 'Tebet', 'Coblong', 'Gondokusuman', 'Wenang', 'Ujung Pandang')"
                     }
                 },
                 "required": ["district_code"]

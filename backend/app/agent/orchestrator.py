@@ -65,6 +65,9 @@ def build_system_prompt(province_code: Optional[str] = None) -> str:
 
     return f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk {region_header}.
 
+ATURAN PENCARIAN WILAYAH:
+Setiap nama tempat dalam pertanyaan pengguna adalah nama kecamatan di wilayah provinsi aktif (kecuali dinyatakan lain secara eksplisit). Anda WAJIB langsung memanggil tool yang sesuai (misalnya get_district_scorecard) untuk mencari nama tempat tersebut sebelum meminta klarifikasi kepada pengguna.
+
 TUGAS DAN ATURAN KETAT ANDA:
 1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri. Jika output tool menyatakan score_status = "Data tidak memadai" atau composite_score bernilai null, nyatakan secara eksplisit "Data tidak memadai" beserta alasan cakupan (coverage_reason / composite_note), dan DILARANG menyebut skor komposit atau defisit unit sebagai nol. Selalu sebutkan sumber data penduduk dari output tool ({pop_hint}).
 2. ATURAN #2 (ISOLASI SANDBOX): Jelaskan hasil simulasi dengan menyatakan bahwa data tersebut adalah skenario hipotetis terisolasi tanpa mengubah data master. Indikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif.
@@ -345,6 +348,51 @@ class CognitiveSpatialAgentOrchestrator:
                 break
 
             if not tool_calls:
+                # Deterministic fallback when LLM asks for clarification on a bare place name in round 1
+                if round_num == 1 and not all_tool_outputs and active_prov and last_user_content:
+                    fallback_target = self._resolve_bare_place_in_province(last_user_content, active_prov)
+                    if fallback_target:
+                        fn_name = "get_district_scorecard"
+                        args = {"district_code": fallback_target}
+                        logger.info(
+                            f"[Round {round_num}] LLM made no tool call; deterministic place pre-check invoking {fn_name}({args}) in province {active_prov}."
+                        )
+                        try:
+                            tool_output = execute_tool_call(fn_name, args, province_code=active_prov)
+                            tool_ok = not (isinstance(tool_output, dict) and bool(tool_output.get("error")))
+                        except Exception as tool_err:
+                            tool_ok = False
+                            tool_output = {"error": str(tool_err)}
+
+                        if tool_ok:
+                            tool_trace.append({
+                                "round": round_num,
+                                "tool": fn_name,
+                                "args": args,
+                                "ok": True,
+                            })
+                            executed_tools.append({
+                                "name": fn_name,
+                                "arguments": args,
+                                "result_summary": tool_output,
+                            })
+                            all_tool_outputs.append(tool_output)
+                            self._extract_map_actions(
+                                fn_name, args, tool_output, map_actions, province_code=active_prov
+                            )
+                            messages.append({
+                                "role": "assistant",
+                                "content": "",
+                                "tool_calls": [
+                                    {"function": {"name": fn_name, "arguments": args}}
+                                ],
+                            })
+                            messages.append({
+                                "role": "tool",
+                                "content": json.dumps(tool_output, default=str),
+                            })
+                            continue
+
                 # LLM produced a final answer without requesting further tools
                 stop_reason = "final_answer"
                 raw_reply = message.get("content", "")
@@ -581,6 +629,61 @@ class CognitiveSpatialAgentOrchestrator:
             raw_llm_reply=raw_llm_reply,
             answer_mode=answer_mode
         )
+
+    def _resolve_bare_place_in_province(
+        self,
+        user_text: str,
+        province_code: str,
+    ) -> Optional[str]:
+        """
+        Matches a district name from `province_code` inside `user_text` when the LLM
+        returned no tool calls on round 1. Returns canonical kemendagri_code if a single
+        district matches uniquely (longest non-overlapping match), else None.
+        """
+        text = str(user_text or "").strip()
+        if not text or not province_code:
+            return None
+
+        try:
+            with get_db_cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT k.kemendagri_code, k.name
+                    FROM kecamatan k
+                    JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+                    JOIN provinces p ON p.id = c.province_id
+                    WHERE p.kemendagri_code = %s;
+                    """,
+                    (province_code,),
+                )
+                rows = cur.fetchall()
+        except Exception:
+            return None
+
+        matches: List[Tuple[str, str]] = []
+        for r in rows:
+            name = str(r.get("name") or "").strip()
+            code = str(r.get("kemendagri_code") or "").strip()
+            if not name or not code:
+                continue
+            if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, flags=re.IGNORECASE):
+                matches.append((code, name))
+
+        if not matches:
+            return None
+
+        # Prefer longest matches; drop shorter names contained inside a longer matched name
+        matches.sort(key=lambda item: len(item[1]), reverse=True)
+        filtered: List[Tuple[str, str]] = []
+        for code, name in matches:
+            nl = name.lower()
+            if any(nl != kept_name.lower() and nl in kept_name.lower() for _, kept_name in filtered):
+                continue
+            filtered.append((code, name))
+
+        if len(filtered) == 1:
+            return filtered[0][0]
+        return None
 
     def _resolve_district_code(
         self,

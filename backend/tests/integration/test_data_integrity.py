@@ -1,6 +1,6 @@
 """
 Data Integrity Tests for OpenStreetMap (OSM) Ingestion & Spatial Sync.
-Enforces REBUILD_PROMPT_P3.md §3F.2:
+Enforces data integrity rules:
 1. No facility with source = 'osm' has a null osm_id.
 2. No active facility has source = 'seed_manual' after OSM load.
 3. Every active facility has an associated kecamatan (kecamatan_id is not null).

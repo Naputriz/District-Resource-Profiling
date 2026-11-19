@@ -1,6 +1,6 @@
 """
 Unit tests for AI Numeric Guardrail and Citation Validator.
-Complies with REBUILD_PROMPT_P4.md §4D:
+Guardrail rules covered:
 - Tests with MOCKED LLM (no GPU required).
 - Fabricated number triggers retry; second bad answer triggers numeric_fallback.
 - Only tool numbers -> guardrail == 'passed'.
