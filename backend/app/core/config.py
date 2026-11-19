@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     SUPERBLOCK_RTH_RATIO: float = 0.20 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
     SUPERBLOCK_STORMWATER_DEPTH_M: float = 0.150 # Parameter asumsi, belum diverifikasi ke Perda 31/2022 (TODO-VERIFY)
 
+    # Multi-Region Configuration (TODO-3)
+    DEFAULT_PROVINCE_CODE: str = os.getenv("DEFAULT_PROVINCE_CODE", "31")
+    DEFAULT_PROVINCE_NAME: str = os.getenv("DEFAULT_PROVINCE_NAME", "DKI Jakarta")
+
     # Authentication & Authorization Settings (TODO-4)
     AUTH_ALLOW_REGISTER: bool = os.getenv("AUTH_ALLOW_REGISTER", "true").lower() in ("true", "1", "yes")
     AUTH_JWT_SECRET: str = os.getenv("AUTH_JWT_SECRET", "")

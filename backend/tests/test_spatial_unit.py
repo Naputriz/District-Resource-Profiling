@@ -26,9 +26,9 @@ pytestmark = pytest.mark.unit
 def test_get_district_boundary_geojson_unit():
     """Verifies GeoJSON boundary retrieval and None handling when district is missing."""
     mock_cur = MagicMock()
-    mock_cur.fetchone.return_value = {
-        "geojson": {"type": "Polygon", "coordinates": [[[106.8, -6.2], [106.9, -6.2], [106.9, -6.3], [106.8, -6.2]]]}
-    }
+    mock_dist = {"id": 1, "kemendagri_code": "31.71.09", "name": "Tebet"}
+    mock_geom = {"geojson": {"type": "Polygon", "coordinates": [[[106.8, -6.2], [106.9, -6.2], [106.9, -6.3], [106.8, -6.2]]]}}
+    mock_cur.fetchone.side_effect = [mock_dist, mock_geom]
 
     @contextmanager
     def mock_cursor_ctx():
@@ -40,6 +40,7 @@ def test_get_district_boundary_geojson_unit():
         assert len(res["coordinates"]) == 1
 
         # Test district not found
+        mock_cur.fetchone.side_effect = None
         mock_cur.fetchone.return_value = None
         res_none = PostGISSpatialEngine.get_district_boundary_geojson("invalid_code")
         assert res_none is None
@@ -48,6 +49,7 @@ def test_get_district_boundary_geojson_unit():
 def test_compute_facility_buffers_unit():
     """Verifies facility buffer query construction, parameter filtering, and FeatureCollection formatting."""
     mock_cur = MagicMock()
+    mock_dist = {"id": 1, "kemendagri_code": "31.71.09", "name": "Tebet"}
     mock_rows = [
         {
             "id": 101,
@@ -70,6 +72,7 @@ def test_compute_facility_buffers_unit():
             "lat": -6.239
         }
     ]
+    mock_cur.fetchone.return_value = mock_dist
     mock_cur.fetchall.return_value = mock_rows
 
     @contextmanager
@@ -95,7 +98,7 @@ def test_compute_facility_buffers_unit():
         called_params = mock_cur.execute.call_args[0][1]
         assert "AND f.facility_type = %s" in called_sql
         assert "AND f.pillar = %s" in called_sql
-        assert called_params == ("31.71.09", "31.71.09", "puskesmas_kelurahan", "lifeline_health")
+        assert called_params == (1, "puskesmas_kelurahan", "lifeline_health")
 
 
 def test_calculate_blank_spots_normal_area_ratio():
@@ -120,7 +123,7 @@ def test_calculate_blank_spots_normal_area_ratio():
         "unserved_all": 0.0857,
         "blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
-    mock_cur.fetchone.side_effect = [mock_dist, mock_spatial]
+    mock_cur.fetchone.side_effect = [mock_dist, mock_dist, mock_spatial]
 
     @contextmanager
     def mock_cursor_ctx():
@@ -164,7 +167,7 @@ def test_calculate_blank_spots_high_ratio_area_note():
         "unserved_all": 37.27,
         "blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
-    mock_cur.fetchone.side_effect = [mock_dist, mock_spatial]
+    mock_cur.fetchone.side_effect = [mock_dist, mock_dist, mock_spatial]
 
     @contextmanager
     def mock_cursor_ctx():
@@ -201,7 +204,7 @@ def test_calculate_blank_spots_clamping_and_bounds():
         "unserved_all": -0.05,    # Negative area
         "blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
-    mock_cur.fetchone.side_effect = [mock_dist, mock_spatial]
+    mock_cur.fetchone.side_effect = [mock_dist, mock_dist, mock_spatial]
 
     @contextmanager
     def mock_cursor_ctx():
@@ -252,13 +255,13 @@ def test_simulate_blank_spot_reduction_unit():
     }
 
     # Step 2: simulate query mock: unserved reduced from 0.09 to 0.02
-    mock_kec_id = {"id": 1}
+    mock_kec_id = {"id": 1, "kemendagri_code": "31.71.09", "utm_srid": 32748}
     mock_sim_result = {
         "sim_unserved_km2": 0.02,
         "sim_blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
 
-    mock_cur.fetchone.side_effect = [mock_dist, mock_spatial, mock_kec_id, mock_sim_result]
+    mock_cur.fetchone.side_effect = [mock_dist, mock_dist, mock_spatial, mock_kec_id, mock_sim_result]
 
     @contextmanager
     def mock_cursor_ctx():

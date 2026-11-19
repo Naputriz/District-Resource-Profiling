@@ -33,7 +33,7 @@ from backend.app.core.db import get_db_cursor
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk Provinsi DKI Jakarta.
+SYSTEM_PROMPT = f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk wilayah aktif (Provinsi {settings.DEFAULT_PROVINCE_NAME}).
 
 TUGAS DAN ATURAN KETAT ANDA:
 1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri.
@@ -562,15 +562,11 @@ class CognitiveSpatialAgentOrchestrator:
         if not target:
             return None
 
+        from backend.app.engine.spatial import resolve_district_record
         try:
-            with get_db_cursor() as cur:
-                cur.execute(
-                    "SELECT kemendagri_code FROM kecamatan WHERE kemendagri_code = %s OR LOWER(name) = LOWER(%s);",
-                    (str(target), str(target))
-                )
-                row = cur.fetchone()
-                if row and row.get("kemendagri_code"):
-                    return str(row["kemendagri_code"])
+            record, _ = resolve_district_record(str(target))
+            if record and record.get("kemendagri_code"):
+                return str(record["kemendagri_code"])
         except Exception as e:
             logger.warning(f"Database lookup for district code '{target}' failed: {e}")
 

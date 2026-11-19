@@ -30,6 +30,7 @@ from backend.app.api.routers import (
     chat,
     watchdog,
     auth,
+    regions,
 )
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,7 @@ app.include_router(rag.router)
 app.include_router(chat.router)
 app.include_router(watchdog.router)
 app.include_router(auth.router)
+app.include_router(regions.router)
 
 # Frontend UI & Static Assets Serving
 _BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

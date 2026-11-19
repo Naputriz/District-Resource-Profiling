@@ -7,22 +7,36 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 from backend.app.core.config import settings
 from backend.app.api.deps import get_db_cursor, get_redis_client
+from backend.app.engine.spatial import resolve_district_record, resolve_district_candidates
 
 router = APIRouter()
 
 
 @router.get(f"{settings.API_V1_STR}/districts", tags=["Districts & Compliance"])
-def list_districts():
-    """Lists all 44 Kecamatan with demographic stats and compliance scorecards."""
+def list_districts(
+    province_code: Optional[str] = Query(
+        None, description="Kode provinsi Kemendagri, default 31 (DKI Jakarta)"
+    )
+):
+    """Lists all Kecamatan in the specified province with demographic stats and compliance scorecards."""
+    target_province = str(province_code).strip() if province_code else settings.DEFAULT_PROVINCE_CODE
+
+    # Multi-region: this week only province 31 has data loaded
+    if target_province != settings.DEFAULT_PROVINCE_CODE:
+        raise HTTPException(
+            status_code=404,
+            detail="Data wilayah ini belum tersedia (rencana v1.1)"
+        )
+
     from backend.app.engine.standards_availability import get_current_availability_source
 
     avail_src = get_current_availability_source()
 
-    # Check Redis cache first
+    # Check Redis cache first (province-scoped key, fallback to legacy)
     try:
         r_client = get_redis_client()
         if r_client:
-            cached = r_client.get("cache:compliance:scores")
+            cached = r_client.get(f"cache:compliance:scores:{target_province}") or r_client.get("cache:compliance:scores")
             if cached:
                 dist_list = json.loads(cached)
                 for d in dist_list:
@@ -46,9 +60,11 @@ def list_districts():
                 s.metrics_payload
             FROM kecamatan k
             JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+            JOIN provinces p ON p.id = c.province_id
             LEFT JOIN district_compliance_scores s ON s.district_id = k.id
+            WHERE p.kemendagri_code = %s
             ORDER BY k.kemendagri_code;
-        """)
+        """, (target_province,))
         results = [dict(r) for r in cur.fetchall()]
         for r in results:
             r["population_note"] = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
@@ -66,6 +82,19 @@ def list_districts():
 )
 def get_district_detail(district_code: str):
     """Returns single district compliance scorecard and deficit breakdown."""
+    record, err = resolve_district_record(district_code)
+    if not record:
+        if err == "ambiguous":
+            candidates = resolve_district_candidates(district_code)
+            cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nama kecamatan '{district_code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."
+            )
+        raise HTTPException(
+            status_code=404, detail=f"Kecamatan '{district_code}' not found."
+        )
+
     with get_db_cursor() as cur:
         cur.execute(
             """
@@ -79,9 +108,9 @@ def get_district_detail(district_code: str):
             FROM kecamatan k
             JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
             LEFT JOIN district_compliance_scores s ON s.district_id = k.id
-            WHERE k.kemendagri_code = %s OR LOWER(k.name) = LOWER(%s);
+            WHERE k.id = %s;
         """,
-            (district_code, district_code),
+            (record["id"],),
         )
         row = cur.fetchone()
 
@@ -131,10 +160,20 @@ def list_facilities(
     ),
     facility_type: Optional[str] = None,
     district_code: Optional[str] = None,
+    province_code: Optional[str] = Query(
+        None, description="Kode provinsi, default 31 (DKI Jakarta)"
+    ),
     search: Optional[str] = None,
     limit: int = Query(100, le=500),
 ):
     """Lists public facilities with flexible filtering across all 4 Pillars."""
+    target_province = str(province_code).strip() if province_code else settings.DEFAULT_PROVINCE_CODE
+    if target_province != settings.DEFAULT_PROVINCE_CODE:
+        raise HTTPException(
+            status_code=404,
+            detail="Data wilayah ini belum tersedia (rencana v1.1)"
+        )
+
     query = """
         SELECT 
             f.source, f.source_id, f.name, f.pillar, f.category, f.facility_type,
@@ -143,6 +182,8 @@ def list_facilities(
             f.metadata
         FROM public_facilities f
         LEFT JOIN kecamatan k ON k.id = f.kecamatan_id
+        LEFT JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+        LEFT JOIN provinces p ON p.id = c.province_id
         WHERE f.is_active = TRUE
     """
     params = []
@@ -156,8 +197,21 @@ def list_facilities(
         params.append(facility_type)
 
     if district_code:
-        query += " AND (k.kemendagri_code = %s OR LOWER(k.name) = LOWER(%s))"
-        params.extend([district_code, district_code])
+        record, err = resolve_district_record(district_code, province_code=province_code)
+        if not record:
+            if err == "ambiguous":
+                candidates = resolve_district_candidates(district_code, province_code=province_code)
+                cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Nama kecamatan '{district_code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."
+                )
+            raise HTTPException(
+                status_code=404,
+                detail=f"Kecamatan '{district_code}' not found."
+            )
+        query += " AND f.kecamatan_id = %s"
+        params.append(record["id"])
 
     if search:
         query += " AND f.name ILIKE %s"

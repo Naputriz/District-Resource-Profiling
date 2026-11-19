@@ -10,12 +10,13 @@ Provides deterministic execution wrappers for:
 import json
 from typing import Dict, Any, List, Optional
 from backend.app.core.db import get_db_cursor
+from backend.app.core.config import settings
 from backend.app.engine.simulation import (
     WhatIfSimulationEngine,
     HypotheticalAmenity,
     SuperblockSimulationRequest
 )
-from backend.app.engine.spatial import PostGISSpatialEngine
+from backend.app.engine.spatial import PostGISSpatialEngine, resolve_district_record, resolve_district_candidates
 from backend.app.rag.hybrid_search import HybridRegulationRetriever
 
 # -----------------------------------------------------------------------------
@@ -26,7 +27,7 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_district_scorecard",
-            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di DKI Jakarta. Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
+            "description": f"Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di wilayah aktif ({settings.DEFAULT_PROVINCE_NAME}). Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -149,6 +150,16 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
     try:
         if tool_name == "get_district_scorecard":
             code = arguments["district_code"]
+            record, err = resolve_district_record(code)
+            if not record:
+                if err == "ambiguous":
+                    candidates = resolve_district_candidates(code)
+                    cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+                    return {
+                        "error": f"Nama kecamatan '{code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan atau nama kabupaten/kota."
+                    }
+                return {"error": f"Kecamatan '{code}' tidak ditemukan."}
+
             with get_db_cursor() as cur:
                 cur.execute("""
                     SELECT k.kemendagri_code, k.name, c.name as city_name,
@@ -159,8 +170,8 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
                     FROM kecamatan k
                     JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
                     LEFT JOIN district_compliance_scores s ON s.district_id = k.id
-                    WHERE k.kemendagri_code = %s OR LOWER(k.name) = LOWER(%s);
-                """, (code, code))
+                    WHERE k.id = %s;
+                """, (record["id"],))
                 row = cur.fetchone()
                 if not row:
                     return {"error": f"Kecamatan '{code}' tidak ditemukan."}
@@ -198,7 +209,16 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
         elif tool_name == "get_unserved_blank_spots":
             code = arguments["district_code"]
             ftype = arguments.get("facility_type", "puskesmas_kelurahan")
-            result = PostGISSpatialEngine.calculate_blank_spots(code, ftype)
+            record, err = resolve_district_record(code)
+            if not record:
+                if err == "ambiguous":
+                    candidates = resolve_district_candidates(code)
+                    cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+                    return {
+                        "error": f"Nama kecamatan '{code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan atau nama kabupaten/kota."
+                    }
+                return {"error": f"Kecamatan '{code}' tidak ditemukan."}
+            result = PostGISSpatialEngine.calculate_blank_spots(record["kemendagri_code"], ftype)
             unserved_pct = round(100.0 - result.coverage_percentage, 2)
             ratio_pct = round((result.unserved_area_km2 / max(0.001, result.district_area_km2)) * 100.0, 2)
             return {
@@ -239,16 +259,20 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
             pop_shock_cnt = arguments.get("population_shock_count", 0)
             pop_shock_pct = arguments.get("population_shock_percent", 0.0)
 
-            with get_db_cursor() as cur:
-                cur.execute("SELECT id, kemendagri_code, name, population FROM kecamatan WHERE kemendagri_code = %s OR LOWER(name) = LOWER(%s);", (code, code))
-                dist = cur.fetchone()
-                if not dist:
-                    return {"error": f"District '{code}' not found."}
+            record, err = resolve_district_record(code)
+            if not record:
+                if err == "ambiguous":
+                    candidates = resolve_district_candidates(code)
+                    cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+                    return {"error": f"Nama kecamatan '{code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."}
+                return {"error": f"District '{code}' not found."}
 
+            with get_db_cursor() as cur:
+                dist = record
                 cur.execute("SELECT facility_type, COUNT(*) as cnt FROM public_facilities WHERE kecamatan_id = %s AND is_active = TRUE GROUP BY facility_type;", (dist["id"],))
                 counts = {r["facility_type"]: r["cnt"] for r in cur.fetchall()}
 
-                cur.execute("SELECT facility_type, pillar, population_threshold, service_radius_meters, legal_reference FROM regulatory_standards;")
+                cur.execute("SELECT facility_type, pillar, population_threshold, service_radius_meters, legal_reference FROM regulatory_standards WHERE province_code IS NULL OR province_code = %s;", (dist.get("province_code") or settings.DEFAULT_PROVINCE_CODE,))
                 stds = cur.fetchall()
 
             delta = WhatIfSimulationEngine.compute_scenario_delta(
@@ -266,16 +290,20 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
         elif tool_name == "run_superblock_simulation":
             code = arguments["district_code"]
 
-            with get_db_cursor() as cur:
-                cur.execute("SELECT id, kemendagri_code, name, population FROM kecamatan WHERE kemendagri_code = %s OR LOWER(name) = LOWER(%s);", (code, code))
-                dist = cur.fetchone()
-                if not dist:
-                    return {"error": f"District '{code}' not found."}
+            record, err = resolve_district_record(code)
+            if not record:
+                if err == "ambiguous":
+                    candidates = resolve_district_candidates(code)
+                    cand_codes = ", ".join(c["kemendagri_code"] for c in candidates)
+                    return {"error": f"Nama kecamatan '{code}' ambigu (ditemukan {len(candidates)} wilayah: {cand_codes}). Mohon tentukan kode kecamatan spesifik."}
+                return {"error": f"District '{code}' not found."}
 
+            with get_db_cursor() as cur:
+                dist = record
                 cur.execute("SELECT facility_type, COUNT(*) as cnt FROM public_facilities WHERE kecamatan_id = %s AND is_active = TRUE GROUP BY facility_type;", (dist["id"],))
                 counts = {r["facility_type"]: r["cnt"] for r in cur.fetchall()}
 
-                cur.execute("SELECT facility_type, pillar, population_threshold, service_radius_meters, legal_reference FROM regulatory_standards;")
+                cur.execute("SELECT facility_type, pillar, population_threshold, service_radius_meters, legal_reference FROM regulatory_standards WHERE province_code IS NULL OR province_code = %s;", (dist.get("province_code") or settings.DEFAULT_PROVINCE_CODE,))
                 stds = cur.fetchall()
 
             req = SuperblockSimulationRequest(

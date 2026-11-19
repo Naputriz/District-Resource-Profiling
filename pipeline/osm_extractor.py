@@ -16,6 +16,7 @@ Strictly complies with README.md §6, §7, §14:
 - Elements matching tags without unambiguous category classified as 'unclassified' (never guessed).
 """
 
+import argparse
 import time
 import json
 import logging
@@ -30,6 +31,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
+REGIONS_DIR = BASE_DIR / "data" / "regions"
+
+def load_region_manifest(province_code: str) -> Dict[str, Any]:
+    manifest_path = REGIONS_DIR / f"{province_code}.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Region manifest for province '{province_code}' not found at {manifest_path}. "
+            f"Currently only province 31 (DKI Jakarta) has verified data sources (rencana v1.1)."
+        )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 DATA_DIR = BASE_DIR / "data"
 FACILITIES_DIR = DATA_DIR / "facilities"
 FACILITIES_DIR.mkdir(parents=True, exist_ok=True)
@@ -665,8 +678,14 @@ class OSMExtractor:
 
 if __name__ == "__main__":
     import sys
+    parser = argparse.ArgumentParser(description="Extract and classify OSM amenities per province")
+    parser.add_argument("--province", default="31", help="Kemendagri province code (default: 31 for DKI Jakarta)")
+    parser.add_argument("--live-fetch", action="store_true", help="Perform live Overpass API query")
+    args, unknown = parser.parse_known_args()
+    manifest = load_region_manifest(args.province)
+    logger.info(f"Loaded region manifest for province {args.province} ({manifest.get('province_name')}): {manifest.get('status')}")
     extractor = OSMExtractor()
-    if "--live-fetch" in sys.argv:
+    if args.live_fetch:
         extractor.run_extraction()
     else:
         extractor.reclassify_from_raw()

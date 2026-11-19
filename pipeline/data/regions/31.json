@@ -1,0 +1,35 @@
+{
+  "province_code": "31",
+  "province_name": "DKI Jakarta",
+  "has_data": true,
+  "status": "Active",
+  "center": [-6.2088, 106.8456],
+  "zoom": 11,
+  "bbox": [106.5100, -6.3800, 106.9800, -5.5400],
+  "utm_srid": 32748,
+  "utm_zone": "48S",
+  "total_districts": 44,
+  "boundaries": {
+    "source": "SakifAbdillah/jakartaKecamatanGeoJSON (BPS-aligned)",
+    "url": "https://raw.githubusercontent.com/SakifAbdillah/jakartaKecamatanGeoJSON/master/kecamatan.geojson",
+    "local_path": "pipeline/data/boundaries/jakarta_44_kecamatan.geojson",
+    "licence": "Public Domain / ODbL",
+    "total_districts": 44,
+    "verification_status": "verified"
+  },
+  "demographics": {
+    "source": "BPS Provinsi DKI Jakarta 2024 (Statistik Daerah Provinsi DKI Jakarta 2024)",
+    "local_path": "pipeline/data/boundaries/jakarta_demographics_bps.json",
+    "licence": "Government Open Data (BPS)",
+    "snapshot_date": "2024",
+    "verification_status": "unverified_census_estimate"
+  },
+  "amenities": {
+    "source": "OpenStreetMap contributors (ODbL)",
+    "url": "https://overpass-api.de/api/interpreter",
+    "local_path": "pipeline/data/facilities/osm_facilities_20261014.json",
+    "licence": "ODbL 1.0",
+    "snapshot_date": "2026-10-14",
+    "verification_status": "verified_osm_snapshot"
+  }
+}

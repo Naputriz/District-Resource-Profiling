@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS provinces (
     kemendagri_code VARCHAR(10) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     boundary GEOMETRY(MultiPolygon, 4326),
-    boundary_utm GEOMETRY(MultiPolygon, 32748),
+    boundary_utm GEOMETRY(MultiPolygon),
+    utm_srid INT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -23,7 +24,8 @@ CREATE TABLE IF NOT EXISTS kabupaten_kota (
     bps_code VARCHAR(15),
     name VARCHAR(100) NOT NULL,
     boundary GEOMETRY(MultiPolygon, 4326),
-    boundary_utm GEOMETRY(MultiPolygon, 32748),
+    boundary_utm GEOMETRY(MultiPolygon),
+    utm_srid INT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -39,7 +41,8 @@ CREATE TABLE IF NOT EXISTS kecamatan (
     total_rt INT DEFAULT 0,
     total_rw INT DEFAULT 0,
     boundary GEOMETRY(MultiPolygon, 4326) NOT NULL,
-    boundary_utm GEOMETRY(MultiPolygon, 32748),
+    boundary_utm GEOMETRY(MultiPolygon),
+    utm_srid INT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -76,9 +79,10 @@ CREATE TABLE IF NOT EXISTS public_facilities (
     contact VARCHAR(100),
     website VARCHAR(255),
     capacity INT DEFAULT 0,                   -- Beds, students, daily ridership, or land area
-    area_m2 NUMERIC(14, 2),                   -- Calculated polygon area in EPSG:32748
+    area_m2 NUMERIC(14, 2),                   -- Calculated polygon area in metric UTM
     coordinates GEOMETRY(Point, 4326) NOT NULL,
-    coordinates_utm GEOMETRY(Point, 32748),
+    coordinates_utm GEOMETRY(Point),
+    utm_srid INT,
     metadata JSONB DEFAULT '{}'::jsonb,       -- Extensible attributes (tags, opening hours, accreditation, operator)
     is_active BOOLEAN DEFAULT TRUE,           -- Soft delete / decommissioned flag
     is_verified BOOLEAN DEFAULT TRUE,
@@ -117,6 +121,7 @@ CREATE TABLE IF NOT EXISTS regulatory_standards (
     classified_count INT DEFAULT 0,
     data_availability VARCHAR(20) DEFAULT 'available',
     availability_reason TEXT,
+    province_code VARCHAR(10) DEFAULT NULL, -- NULL = National standard; e.g. '31' = DKI Jakarta only
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -134,6 +139,7 @@ CREATE TABLE IF NOT EXISTS regulatory_chunks (
     content_text TEXT NOT NULL,
     embedding VECTOR(1024),               -- BAAI/bge-m3 dense representation
     metadata JSONB DEFAULT '{}'::jsonb,
+    province_code VARCHAR(10) DEFAULT NULL, -- NULL = National; e.g. '31' = DKI Jakarta only
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -178,7 +184,8 @@ CREATE TABLE IF NOT EXISTS simulated_amenities (
     facility_type VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     coordinates GEOMETRY(Point, 4326) NOT NULL,
-    coordinates_utm GEOMETRY(Point, 32748),
+    coordinates_utm GEOMETRY(Point),
+    utm_srid INT,
     planned_capacity INT DEFAULT 0,
     properties JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -214,19 +221,47 @@ CREATE TABLE IF NOT EXISTS incident_logs (
 );
 
 -- ----------------------------------------------------------------------------
--- 8. Triggers for Automatic UTM Projected Geometry Computation
+-- 8. Functions & Triggers for Automatic UTM Projected Geometry Computation
 -- ----------------------------------------------------------------------------
+-- Computes UTM EPSG code from geometry centroid using standard formula:
+-- Zone = floor((lon + 180) / 6) + 1; EPSG = 32700 + Zone (South) or 32600 + Zone (North).
+-- Citation: NIMA Technical Report TR8350.2 / EPSG Geodetic Parameter Dataset.
+CREATE OR REPLACE FUNCTION compute_utm_srid(geom GEOMETRY)
+RETURNS INT AS $$
+DECLARE
+    c GEOMETRY;
+    lon FLOAT;
+    lat FLOAT;
+    zone INT;
+BEGIN
+    c := ST_Centroid(geom);
+    lon := ST_X(c);
+    lat := ST_Y(c);
+    zone := FLOOR((lon + 180.0) / 6.0)::INT + 1;
+    IF lat < 0.0 THEN
+        RETURN 32700 + zone;
+    ELSE
+        RETURN 32600 + zone;
+    END IF;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION trg_sync_utm_geometry()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Synchronize UTM 48S (SRID 32748) for point or multipolygon
     IF TG_TABLE_NAME = 'public_facilities' OR TG_TABLE_NAME = 'simulated_amenities' THEN
         IF NEW.coordinates IS NOT NULL THEN
-            NEW.coordinates_utm := ST_Transform(NEW.coordinates, 32748);
+            IF NEW.utm_srid IS NULL THEN
+                NEW.utm_srid := compute_utm_srid(NEW.coordinates);
+            END IF;
+            NEW.coordinates_utm := ST_Transform(NEW.coordinates, NEW.utm_srid);
         END IF;
     ELSIF TG_TABLE_NAME = 'kecamatan' OR TG_TABLE_NAME = 'kabupaten_kota' OR TG_TABLE_NAME = 'provinces' THEN
         IF NEW.boundary IS NOT NULL THEN
-            NEW.boundary_utm := ST_Transform(NEW.boundary, 32748);
+            IF NEW.utm_srid IS NULL THEN
+                NEW.utm_srid := compute_utm_srid(NEW.boundary);
+            END IF;
+            NEW.boundary_utm := ST_Transform(NEW.boundary, NEW.utm_srid);
         END IF;
     END IF;
     RETURN NEW;

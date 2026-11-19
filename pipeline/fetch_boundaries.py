@@ -4,8 +4,10 @@ Attempts multiple reliable sources (GitHub GeoJSON repositories, Overpass API),
 merges with BPS demographic data, and stores normalized GeoJSON locally.
 """
 
+import argparse
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -17,8 +19,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
+REGIONS_DIR = DATA_DIR / "regions"
 BOUNDARIES_DIR = DATA_DIR / "boundaries"
 BOUNDARIES_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_region_manifest(province_code: str) -> Dict[str, Any]:
+    manifest_path = REGIONS_DIR / f"{province_code}.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Region manifest for province '{province_code}' not found at {manifest_path}. "
+            f"Currently only province 31 (DKI Jakarta) has verified data sources (rencana v1.1)."
+        )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 BPS_PATH = BOUNDARIES_DIR / "jakarta_demographics_bps.json"
 OUTPUT_GEOJSON_PATH = BOUNDARIES_DIR / "jakarta_44_kecamatan.geojson"
@@ -156,4 +169,9 @@ def main():
     logger.info("Done fetch boundaries script.")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fetch and normalize boundaries per province")
+    parser.add_argument("--province", default="31", help="Kemendagri province code (default: 31 for DKI Jakarta)")
+    args = parser.parse_args()
+    manifest = load_region_manifest(args.province)
+    logger.info(f"Loaded region manifest for province {args.province} ({manifest.get('province_name')}): {manifest.get('status')}")
     main()

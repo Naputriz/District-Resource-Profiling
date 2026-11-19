@@ -3,6 +3,7 @@ Download real Jakarta Kecamatan GeoJSON, standardize properties with BPS metadat
 update PostGIS database and save to frontend and pipeline datasets.
 """
 
+import argparse
 import os
 import json
 import logging
@@ -18,7 +19,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
+REGIONS_DIR = BASE_DIR / "data" / "regions"
 DATA_DIR = BASE_DIR / "data" / "boundaries"
+
+def load_region_manifest(province_code: str):
+    manifest_path = REGIONS_DIR / f"{province_code}.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Region manifest for province '{province_code}' not found at {manifest_path}. "
+            f"Currently only province 31 (DKI Jakarta) has verified data sources (rencana v1.1)."
+        )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 BPS_PATH = DATA_DIR / "jakarta_demographics_bps.json"
 TARGET_GEOJSON = DATA_DIR / "jakarta_44_kecamatan.geojson"
 FRONTEND_GEOJSON = Path(__file__).resolve().parent.parent / "frontend" / "data" / "boundaries" / "jakarta_44_kecamatan.geojson"
@@ -133,4 +146,9 @@ def update_postgis(features):
     conn.close()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Download real boundaries and update PostGIS per province")
+    parser.add_argument("--province", default="31", help="Kemendagri province code (default: 31 for DKI Jakarta)")
+    args = parser.parse_args()
+    manifest = load_region_manifest(args.province)
+    logger.info(f"Loaded region manifest for province {args.province} ({manifest.get('province_name')}): {manifest.get('status')}")
     download_and_process()
