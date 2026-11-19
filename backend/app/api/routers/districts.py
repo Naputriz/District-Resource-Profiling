@@ -12,6 +12,63 @@ from backend.app.engine.spatial import resolve_district_record, resolve_district
 router = APIRouter()
 
 
+def _parse_json_field(val):
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return val
+    return val
+
+
+def _finalize_districts_response(raw_districts, source: str, avail_src: str) -> dict:
+    results = (
+        [dict(v) for v in raw_districts.values()]
+        if isinstance(raw_districts, dict)
+        else [dict(r) for r in raw_districts]
+    )
+    for r in results:
+        r["population_note"] = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
+        cov = _parse_json_field(r.get("coverage"))
+        if cov is not None:
+            r["coverage"] = cov
+        else:
+            r.pop("coverage", None)
+
+        comp = r.get("composite_livability_score")
+        if comp is None:
+            r["score_status"] = "Data tidak memadai"
+            r["rank"] = None
+            if not r.get("composite_note"):
+                r["composite_note"] = "Data tidak memadai"
+        else:
+            r["score_status"] = "Tersedia"
+
+    scored = [r for r in results if r.get("composite_livability_score") is not None]
+    scored_sorted = sorted(
+        scored,
+        key=lambda x: (-float(x["composite_livability_score"]), str(x.get("kemendagri_code") or "")),
+    )
+    for idx, r in enumerate(scored_sorted, start=1):
+        r["rank"] = idx
+
+    avg_score = (
+        round(sum(float(r["composite_livability_score"]) for r in scored) / len(scored), 2)
+        if scored
+        else None
+    )
+
+    return {
+        "source": source,
+        "availability_source": avail_src,
+        "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
+        "average_composite_score": avg_score,
+        "scored_districts_count": len(scored),
+        "insufficient_data_districts_count": len(results) - len(scored),
+        "districts": results,
+    }
+
+
 @router.get(f"{settings.API_V1_STR}/districts", tags=["Districts & Compliance"])
 def list_districts(
     province_code: Optional[str] = Query(
@@ -39,14 +96,7 @@ def list_districts(
             cached = r_client.get(f"cache:compliance:scores:{target_province}") or r_client.get("cache:compliance:scores")
             if cached:
                 dist_list = json.loads(cached)
-                for d in dist_list:
-                    d["population_note"] = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
-                return {
-                    "source": "cache",
-                    "availability_source": avail_src,
-                    "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
-                    "districts": dist_list,
-                }
+                return _finalize_districts_response(dist_list, "cache", avail_src)
     except Exception:
         pass
 
@@ -56,8 +106,8 @@ def list_districts(
                 k.kemendagri_code, k.bps_code, k.name, c.name as city_name,
                 k.population, k.area_km2, k.density_per_km2,
                 s.health_score, s.education_score, s.livability_score,
-                s.mobility_score, s.composite_livability_score,
-                s.metrics_payload
+                s.mobility_score, s.composite_livability_score, s.composite_note,
+                s.metrics_payload, s.coverage
             FROM kecamatan k
             JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
             JOIN provinces p ON p.id = c.province_id
@@ -66,14 +116,7 @@ def list_districts(
             ORDER BY k.kemendagri_code;
         """, (target_province,))
         results = [dict(r) for r in cur.fetchall()]
-        for r in results:
-            r["population_note"] = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
-        return {
-            "source": "database",
-            "availability_source": avail_src,
-            "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
-            "districts": results,
-        }
+        return _finalize_districts_response(results, "database", avail_src)
 
 
 @router.get(
@@ -103,7 +146,7 @@ def get_district_detail(district_code: str):
                 k.population, k.area_km2, k.density_per_km2,
                 s.health_score, s.education_score, s.livability_score,
                 s.mobility_score, s.composite_livability_score, s.composite_note,
-                s.metrics_payload,
+                s.metrics_payload, s.coverage,
                 ST_AsGeoJSON(k.boundary)::json as boundary_geojson
             FROM kecamatan k
             JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
@@ -127,11 +170,19 @@ def get_district_detail(district_code: str):
 
         data["availability_source"] = get_current_availability_source()
 
-        if isinstance(data.get("metrics_payload"), str):
-            try:
-                data["metrics_payload"] = json.loads(data["metrics_payload"])
-            except Exception:
-                pass
+        cov = _parse_json_field(data.get("coverage"))
+        if cov is not None:
+            data["coverage"] = cov
+        else:
+            data.pop("coverage", None)
+
+        data["score_status"] = (
+            "Data tidak memadai"
+            if data.get("composite_livability_score") is None
+            else "Tersedia"
+        )
+
+        data["metrics_payload"] = _parse_json_field(data.get("metrics_payload"))
 
         if isinstance(data.get("metrics_payload"), list):
             from backend.app.engine.standards_availability import (
@@ -148,6 +199,9 @@ def get_district_detail(district_code: str):
             data["availability_source"] = scores_breakdown.get(
                 "availability_source", data["availability_source"]
             )
+
+        if data.get("composite_livability_score") is None and not data.get("composite_note"):
+            data["composite_note"] = "Data tidak memadai"
 
         return data
 

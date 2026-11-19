@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r pipeline/requirements.txt
 
       - name: Run unit test suite
         env:
@@ -52,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r pipeline/requirements.txt
 
       - name: Build custom PostGIS + pgvector database image
         run: |
@@ -125,7 +125,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r pipeline/requirements.txt
 
       - name: Build custom PostGIS + pgvector database image
         run: |

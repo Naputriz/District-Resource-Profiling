@@ -161,6 +161,12 @@ def run_migration() -> int:
                 logger.info(f"Backfilled utm_srid=32748 for {cur.rowcount} rows in '{tbl}'.")
                 changes_made += cur.rowcount
 
+        # 9. Idempotent multi-region provenance & OSM coverage columns (J1a2)
+        cur.execute("ALTER TABLE kecamatan ADD COLUMN IF NOT EXISTS cod_ab_pcode VARCHAR(20);")
+        cur.execute("ALTER TABLE kecamatan ADD COLUMN IF NOT EXISTS population_source VARCHAR(150);")
+        cur.execute("ALTER TABLE kecamatan ADD COLUMN IF NOT EXISTS population_verification_status VARCHAR(50);")
+        cur.execute("ALTER TABLE district_compliance_scores ADD COLUMN IF NOT EXISTS coverage JSONB DEFAULT NULL;")
+
     logger.info(f"Migration completed. Total changes recorded: {changes_made}")
     return changes_made
 

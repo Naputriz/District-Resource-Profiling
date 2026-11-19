@@ -38,6 +38,7 @@ def init_db_pool():
     redis_client = redis.Redis(
         host=r_host,
         port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
         decode_responses=True
     )
 

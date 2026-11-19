@@ -64,9 +64,9 @@ class SimulationDeltaDTO(BaseModel):
     simulated_population: int
     population_delta: int
     population_note: str = "Sumber data penduduk belum terverifikasi (TODO-VERIFY)"
-    baseline_composite_score: float
-    simulated_composite_score: float
-    score_delta: float
+    baseline_composite_score: Optional[float] = None
+    simulated_composite_score: Optional[float] = None
+    score_delta: Optional[float] = None
     abs_score_delta: float = 0.0
     baseline_pillar_scores: Dict[str, Any]
     simulated_pillar_scores: Dict[str, Any]
@@ -249,12 +249,17 @@ class WhatIfSimulationEngine:
         scores_res_base = calculate_pillar_and_composite_scores(base_metrics_list, avail_map)
         scores_res_sim = calculate_pillar_and_composite_scores(sim_metrics_list, avail_map)
 
-        base_composite = scores_res_base["composite_score"] or 0.0
-        sim_composite = scores_res_sim["composite_score"] or 0.0
+        base_composite = scores_res_base["composite_score"]
+        sim_composite = scores_res_sim["composite_score"]
         base_p_scores = scores_res_base["pillar_scores"]
         sim_p_scores = scores_res_sim["pillar_scores"]
 
-        score_delta = round(sim_composite - base_composite, 2)
+        if base_composite is not None and sim_composite is not None:
+            score_delta = round(sim_composite - base_composite, 2)
+            abs_score_delta = round(abs(score_delta), 2)
+        else:
+            score_delta = None
+            abs_score_delta = 0.0
 
         # Compute per-pillar score deltas
         pillar_deltas: Dict[str, Dict[str, float]] = {}
@@ -297,12 +302,20 @@ class WhatIfSimulationEngine:
         # Rendah: delta > SIMULATION_IMPACT_DELTA_LOW (-1.0) AND new_deficit_units <= SIMULATION_IMPACT_DEFICIT_LOW (0)
         # Tinggi: delta <= SIMULATION_IMPACT_DELTA_HIGH (-5.0) OR new_deficit_units >= SIMULATION_IMPACT_DEFICIT_HIGH (3)
         # Else: Sedang
-        if score_delta > settings.SIMULATION_IMPACT_DELTA_LOW and new_deficit_units <= settings.SIMULATION_IMPACT_DEFICIT_LOW:
-            impact_level = "Rendah"
-        elif score_delta <= settings.SIMULATION_IMPACT_DELTA_HIGH or new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
-            impact_level = "Tinggi"
+        if score_delta is not None:
+            if score_delta > settings.SIMULATION_IMPACT_DELTA_LOW and new_deficit_units <= settings.SIMULATION_IMPACT_DEFICIT_LOW:
+                impact_level = "Rendah"
+            elif score_delta <= settings.SIMULATION_IMPACT_DELTA_HIGH or new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
+                impact_level = "Tinggi"
+            else:
+                impact_level = "Sedang"
         else:
-            impact_level = "Sedang"
+            if new_deficit_units >= settings.SIMULATION_IMPACT_DEFICIT_HIGH:
+                impact_level = "Tinggi"
+            elif new_deficit_units > settings.SIMULATION_IMPACT_DEFICIT_LOW:
+                impact_level = "Sedang"
+            else:
+                impact_level = "Rendah"
 
         assumptions = {
             "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
@@ -329,7 +342,7 @@ class WhatIfSimulationEngine:
             baseline_composite_score=base_composite,
             simulated_composite_score=sim_composite,
             score_delta=score_delta,
-            abs_score_delta=round(abs(score_delta), 2),
+            abs_score_delta=abs_score_delta,
             baseline_pillar_scores=base_p_scores,
             simulated_pillar_scores=sim_p_scores,
             pillar_deltas=pillar_deltas,

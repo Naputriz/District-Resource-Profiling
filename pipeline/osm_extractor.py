@@ -5,7 +5,7 @@ Pillar 2: Human Capital & Education (SD, SMP, SMA/SMK, TK)
 Pillar 3: Urban Livability & Recreation (Taman RT, Taman Kelurahan, Taman Kecamatan, Taman RPTRA)
 Pillar 4: Mobility & Commercial (Stasiun KRL/MRT/LRT, Halte TransJakarta, Pasar)
 
-Strictly complies with README.md §6, §7, §14:
+Strictly complies with README.revised.md §6, §7, §14 and REBUILD_PROMPT_P3.md §3B:
 - Primary Overpass endpoint: https://overpass-api.de/api/interpreter
 - Mandatory header: User-Agent: DistrictProfiling-UI-RPL/0.1 (muhammaddhiya2006@gmail.com)
 - Fallback mirror with logging after 3 attempts on primary.
@@ -45,11 +45,9 @@ def load_region_manifest(province_code: str) -> Dict[str, Any]:
 
 DATA_DIR = BASE_DIR / "data"
 FACILITIES_DIR = DATA_DIR / "facilities"
-FACILITIES_DIR.mkdir(parents=True, exist_ok=True)
 
 SNAPSHOT_DATE = datetime.now(timezone.utc).strftime("%Y%m%d")
 RAW_DIR = FACILITIES_DIR / f"osm_raw_{SNAPSHOT_DATE}"
-RAW_DIR.mkdir(parents=True, exist_ok=True)
 NORMALIZED_FILE = FACILITIES_DIR / f"osm_facilities_{SNAPSHOT_DATE}.json"
 
 PRIMARY_ENDPOINT = "https://overpass-api.de/api/interpreter"
@@ -214,7 +212,7 @@ def normalize_name_for_dedup(name: Optional[str]) -> str:
 
 def deduplicate_facilities(facilities: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
-    Deduplicates facilities:
+    Deduplicates facilities per REBUILD_PROMPT_P4.md §3.1.5:
     When a node and a way (or two elements) have the same facility_type and a normalized name
     that matches (non-empty), within 150m, keep one (prefer the way centroid).
     Returns (deduped_facilities, removed_counts_per_type).
@@ -276,8 +274,290 @@ def deduplicate_facilities(facilities: List[Dict[str, Any]]) -> Tuple[List[Dict[
 
     return deduped, removed_counts
 
+_UNSPECIFIED_TYPES = ("unclassified", "taman_unspecified", "halte_unspecified")
+
+
+def matching_query_groups(tags: Dict[str, Any], el_type: str = "node") -> List[str]:
+    """
+    Returns ordered list of TAG_GROUP_QUERIES keys that an OSM element with `tags` and `el_type` matches.
+    Matches the exact tag filters in TAG_GROUP_QUERIES so PBF and Overpass paths select identical elements.
+    """
+    groups: List[str] = []
+    amenity = tags.get("amenity", "")
+    healthcare = tags.get("healthcare", "")
+    leisure = tags.get("leisure", "")
+    landuse = tags.get("landuse", "")
+    railway = tags.get("railway", "")
+    station = tags.get("station", "")
+    highway = tags.get("highway", "")
+    shop = tags.get("shop", "")
+
+    if el_type in ("node", "way"):
+        if amenity in ("hospital", "clinic", "fire_station", "police", "community_centre") or healthcare in ("hospital", "centre"):
+            groups.append("group1_lifeline_health")
+        if amenity in ("school", "kindergarten", "library"):
+            groups.append("group2_human_capital_education")
+        if leisure in ("park", "playground", "sports_centre", "stadium") or landuse == "forest" or amenity in ("waste_disposal", "waste_transfer_station", "recycling"):
+            groups.append("group3_urban_livability_recreation")
+        if (
+            railway == "station"
+            or (el_type == "node" and railway == "subway_entrance")
+            or station in ("subway", "light_rail")
+            or amenity in ("bus_station", "marketplace")
+            or (el_type == "node" and highway == "bus_stop")
+            or shop in ("marketplace", "supermarket")
+        ):
+            groups.append("group4_mobility_commercial")
+    return groups
+
+
+def classify_osm_element(
+    element: Dict[str, Any],
+    query_group: str,
+    snapshot_date: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Shared deterministic classifier per OSM_TAG_MAPPING.md and REBUILD_PROMPT_P4.md.
+    Used identically by both Overpass (OSMExtractor) and Geofabrik PBF extraction paths.
+    """
+    tags = element.get("tags", {})
+    el_type = element.get("type", "node")
+    el_id = element.get("id")
+    source_id = f"{el_type}/{el_id}"
+
+    # Coordinates: centroid for way, direct coords for node
+    if el_type == "node":
+        lat = element.get("lat")
+        lon = element.get("lon")
+    else:
+        center = element.get("center", {})
+        lat = center.get("lat")
+        lon = center.get("lon")
+
+    raw_name = tags.get("name")
+    name_lower = (raw_name or "").lower().strip()
+
+    pillar = "urban_livability"
+    category = "general"
+    facility_type = "unclassified"
+
+    # Classification based on query group and tags
+    if query_group == "group1_lifeline_health":
+        pillar = "lifeline_health"
+        amenity = tags.get("amenity", "")
+        healthcare = tags.get("healthcare", "")
+
+        if amenity == "fire_station":
+            category = "emergency_fire"
+            facility_type = "pos_damkar"
+        elif amenity == "police":
+            category = "security"
+            # Removed per README §6.4: SNI only mentions pos kamtib & kantor polisi, amenity=police mixes both
+            facility_type = "unclassified"
+        elif "posyandu" in name_lower:
+            category = "healthcare"
+            facility_type = "posyandu"
+        elif any(k in name_lower for k in ["puskesmas", "poskeskel", "pustu"]):
+            category = "healthcare"
+            if any(k in name_lower for k in ["kecamatan", "kec."]):
+                facility_type = "puskesmas_kecamatan"
+            else:
+                facility_type = "puskesmas_kelurahan"
+        elif amenity == "hospital" or healthcare == "hospital":
+            category = "healthcare"
+            # Exclude clinic, apotek, puskesmas, praktek, lab
+            is_excluded_hospital = any(
+                re.search(pat, name_lower)
+                for pat in [r"klinik", r"clinic", r"apotek", r"puskesmas", r"praktek", r"\blab\b", r"laboratorium"]
+            )
+            if is_excluded_hospital:
+                if "puskesmas" in name_lower:
+                    if any(k in name_lower for k in ["kecamatan", "kec."]):
+                        facility_type = "puskesmas_kecamatan"
+                    else:
+                        facility_type = "puskesmas_kelurahan"
+                else:
+                    facility_type = "unclassified"
+            else:
+                facility_type = "rumah_sakit"
+        elif amenity == "clinic" or healthcare in ["clinic", "centre"]:
+            category = "healthcare"
+            facility_type = "unclassified"
+        else:
+            facility_type = "unclassified"
+
+    elif query_group == "group2_human_capital_education":
+        pillar = "education"
+        amenity = tags.get("amenity", "")
+
+        if amenity == "library":
+            category = "education"
+            # Removed per README §6.4: only 5 records city-wide, SNI only mentions taman bacaan
+            facility_type = "unclassified"
+        elif amenity == "kindergarten":
+            category = "education"
+            facility_type = "taman_kanak_kanak"
+        elif amenity == "school":
+            category = "education"
+            if any(k in name_lower for k in ["tk ", "tks ", "paud", "ra ", "taman kanak"]):
+                facility_type = "taman_kanak_kanak"
+            elif any(k in name_lower for k in ["sd ", "sdn ", "sds ", "madrasah ibtidaiyah", "mi ", "min ", "primary"]):
+                facility_type = "sekolah_dasar"
+            elif any(k in name_lower for k in ["smp ", "smpn", "smps", "madrasah tsanawiyah", "mts", "junior"]):
+                facility_type = "sekolah_menengah_pertama"
+            elif any(k in name_lower for k in ["sma ", "sman", "smas", "smk ", "smkn", "smks", "madrasah aliyah", "man ", "senior", "kejuruan"]):
+                facility_type = "sekolah_menengah_atas"
+            else:
+                facility_type = "unclassified"
+        else:
+            facility_type = "unclassified"
+
+    elif query_group == "group3_urban_livability_recreation":
+        pillar = "urban_livability"
+        leisure = tags.get("leisure", "")
+        amenity = tags.get("amenity", "")
+        landuse = tags.get("landuse", "")
+
+        if amenity in ["waste_disposal", "waste_transfer_station", "recycling"]:
+            category = "waste_management"
+            # Removed per README §6.4: not in SNI 03-1733-2004
+            facility_type = "unclassified"
+        elif "hutan kota" in name_lower or tags.get("urban_forest") in ["yes", "true"] or tags.get("forest") == "urban" or tags.get("leisure") == "nature_reserve" or tags.get("boundary") == "protected_area":
+            category = "green_open_space"
+            # Removed per README §6.4: not in SNI 03-1733-2004
+            facility_type = "unclassified"
+        elif landuse == "forest" or "hutan" in name_lower:
+            category = "green_open_space"
+            facility_type = "unclassified"
+        elif leisure in ["sports_centre", "stadium", "pitch"]:
+            category = "recreation"
+            # Removed per README §6.4: not in SNI 03-1733-2004
+            facility_type = "unclassified"
+        elif "rptra" in name_lower or "ramah anak" in name_lower:
+            category = "green_open_space"
+            facility_type = "taman_rptra"
+        elif leisure == "playground":
+            category = "green_open_space"
+            facility_type = "unclassified"
+        elif leisure == "park":
+            category = "green_open_space"
+            if any(k in name_lower for k in ["taman kecamatan", "taman kec."]):
+                facility_type = "taman_kecamatan"
+            elif "kelurahan" in name_lower:
+                facility_type = "taman_kelurahan"
+            else:
+                facility_type = "taman_unspecified"
+        else:
+            facility_type = "unclassified"
+
+    else: # group4_mobility_commercial
+        pillar = "mobility_connectivity"
+        railway = tags.get("railway", "")
+        station = tags.get("station", "")
+        amenity = tags.get("amenity", "")
+        highway = tags.get("highway", "")
+        shop = tags.get("shop", "")
+
+        if railway in ["station", "subway_entrance"] or station in ["subway", "light_rail"]:
+            category = "transit_mobility"
+            facility_type = "stasiun_transit"
+        elif highway == "bus_stop" or amenity == "bus_station":
+            category = "transit_mobility"
+            operator = (tags.get("operator") or "").lower()
+            network = (tags.get("network") or "").lower()
+            brand = (tags.get("brand") or "").lower()
+            route = (tags.get("route") or "").lower()
+            if any("transjakarta" in x or "trans jakarta" in x for x in [operator, network, brand, route]):
+                facility_type = "halte_transjakarta"
+            else:
+                facility_type = "halte_unspecified"
+        elif amenity == "marketplace" or shop == "marketplace":
+            category = "commercial"
+            facility_type = "pasar_tradisional"
+        elif any(k in name_lower for k in ["sentra umkm", "lokbin", "lokasi binaan"]):
+            category = "commercial"
+            # Removed per README §6.4: no standard and 0 records OSM
+            facility_type = "unclassified"
+        else:
+            category = "commercial"
+            facility_type = "unclassified"
+
+    capacity = 0
+    if tags.get("capacity"):
+        try:
+            capacity = int(tags.get("capacity"))
+        except ValueError:
+            pass
+    elif tags.get("beds"):
+        try:
+            capacity = int(tags.get("beds"))
+        except ValueError:
+            pass
+
+    area_m2 = compute_area_m2(element)
+    snap = snapshot_date or SNAPSHOT_DATE
+    snap_iso = f"{snap[:4]}-{snap[4:6]}-{snap[6:]}" if len(snap) == 8 and "-" not in snap else snap
+
+    return {
+        "source": "osm",
+        "osm_type": el_type,
+        "osm_id": el_id,
+        "source_id": source_id,
+        "name": raw_name,
+        "facility_type": facility_type,
+        "pillar": pillar,
+        "category": category,
+        "address": tags.get("addr:full") or tags.get("addr:street"),
+        "contact": tags.get("phone") or tags.get("contact:phone"),
+        "website": tags.get("website") or tags.get("contact:website"),
+        "capacity": capacity,
+        "area_m2": area_m2,
+        "coordinates": {
+            "type": "Point",
+            "coordinates": [lon, lat]
+        },
+        "is_active": True,
+        "is_verified": False,
+        "snapshot_date": snap_iso,
+        "metadata": {
+            "raw_tags": tags,
+            "osm_type": el_type,
+            "area_m2": area_m2,
+            "operator": tags.get("operator"),
+            "opening_hours": tags.get("opening_hours"),
+            "wheelchair": tags.get("wheelchair")
+        },
+        "last_synced_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+def classify_osm_element_auto(
+    element: Dict[str, Any],
+    snapshot_date: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Classifies an OSM element across all matching TAG_GROUP_QUERIES using the exact
+    same priority/tie-breaking rule as OSMExtractor.reclassify_from_raw.
+    Returns None if the element does not match any query group.
+    """
+    tags = element.get("tags", {})
+    el_type = element.get("type", "node")
+    groups = matching_query_groups(tags, el_type=el_type)
+    if not groups:
+        return None
+    chosen: Optional[Dict[str, Any]] = None
+    for g in groups:
+        item = classify_osm_element(element, g, snapshot_date=snapshot_date)
+        if chosen is None:
+            chosen = item
+        elif chosen["facility_type"] in _UNSPECIFIED_TYPES and item["facility_type"] not in _UNSPECIFIED_TYPES:
+            chosen = item
+    return chosen
+
+
 class OSMExtractor:
     def __init__(self, raw_dir: Path = RAW_DIR, output_file: Path = NORMALIZED_FILE):
+        FACILITIES_DIR.mkdir(parents=True, exist_ok=True)
         self.raw_dir = raw_dir
         self.raw_dir.mkdir(parents=True, exist_ok=True)
         self.output_file = output_file
@@ -330,214 +610,8 @@ class OSMExtractor:
         raise RuntimeError(f"Overpass API is unreachable or returned persistent errors after 3 attempts on all endpoints for {group_name}.")
 
     def classify_element(self, element: Dict[str, Any], query_group: str) -> Dict[str, Any]:
-        """Classifies element deterministically per OSM_TAG_MAPPING.md."""
-        tags = element.get("tags", {})
-        el_type = element.get("type", "node")
-        el_id = element.get("id")
-        source_id = f"{el_type}/{el_id}"
-
-        # Coordinates: centroid for way, direct coords for node
-        if el_type == "node":
-            lat = element.get("lat")
-            lon = element.get("lon")
-        else:
-            center = element.get("center", {})
-            lat = center.get("lat")
-            lon = center.get("lon")
-
-        raw_name = tags.get("name")
-        name_lower = (raw_name or "").lower().strip()
-
-        pillar = "urban_livability"
-        category = "general"
-        facility_type = "unclassified"
-
-        # Classification based on query group and tags
-        if query_group == "group1_lifeline_health":
-            pillar = "lifeline_health"
-            amenity = tags.get("amenity", "")
-            healthcare = tags.get("healthcare", "")
-
-            if amenity == "fire_station":
-                category = "emergency_fire"
-                facility_type = "pos_damkar"
-            elif amenity == "police":
-                category = "security"
-                # Removed per README §6.4: SNI only mentions pos kamtib & kantor polisi, amenity=police mixes both
-                facility_type = "unclassified"
-            elif "posyandu" in name_lower:
-                category = "healthcare"
-                facility_type = "posyandu"
-            elif any(k in name_lower for k in ["puskesmas", "poskeskel", "pustu"]):
-                category = "healthcare"
-                if any(k in name_lower for k in ["kecamatan", "kec."]):
-                    facility_type = "puskesmas_kecamatan"
-                else:
-                    facility_type = "puskesmas_kelurahan"
-            elif amenity == "hospital" or healthcare == "hospital":
-                category = "healthcare"
-                # Exclude clinic, apotek, puskesmas, praktek, lab
-                is_excluded_hospital = any(
-                    re.search(pat, name_lower)
-                    for pat in [r"klinik", r"clinic", r"apotek", r"puskesmas", r"praktek", r"\blab\b", r"laboratorium"]
-                )
-                if is_excluded_hospital:
-                    if "puskesmas" in name_lower:
-                        if any(k in name_lower for k in ["kecamatan", "kec."]):
-                            facility_type = "puskesmas_kecamatan"
-                        else:
-                            facility_type = "puskesmas_kelurahan"
-                    else:
-                        facility_type = "unclassified"
-                else:
-                    facility_type = "rumah_sakit"
-            elif amenity == "clinic" or healthcare in ["clinic", "centre"]:
-                category = "healthcare"
-                facility_type = "unclassified"
-            else:
-                facility_type = "unclassified"
-
-        elif query_group == "group2_human_capital_education":
-            pillar = "education"
-            amenity = tags.get("amenity", "")
-
-            if amenity == "library":
-                category = "education"
-                # Removed per README §6.4: only 5 records city-wide, SNI only mentions taman bacaan
-                facility_type = "unclassified"
-            elif amenity == "kindergarten":
-                category = "education"
-                facility_type = "taman_kanak_kanak"
-            elif amenity == "school":
-                category = "education"
-                if any(k in name_lower for k in ["tk ", "tks ", "paud", "ra ", "taman kanak"]):
-                    facility_type = "taman_kanak_kanak"
-                elif any(k in name_lower for k in ["sd ", "sdn ", "sds ", "madrasah ibtidaiyah", "mi ", "min ", "primary"]):
-                    facility_type = "sekolah_dasar"
-                elif any(k in name_lower for k in ["smp ", "smpn", "smps", "madrasah tsanawiyah", "mts", "junior"]):
-                    facility_type = "sekolah_menengah_pertama"
-                elif any(k in name_lower for k in ["sma ", "sman", "smas", "smk ", "smkn", "smks", "madrasah aliyah", "man ", "senior", "kejuruan"]):
-                    facility_type = "sekolah_menengah_atas"
-                else:
-                    facility_type = "unclassified"
-            else:
-                facility_type = "unclassified"
-
-        elif query_group == "group3_urban_livability_recreation":
-            pillar = "urban_livability"
-            leisure = tags.get("leisure", "")
-            amenity = tags.get("amenity", "")
-            landuse = tags.get("landuse", "")
-
-            if amenity in ["waste_disposal", "waste_transfer_station", "recycling"]:
-                category = "waste_management"
-                # Removed per README §6.4: not in SNI 03-1733-2004
-                facility_type = "unclassified"
-            elif "hutan kota" in name_lower or tags.get("urban_forest") in ["yes", "true"] or tags.get("forest") == "urban" or tags.get("leisure") == "nature_reserve" or tags.get("boundary") == "protected_area":
-                category = "green_open_space"
-                # Removed per README §6.4: not in SNI 03-1733-2004
-                facility_type = "unclassified"
-            elif landuse == "forest" or "hutan" in name_lower:
-                category = "green_open_space"
-                facility_type = "unclassified"
-            elif leisure in ["sports_centre", "stadium", "pitch"]:
-                category = "recreation"
-                # Removed per README §6.4: not in SNI 03-1733-2004
-                facility_type = "unclassified"
-            elif "rptra" in name_lower or "ramah anak" in name_lower:
-                category = "green_open_space"
-                facility_type = "taman_rptra"
-            elif leisure == "playground":
-                category = "green_open_space"
-                facility_type = "unclassified"
-            elif leisure == "park":
-                category = "green_open_space"
-                if any(k in name_lower for k in ["taman kecamatan", "taman kec."]):
-                    facility_type = "taman_kecamatan"
-                elif "kelurahan" in name_lower:
-                    facility_type = "taman_kelurahan"
-                else:
-                    facility_type = "taman_unspecified"
-            else:
-                facility_type = "unclassified"
-
-        else: # group4_mobility_commercial
-            pillar = "mobility_connectivity"
-            railway = tags.get("railway", "")
-            station = tags.get("station", "")
-            amenity = tags.get("amenity", "")
-            highway = tags.get("highway", "")
-            shop = tags.get("shop", "")
-
-            if railway in ["station", "subway_entrance"] or station in ["subway", "light_rail"]:
-                category = "transit_mobility"
-                facility_type = "stasiun_transit"
-            elif highway == "bus_stop" or amenity == "bus_station":
-                category = "transit_mobility"
-                operator = (tags.get("operator") or "").lower()
-                network = (tags.get("network") or "").lower()
-                brand = (tags.get("brand") or "").lower()
-                route = (tags.get("route") or "").lower()
-                if any("transjakarta" in x or "trans jakarta" in x for x in [operator, network, brand, route]):
-                    facility_type = "halte_transjakarta"
-                else:
-                    facility_type = "halte_unspecified"
-            elif amenity == "marketplace" or shop == "marketplace":
-                category = "commercial"
-                facility_type = "pasar_tradisional"
-            elif any(k in name_lower for k in ["sentra umkm", "lokbin", "lokasi binaan"]):
-                category = "commercial"
-                # Removed per README §6.4: no standard and 0 records OSM
-                facility_type = "unclassified"
-            else:
-                category = "commercial"
-                facility_type = "unclassified"
-
-        capacity = 0
-        if tags.get("capacity"):
-            try:
-                capacity = int(tags.get("capacity"))
-            except ValueError:
-                pass
-        elif tags.get("beds"):
-            try:
-                capacity = int(tags.get("beds"))
-            except ValueError:
-                pass
-
-        area_m2 = compute_area_m2(element)
-
-        return {
-            "source": "osm",
-            "osm_type": el_type,
-            "osm_id": el_id,
-            "source_id": source_id,
-            "name": raw_name,
-            "facility_type": facility_type,
-            "pillar": pillar,
-            "category": category,
-            "address": tags.get("addr:full") or tags.get("addr:street"),
-            "contact": tags.get("phone") or tags.get("contact:phone"),
-            "website": tags.get("website") or tags.get("contact:website"),
-            "capacity": capacity,
-            "area_m2": area_m2,
-            "coordinates": {
-                "type": "Point",
-                "coordinates": [lon, lat]
-            },
-            "is_active": True,
-            "is_verified": False,
-            "snapshot_date": f"{SNAPSHOT_DATE[:4]}-{SNAPSHOT_DATE[4:6]}-{SNAPSHOT_DATE[6:]}",
-            "metadata": {
-                "raw_tags": tags,
-                "osm_type": el_type,
-                "area_m2": area_m2,
-                "operator": tags.get("operator"),
-                "opening_hours": tags.get("opening_hours"),
-                "wheelchair": tags.get("wheelchair")
-            },
-            "last_synced_at": datetime.now(timezone.utc).isoformat()
-        }
+        """Classifies element deterministically per OSM_TAG_MAPPING.md and REBUILD_PROMPT_P4.md."""
+        return classify_osm_element(element, query_group, snapshot_date=SNAPSHOT_DATE)
 
     def run_extraction(self) -> Dict[str, Any]:
         """Runs the complete extraction workflow with mandatory sleeps and raw persistence."""
@@ -605,7 +679,7 @@ class OSMExtractor:
     def reclassify_from_raw(self, raw_dir: Optional[Path] = None) -> Dict[str, Any]:
         """
         Reclassifies facilities offline directly from the raw snapshot files
-        ("Do NOT call Overpass again").
+        per REBUILD_PROMPT_P4.md ("Do NOT call Overpass again").
         Applies deduplication and saves normalized output.
         """
         target_raw_dir = raw_dir or self.raw_dir
@@ -644,7 +718,7 @@ class OSMExtractor:
         classified_list = list(unique_facilities.values())
         logger.info(f"Total elements before deduplication: {len(classified_list):,}")
 
-        # Deduplicate (matching normalized name within 150m, prefer way centroid)
+        # Deduplicate per §3.1.5 (matching normalized name within 150m, prefer way centroid)
         deduped_list, removed_counts = deduplicate_facilities(classified_list)
         logger.info(f"Deduplication complete. Removed {sum(removed_counts.values()):,} duplicates across {len(removed_counts)} types.")
         for ft, cnt in sorted(removed_counts.items()):

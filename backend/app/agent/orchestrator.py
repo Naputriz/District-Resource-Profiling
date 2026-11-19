@@ -598,7 +598,11 @@ class CognitiveSpatialAgentOrchestrator:
                     payload={
                         "district_code": d_code,
                         "name": output.get("name") or output.get("district_name"),
-                        "score": output.get("composite_score") or output.get("composite_livability_score")
+                        "score": (
+                            output.get("composite_score")
+                            if output.get("composite_score") is not None
+                            else output.get("composite_livability_score")
+                        )
                     }
                 ))
 
