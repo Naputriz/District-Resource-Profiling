@@ -1,0 +1,88 @@
+"""
+Deterministic PostGIS spatial calculations: facility buffers and blank spots.
+"""
+
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
+from backend.app.core.config import settings
+from backend.app.engine.spatial import (
+    PostGISSpatialEngine,
+    BlankSpotAnalysisResult,
+    BlankSpotSimulationDelta,
+)
+from backend.app.api.schemas import BlankSpotSimRequest
+
+router = APIRouter()
+
+
+@router.get(f"{settings.API_V1_STR}/spatial/buffers", tags=["Spatial Calculations"])
+def get_district_facility_buffers(
+    district_code: str = Query(
+        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet)"
+    ),
+    facility_type: Optional[str] = Query(
+        None, description="e.g. puskesmas_kelurahan, sekolah_dasar"
+    ),
+    pillar: Optional[str] = None,
+):
+    """
+    Returns exact service coverage buffers (FeatureCollection) projected to WGS 84 GeoJSON.
+    Calculated via PostGIS metric UTM Zone 48S.
+    """
+    try:
+        buffers = PostGISSpatialEngine.compute_facility_buffers(
+            district_code=district_code, facility_type=facility_type, pillar=pillar
+        )
+        return buffers
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    f"{settings.API_V1_STR}/spatial/blank-spots",
+    response_model=BlankSpotAnalysisResult,
+    tags=["Spatial Calculations"],
+)
+def get_district_blank_spots(
+    district_code: str = Query(
+        ..., description="kemendagri_code, e.g. 31.71.09 (Tebet)"
+    ),
+    facility_type: str = Query(
+        "puskesmas_kelurahan", description="facility_type to analyze"
+    ),
+):
+    """
+    Calculates unserved areas ('blank spots') using PostGIS ST_Difference.
+    Returns exact unserved area in km2, percentage coverage, and blank spot MultiPolygon GeoJSON.
+    """
+    try:
+        result = PostGISSpatialEngine.calculate_blank_spots(
+            district_code, facility_type
+        )
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    f"{settings.API_V1_STR}/spatial/blank-spots/simulate-reduction",
+    response_model=BlankSpotSimulationDelta,
+    tags=["Spatial Calculations"],
+)
+def simulate_blank_spot_reduction(req: BlankSpotSimRequest):
+    """
+    Simulates how placing a new hypothetical amenity reduces the unserved blank spot polygon.
+    Runs transiently in PostGIS memory without persisting to master database.
+    """
+    try:
+        delta = PostGISSpatialEngine.simulate_blank_spot_reduction(
+            district_code=req.district_code,
+            facility_type=req.facility_type,
+            hypothetical_coords=req.hypothetical_coordinates,
+            custom_radius_meters=req.custom_radius_meters,
+        )
+        return delta
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

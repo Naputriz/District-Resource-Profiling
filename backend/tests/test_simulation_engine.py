@@ -282,8 +282,8 @@ def test_superblock_verdict_honest_impact_and_disclaimer():
     assert impact.assumptions["school_age_ratio"] == 0.25
     assert impact.assumptions["kdb_ratio"] == 0.50
     assert impact.assumptions["public_rth_ratio"] == 0.20
-    assert impact.assumptions["rth_article_reference"] == "Asumsi RTH 20% (belum diverifikasi ke Perda 31/2022)"
-    assert "Parameter asumsi (belum diverifikasi ke Perda 31/2022): RTH 20%, retensi 150 mm/hari, KDB 50%" in impact.assumptions["parameter_note"]
+    assert impact.assumptions["rth_article_reference"] == "Asumsi RTH 20% (belum diverifikasi terhadap peraturan daerah)"
+    assert "Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%" in impact.assumptions["parameter_note"]
     assert "impact_rule" in dump
     assert "new_deficit_units" in dump
 

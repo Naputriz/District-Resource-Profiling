@@ -876,7 +876,7 @@ async function handleSendMessage() {
 
     // Execute Map Actions (Dual-View Sync)
     if (data.map_actions && data.map_actions.length > 0) {
-      executeMapActions(data.map_actions);
+      await executeMapActions(data.map_actions);
     }
   } catch (err) {
     const bubbleEl = document.getElementById(thinkingId);
@@ -1004,11 +1004,11 @@ function switchToTab(tabName) {
   }
 }
 
-function executeMapActions(actions) {
-  actions.forEach(act => {
+async function executeMapActions(actions) {
+  for (const act of actions) {
     if (act.action_type === "fly_to") {
       const code = act.payload && act.payload.district_code;
-      if (code) selectDistrict(code);
+      if (code) await selectDistrict(code);
     } else if (act.action_type === "highlight_blank_spot") {
       const code = (act.payload && act.payload.district_code) || (state.selectedDistrict ? state.selectedDistrict.kemendagri_code : null);
       const ftype = (act.payload && act.payload.facility_type) || "puskesmas_kelurahan";
@@ -1020,10 +1020,18 @@ function executeMapActions(actions) {
       const code = (act.payload && act.payload.district_code) || (state.selectedDistrict ? state.selectedDistrict.kemendagri_code : null);
       const delta = act.payload && act.payload.score_delta;
       switchToTab("simulation");
+      if (code) {
+        if (!state.selectedDistrict || state.selectedDistrict.kemendagri_code !== code) {
+          await selectDistrict(code);
+        }
+      }
       if (state.geojsonLayer && code) {
         state.geojsonLayer.eachLayer(layer => {
           const c = layer.feature && layer.feature.properties && layer.feature.properties.kemendagri_code;
           if (c === code) {
+            if (state.map && typeof layer.getBounds === "function") {
+              state.map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 14 });
+            }
             layer.setStyle({
               color: delta < 0 ? "#f43f5e" : "#10b981",
               weight: 3.5,
@@ -1034,7 +1042,7 @@ function executeMapActions(actions) {
       }
       console.log(`[DUAL-SYNC] Simulation Layer Rendered for ${code}: Delta ${delta}`);
     }
-  });
+  }
 }
 
 // ==============================================================================
@@ -1145,6 +1153,28 @@ function initSimulationControls() {
   });
 }
 
+function formatAssumptionValue(v) {
+  if (v === null || v === undefined) {
+    return "-";
+  }
+  if (typeof v !== "object") {
+    return String(v);
+  }
+  if (Array.isArray(v)) {
+    return v.map(item => (typeof item === "object" ? JSON.stringify(item) : String(item))).join(", ");
+  }
+  if ("value" in v) {
+    let out = String(v.value);
+    if (v.unit) out += ` ${v.unit}`;
+    const note = v.source || v.note || v.description;
+    if (note) out += ` (${note})`;
+    return out;
+  }
+  return Object.entries(v)
+    .map(([subK, subV]) => `${subK}: ${typeof subV === "object" ? JSON.stringify(subV) : subV}`)
+    .join(", ");
+}
+
 function renderSimulationDelta(delta, isSuperblock = false, impactLevel = null, assumptions = null) {
   const box = document.getElementById("sim-result-box");
   box.style.display = "flex";
@@ -1176,7 +1206,14 @@ function renderSimulationDelta(delta, isSuperblock = false, impactLevel = null, 
     assumpTableBody.innerHTML = "";
     entries.forEach(([k, v]) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${k}</td><td><strong>${v}</strong></td>`;
+      const tdKey = document.createElement("td");
+      tdKey.textContent = String(k);
+      const tdVal = document.createElement("td");
+      const strong = document.createElement("strong");
+      strong.textContent = formatAssumptionValue(v);
+      tdVal.appendChild(strong);
+      row.appendChild(tdKey);
+      row.appendChild(tdVal);
       assumpTableBody.appendChild(row);
     });
   } else {
@@ -1188,7 +1225,10 @@ function renderSimulationDelta(delta, isSuperblock = false, impactLevel = null, 
   (delta.legal_recommendations || []).forEach(o => {
     const el = document.createElement("div");
     el.className = "obligation-badge-item";
-    el.innerHTML = `<strong>${o.regulation_code} (${o.article_reference}):</strong> ${o.obligation_text} [${o.required_metric}]`;
+    const strong = document.createElement("strong");
+    strong.textContent = (o.regulation_code || "") + " (" + (o.article_reference || "") + "): ";
+    el.appendChild(strong);
+    el.appendChild(document.createTextNode((o.obligation_text || "") + " [" + (o.required_metric || "") + "]"));
     obList.appendChild(el);
   });
 }
@@ -1200,7 +1240,14 @@ function renderSuperblockImpact(impact) {
     const el = document.createElement("div");
     el.className = "obligation-badge-item";
     el.style.borderLeftColor = "#38bdf8";
-    el.innerHTML = `<strong>${o.title} (${o.regulation_code}):</strong> ${o.obligation_text} <br/><em>Kebutuhan: ${o.required_metric}</em>`;
+    const strong = document.createElement("strong");
+    strong.textContent = (o.title || "") + " (" + (o.regulation_code || "") + "): ";
+    el.appendChild(strong);
+    el.appendChild(document.createTextNode(o.obligation_text ? o.obligation_text + " " : ""));
+    el.appendChild(document.createElement("br"));
+    const em = document.createElement("em");
+    em.textContent = "Kebutuhan: " + (o.required_metric || "");
+    el.appendChild(em);
     obList.appendChild(el);
   });
 }

@@ -363,10 +363,10 @@ class WhatIfSimulationEngine:
         new_occupants = int(req.residential_units * req.occupants_per_unit)
         new_total_pop = baseline_population + new_occupants
 
-        # Parameter asumsi (belum diverifikasi ke Perda 31/2022): 20% Gross Site Area untuk RTH publik
+        # Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): 20% Gross Site Area untuk RTH publik
         mandated_rth_m2 = round(req.site_area_m2 * settings.SUPERBLOCK_RTH_RATIO, 2)
 
-        # Parameter asumsi (belum diverifikasi ke Perda 31/2022): Volume retensi air hujan (150 mm/hari pada area kedap air, asumsi KDB 50%)
+        # Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): Volume retensi air hujan (150 mm/hari pada area kedap air, asumsi KDB 50%)
         impervious_area_m2 = req.site_area_m2 * settings.SUPERBLOCK_KDB_RATIO
         retention_m3 = round(impervious_area_m2 * settings.SUPERBLOCK_STORMWATER_DEPTH_M, 2)
 
@@ -398,17 +398,17 @@ class WhatIfSimulationEngine:
 
         obligations = [
             LegalMitigationObligation(
-                regulation_code="Perda DKI Jakarta No. 31/2022 (TODO-VERIFY)",
-                article_reference="Ketentuan RTH (asumsi - belum diverifikasi)",
+                regulation_code="Parameter Asumsi Tim",
+                article_reference="Ketentuan RTH (asumsi tim - belum diverifikasi terhadap peraturan daerah)",
                 title="Penyediaan Lahan RTH Publik Siap Guna (Asumsi 20% Lahan Bruto)",
-                obligation_text=f"Parameter asumsi (belum diverifikasi ke Perda 31/2022): RTH 20%, retensi 150 mm/hari, KDB 50%. Pengembang proyek '{req.project_name}' mengalokasikan lahan minimal 20% dari luas lahan bruto dalam bentuk taman RTH publik siap guna.",
+                obligation_text=f"Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%. Pengembang proyek '{req.project_name}' mengalokasikan lahan minimal 20% dari luas lahan bruto dalam bentuk taman RTH publik siap guna.",
                 required_metric=f"{mandated_rth_m2:,.2f} m² RTH Publik"
             ),
             LegalMitigationObligation(
-                regulation_code="Perda DKI Jakarta No. 31/2022 (TODO-VERIFY)",
-                article_reference="Ketentuan Retensi Air (asumsi - belum diverifikasi)",
+                regulation_code="Parameter Asumsi Tim",
+                article_reference="Ketentuan Retensi Air (asumsi tim - belum diverifikasi terhadap peraturan daerah)",
                 title="Penyediaan Sumur Resapan & Kolam Retensi Mandiri",
-                obligation_text="Parameter asumsi (belum diverifikasi ke Perda 31/2022): RTH 20%, retensi 150 mm/hari, KDB 50%. Penyediaan sarana retensi air hujan mandiri untuk menampung curahan 150 mm/hari tanpa membebani jaringan drainase mikro perkotaan.",
+                obligation_text="Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%. Penyediaan sarana retensi air hujan mandiri untuk menampung curahan 150 mm/hari tanpa membebani jaringan drainase mikro perkotaan.",
                 required_metric=f"{retention_m3:,.2f} m³ Volume Retensi"
             ),
             LegalMitigationObligation(
@@ -432,19 +432,18 @@ class WhatIfSimulationEngine:
         else:
             impact_level = "Rendah"
             explanation = "Penambahan fasilitas hipotetis mengimbangi lonjakan populasi."
-
         verdict = f"Indikasi dampak: {impact_level}. {explanation} {settings.SIMULATION_DISCLAIMER}"
 
         assumptions = {
-            "parameter_note": "Parameter asumsi (belum diverifikasi ke Perda 31/2022): RTH 20%, retensi 150 mm/hari, KDB 50%",
+            "parameter_note": "Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%",
             "population_note": "Sumber data penduduk belum terverifikasi (TODO-VERIFY)",
             "occupants_per_unit": req.occupants_per_unit,
             "school_age_ratio": settings.SUPERBLOCK_SCHOOL_AGE_RATIO,
             "kdb_ratio": settings.SUPERBLOCK_KDB_RATIO,
             "public_rth_ratio": settings.SUPERBLOCK_RTH_RATIO,
-            "rth_article_reference": "Asumsi RTH 20% (belum diverifikasi ke Perda 31/2022)",
+            "rth_article_reference": "Asumsi RTH 20% (belum diverifikasi terhadap peraturan daerah)",
             "stormwater_depth_m": settings.SUPERBLOCK_STORMWATER_DEPTH_M,
-            "stormwater_article_reference": "Asumsi Retensi 150 mm/hari (belum diverifikasi ke Perda 31/2022)",
+            "stormwater_article_reference": "Asumsi Retensi 150 mm/hari (belum diverifikasi terhadap peraturan daerah)",
             "primary_school_threshold": 1600,
             "puskesmas_kelurahan_threshold": 30000,
             "delta_formula": "ceil(P_new / threshold) - ceil(P_old / threshold)",

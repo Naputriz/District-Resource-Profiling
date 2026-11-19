@@ -107,40 +107,44 @@ def is_list_marker(text: str, start_pos: int, end_pos: int) -> bool:
     Determines if a small integer is functioning as structural list numbering or category enumeration.
     
     EXACT RULE:
-    Small integers 1-10 used as list numbering or counts of items in the answer are allowed only if
-    they also appear in tool output OR are list markers / enumerations.
+    Small integers 1-10 (or ordinals) used as list numbering or counts of items in the answer are allowed
+    only if they also appear in tool output OR are list markers / enumerations.
     
     Structural contexts recognized as list markers / section labels:
-    - Ordered list items at line boundaries: "1. ", "2) ", "- 1. ", "* 1. "
-    - Markdown section headers: "### 1. ", "## 2. "
-    - Parenthesized item markers: "(1)", "(2)", "(3)"
-    - Pillar category labels: "Pilar 1", "Pilar 2", "Pilar 3", "Pilar 4", "4 Pilar"
+    - Ordered list items at line boundaries: "1. ", "2) ", "- 1. ", "* 1. ", "1." at line start
+    - Markdown section headers: "### 1. ", "## 2. ", "# 1 ", "### 1"
+    - Parenthesized item markers: "(1)", "(2)", "(3)", "[1]", "[2]"
+    - Pillar category labels: "Pilar 1", "Pilar 2", "Pilar 3", "Pilar 4", "4 Pilar", "(Pilar 1)"
     - Standard spatial radius proxies: "15 menit" / "15-minute" (urban concept proxy)
     - Fraction / category enumeration: "1 dari 7", "4 dari 4"
     - Category count labels: "1 jenis", "7 jenis", "3 pilar"
     """
-    prefix = text[max(0, start_pos - 20):start_pos]
-    suffix = text[end_pos:min(len(text), end_pos + 20)]
+    prefix = text[max(0, start_pos - 30):start_pos]
+    suffix = text[end_pos:min(len(text), end_pos + 30)]
 
-    # 1. Line start / list item bullet
-    if re.search(r"(?:^|\n)\s*(?:[-*]\s+)?(?:#{1,6}\s+)?$", prefix) and re.match(r"^[.)]\s+", suffix):
+    # 1. Markdown headings: "# 1. ", "## 2. ", "### 1 ", "# 1"
+    if re.search(r"(?:^|\n)\s*#{1,6}\s+(?:\*{1,2}|_{1,2})?$", prefix) and re.match(r"^(?:\*{1,2}|_{1,2})?(?:[.)]\s*|\s+|$)", suffix):
         return True
 
-    # 2. Parenthesized item: (1), (2), (3)
-    if prefix.rstrip().endswith("(") and suffix.lstrip().startswith(")"):
+    # 2. Line start / list item bullet: "1. ", "2) ", "- 1. ", "* 1. ", "1." at line start
+    if re.search(r"(?:^|\n)\s*(?:[-*]\s+)?(?:\*{1,2}|_{1,2})?$", prefix) and re.match(r"^(?:\*{1,2}|_{1,2})?[.)](?:\*{1,2}|_{1,2})?(?:\s+|$)", suffix):
         return True
 
-    # 3. "Pilar 1", "Pilar 2", "4 Pilar", "15-minute"
-    if re.search(r"(?:pilar|pilar-)\s*$", prefix, re.IGNORECASE) or re.match(r"^\s*pilar", suffix, re.IGNORECASE):
+    # 3. Parenthesized / bracketed item: (1), (2), (3), [1], [2]
+    if prefix.rstrip().endswith(("(", "[")) and suffix.lstrip().startswith((")", "]")):
+        return True
+
+    # 4. "Pilar 1", "Pilar 2", "4 Pilar", "15-minute", "(Pilar 1)"
+    if re.search(r"(?:\bpilar\b|\bpilar-)[^a-zA-Z0-9\n]{0,10}$", prefix, re.IGNORECASE) or re.match(r"^[^a-zA-Z0-9\n]{0,10}\bpilar\b", suffix, re.IGNORECASE):
         return True
     if re.search(r"\b15\s*$", prefix, re.IGNORECASE) and re.match(r"^-(?:menit|minute)", suffix, re.IGNORECASE):
         return True
 
-    # 4. Fraction / category enumeration: e.g. "1 dari 7", "4 dari 4"
+    # 5. Fraction / category enumeration: e.g. "1 dari 7", "4 dari 4"
     if re.search(r"\bdari\s+\d+\b", suffix, re.IGNORECASE) or re.search(r"\b\d+\s+dari\s*$", prefix, re.IGNORECASE):
         return True
 
-    # 5. Category counts: e.g. "1 jenis", "7 jenis", "3 pilar", "2 fasilitas"
+    # 6. Category counts: e.g. "1 jenis", "7 jenis", "3 pilar", "2 fasilitas"
     if re.match(r"^\s*(?:jenis|fasilitas|pilar)\b", suffix, re.IGNORECASE):
         return True
 
@@ -228,8 +232,8 @@ def validate_numeric_claims(text: str, allowed_numbers: Set[float]) -> Tuple[boo
 
         primary_val = candidates[0]
 
-        # Check small integer list marker rule
-        if 1.0 <= abs(primary_val) <= 10.0 and is_list_marker(text, start_pos, end_pos):
+        # Check list marker / enumeration rule
+        if 1.0 <= abs(primary_val) <= 20.0 and is_list_marker(text, start_pos, end_pos):
             continue
 
         # Check against allowed numbers
@@ -247,7 +251,8 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
         "composite_score": None,
         "composite_scores": set(),
         "pillar_scores": {},      # pillar_key -> set of valid numbers (baseline, simulated, delta)
-        "facility_metrics": {}    # facility_type -> dict(deficits=set(), required=set(), existing=set())
+        "facility_metrics": {},   # facility_type -> dict(deficits=set(), required=set(), existing=set())
+        "population_numbers": set(),
     }
 
     for out in tool_outputs:
@@ -269,6 +274,23 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
                         bindings["composite_scores"].add(abs(c_val))
                         if k in ("composite_score", "simulated_composite_score"):
                             bindings["composite_score"] = c_val
+                    except (ValueError, TypeError):
+                        pass
+
+            # Extract population numbers (baseline, simulated, delta)
+            for k in (
+                "population",
+                "total_population",
+                "baseline_population",
+                "simulated_population",
+                "population_delta",
+                "delta_population",
+            ):
+                if k in d and d[k] is not None:
+                    try:
+                        p_val = float(d[k])
+                        bindings["population_numbers"].add(p_val)
+                        bindings["population_numbers"].add(abs(p_val))
                     except (ValueError, TypeError):
                         pass
 
@@ -310,11 +332,15 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
                                     "existing": set(),
                                     "required": set(),
                                     "deficits": set(),
+                                    "compliance_pcts": set(),
+                                    "coverage_pcts": set(),
                                     "deficit": 0.0,
                                     "required_val": 0.0,
                                     "existing_val": 0.0,
                                 }
                             entry = bindings["facility_metrics"][ft]
+                            if "coverage_pcts" not in entry:
+                                entry["coverage_pcts"] = set()
                             for k in ("existing", "baseline_existing", "simulated_existing"):
                                 if k in m and m[k] is not None:
                                     try:
@@ -335,8 +361,124 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
                                         entry["deficits"].add(abs(flt_v))
                                         entry["deficit"] = abs(flt_v)
                                     except (ValueError, TypeError): pass
+                            for k in ("compliance_pct", "baseline_compliance_pct", "simulated_compliance_pct"):
+                                if k in m and m[k] is not None:
+                                    try:
+                                        flt_p = float(m[k])
+                                        entry["compliance_pcts"].add(flt_p)
+                                        if flt_p.is_integer():
+                                            entry["compliance_pcts"].add(float(int(flt_p)))
+                                    except (ValueError, TypeError): pass
+
+            # Extract blank spot coverage percentages
+            if "facility_type" in d and ("coverage_percentage_val" in d or "coverage_pct" in d):
+                ft = d.get("facility_type")
+                if ft:
+                    if ft not in bindings["facility_metrics"]:
+                        bindings["facility_metrics"][ft] = {
+                            "existing": set(),
+                            "required": set(),
+                            "deficits": set(),
+                            "compliance_pcts": set(),
+                            "coverage_pcts": set(),
+                            "deficit": 0.0,
+                            "required_val": 0.0,
+                            "existing_val": 0.0,
+                        }
+                    entry = bindings["facility_metrics"][ft]
+                    if "coverage_pcts" not in entry:
+                        entry["coverage_pcts"] = set()
+                    for k in ("coverage_percentage_val", "unserved_percentage_val", "coverage_pct", "coverage_pct_without_neighbours"):
+                        if k in d and d[k] is not None:
+                            try:
+                                flt_c = float(d[k])
+                                entry["coverage_pcts"].add(flt_c)
+                                if flt_c.is_integer():
+                                    entry["coverage_pcts"].add(float(int(flt_c)))
+                            except (ValueError, TypeError): pass
 
     return bindings
+
+
+METRIC_KEYWORD_PATTERNS = [
+    (re.compile(r"\bdefisit\b"), "deficit", "defisit"),
+    (re.compile(r"\bkekurangan\b"), "deficit", "kekurangan"),
+    (re.compile(r"\bkebutuhan\b"), "required", "kebutuhan"),
+    (re.compile(r"\bmembutuhkan\b"), "required", "membutuhkan"),
+    (re.compile(r"\bmemerlukan\b"), "required", "memerlukan"),
+    (re.compile(r"\bstandar\b"), "required", "standar"),
+    (re.compile(r"\bdibutuhkan\b"), "required", "dibutuhkan"),
+    (re.compile(r"\bdiperlukan\b"), "required", "diperlukan"),
+    (re.compile(r"\beksisting\b"), "existing", "eksisting"),
+    (re.compile(r"\btersedia\b"), "existing", "tersedia"),
+    (re.compile(r"\bada\b"), "existing", "ada"),
+    (re.compile(r"\bkepatuhan\b"), "compliance", "kepatuhan"),
+    (re.compile(r"\bketerpenuhan\b"), "compliance", "keterpenuhan"),
+    (re.compile(r"\bcakupan\b"), "coverage", "cakupan"),
+    (re.compile(r"\bterlayani\b"), "coverage", "terlayani"),
+    (re.compile(r"\bblank\s+spot\b"), "coverage", "blank spot"),
+    (re.compile(r"\bcapaian\b"), "coverage", "capaian"),
+    (re.compile(r"\bskor\b"), "score", "skor"),
+    (re.compile(r"\bradius\b"), "radius", "radius"),
+]
+
+
+def find_metric_keywords(clause: str) -> List[Dict[str, Any]]:
+    matches = []
+    for pat, role, kw_name in METRIC_KEYWORD_PATTERNS:
+        for m in pat.finditer(clause):
+            matches.append({
+                "name": kw_name,
+                "role": role,
+                "start": m.start(),
+                "end": m.end()
+            })
+    matches.sort(key=lambda x: x["start"])
+    return matches
+
+
+def find_closest_metric_keyword(
+    clause: str,
+    s_pos: int,
+    e_pos: int,
+    kw_matches: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    # 1. Preceding keywords (kw_end <= s_pos)
+    pre_kws = [kw for kw in kw_matches if kw["end"] <= s_pos]
+    closest_pre = None
+    dist_pre = float("inf")
+    if pre_kws:
+        closest_pre = max(pre_kws, key=lambda k: k["end"])
+        dist_pre = s_pos - closest_pre["end"]
+
+    # 2. Following keywords (kw_start >= e_pos)
+    post_kws = [kw for kw in kw_matches if kw["start"] >= e_pos]
+    closest_post = None
+    dist_post = float("inf")
+    if post_kws:
+        cand_post = min(post_kws, key=lambda k: k["start"])
+        between = clause[e_pos:cand_post["start"]]
+        # Pattern: optional whitespace, optional 'unit', optional 'yang'
+        if re.match(r"^\s*(?:unit\s+)?(?:yang\s+)?$", between):
+            after_kw = clause[cand_post["end"]:min(len(clause), cand_post["end"] + 10)]
+            if not re.match(r"^\s*[0-9]", after_kw):
+                closest_post = cand_post
+                dist_post = cand_post["start"] - e_pos
+
+    # If we have an immediate post-qualifier (e.g. "<N> unit yang dibutuhkan"),
+    # check whether closest_pre is separated by conjunction/preposition or another structure
+    if closest_post and closest_pre:
+        between_pre = clause[closest_pre["end"]:s_pos]
+        if any(w in between_pre.lower().split() for w in ["dari", "dan", "dengan", "atau", "serta"]) or not re.match(r"^[=:\s]*$", between_pre):
+            return closest_post
+        if dist_post < dist_pre:
+            return closest_post
+        return closest_pre
+    elif closest_post:
+        return closest_post
+    elif closest_pre:
+        return closest_pre
+    return None
 
 
 def validate_label_bindings(
@@ -360,6 +502,7 @@ def validate_label_bindings(
         comp_val = next(iter(comp_scores))
     pillar_scores = bindings["pillar_scores"]
     facility_metrics = bindings["facility_metrics"]
+    pop_numbers = bindings.get("population_numbers", set())
 
     mislabeled_numbers: List[Dict[str, Any]] = []
 
@@ -370,7 +513,22 @@ def validate_label_bindings(
     # so administrative district numbers are not misconstrued as metric scores or facility quantities
     cleaned_text = re.sub(r"\(?\b(?:kode|kemendagri|bps)\s*[:]?\s*[\d.]+\)?", "", text, flags=re.IGNORECASE)
 
-    raw_sentences = re.split(r"(?<=[.!?\n])\s+", cleaned_text)
+    raw_sentences = []
+    for line in cleaned_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Preserve line-start ordinal list markers ("1. ", "2) ", "- 1. ", "* 1. ") without splitting on their '.'
+        m_ord = re.match(r"^((?:[-*]\s+)?(?:\*{1,2}|_{1,2})?\d+[.)](?:\*{1,2}|_{1,2})?\s+)(.*)$", line)
+        if m_ord:
+            prefix_ord = m_ord.group(1)
+            rest = m_ord.group(2)
+            sub_sents = re.split(r"(?<=[.!?])\s+", rest)
+            if sub_sents:
+                raw_sentences.append(prefix_ord + sub_sents[0])
+                raw_sentences.extend([s for s in sub_sents[1:] if s.strip()])
+        else:
+            raw_sentences.extend([s for s in re.split(r"(?<=[.!?])\s+", line) if s.strip()])
     sentences = [s.strip() for s in raw_sentences if s.strip()]
 
     num_pattern = r"-?\b\d+(?:[.,]\d+)*(?:%)?"
@@ -378,28 +536,28 @@ def validate_label_bindings(
     comp_keywords = ["skor kelayakan", "skor komposit", "livability score", "skor keseluruhan", "composite score"]
 
     pillar_regexes = {
-        "lifeline_health": r"(?:skor\s+(?:pilar\s+)?(?:layanan\s+)?(?:sektor\s+)?kesehatan(?:\s+dan\s+keselamatan)?|kesehatan(?:\s+dan\s+keselamatan)?\s*(?:\([^)]*\))?\s*(?:memiliki|sebesar|tercatat|mencapai)?\s*skor)",
-        "education": r"(?:skor\s+(?:pilar\s+)?(?:layanan\s+)?(?:sektor\s+)?pendidikan|pendidikan\s*(?:\([^)]*\))?\s*(?:memiliki|sebesar|tercatat|mencapai)?\s*skor)",
-        "urban_livability": r"(?:skor\s+(?:pilar\s+)?(?:layanan\s+)?(?:sektor\s+)?(?:ruang\s+hidup|lingkungan\s+hidup|rekreasi)|(?:ruang\s+hidup|lingkungan\s+hidup|rekreasi)\s*(?:\([^)]*\))?\s*(?:memiliki|sebesar|tercatat|mencapai)?\s*skor)",
-        "mobility_connectivity": r"(?:skor\s+(?:pilar\s+)?(?:layanan\s+)?(?:sektor\s+)?mobilitas(?:\s+dan\s+aksesibilitas)?|mobilitas(?:\s+dan\s+aksesibilitas)?\s*(?:\([^)]*\))?\s*(?:memiliki|sebesar|tercatat|mencapai)?\s*skor)"
+        "lifeline_health": r"(?:skor\s+(?:pilar\s+(?:\d+\s*(?:\([^)]*\))?\s*)?)?(?:layanan\s+)?(?:sektor\s+)?kesehatan(?:\s+dan\s+keselamatan)?|kesehatan(?:\s+dan\s+keselamatan)?[^0-9\n]{0,35}?skor)",
+        "education": r"(?:skor\s+(?:pilar\s+(?:\d+\s*(?:\([^)]*\))?\s*)?)?(?:layanan\s+)?(?:sektor\s+)?pendidikan|pendidikan[^0-9\n]{0,35}?skor)",
+        "urban_livability": r"(?:skor\s+(?:pilar\s+(?:\d+\s*(?:\([^)]*\))?\s*)?)?(?:layanan\s+)?(?:sektor\s+)?(?:ruang\s+hidup|lingkungan\s+hidup|rekreasi)|(?:ruang\s+hidup|lingkungan\s+hidup|rekreasi)[^0-9\n]{0,35}?skor)",
+        "mobility_connectivity": r"(?:skor\s+(?:pilar\s+(?:\d+\s*(?:\([^)]*\))?\s*)?)?(?:layanan\s+)?(?:sektor\s+)?mobilitas(?:\s+dan\s+aksesibilitas)?|mobilitas(?:\s+dan\s+aksesibilitas)?[^0-9\n]{0,35}?skor)"
     }
 
     fac_keywords = {
-        "puskesmas_kelurahan": [r"puskesmas\s+kelurahan", r"puskesmas\s+kel\b", r"poskeskel", r"pustu"],
-        "puskesmas_kecamatan": [r"puskesmas\s+kecamatan", r"puskesmas\s+kec\b"],
-        "rumah_sakit": [r"rumah\s+sakit", r"\brs\b", r"hospital"],
-        "pos_damkar": [r"pos\s+damkar", r"pemadam\s+kebakaran", r"\bdamkar\b", r"fire\s+station"],
+        "puskesmas_kelurahan": [r"puskesmas[\s_]+kelurahan", r"puskesmas[\s_]+kel\b", r"poskeskel", r"pustu"],
+        "puskesmas_kecamatan": [r"puskesmas[\s_]+kecamatan", r"puskesmas[\s_]+kec\b"],
+        "rumah_sakit": [r"rumah[\s_]+sakit", r"\brs\b", r"hospital"],
+        "pos_damkar": [r"pos[\s_]+damkar", r"pemadam[\s_]+kebakaran", r"\bdamkar\b", r"fire[\s_]+station"],
         "posyandu": [r"posyandu"],
-        "sekolah_dasar": [r"sekolah\s+dasar", r"\bsd\b", r"\bsdn\b", r"madrasah\s+ibtidaiyah"],
-        "sekolah_menengah_pertama": [r"sekolah\s+menengah\s+pertama", r"\bsmp\b", r"\bsmpn\b", r"madrasah\s+tsanawiyah"],
-        "sekolah_menengah_atas": [r"sekolah\s+menengah\s+atas", r"\bsma\b", r"\bsman\b", r"\bsmk\b", r"madrasah\s+aliyah"],
-        "taman_kanak_kanak": [r"taman\s+kanak", r"\btk\b", r"\bpaud\b"],
-        "taman_rptra": [r"rptra"],
-        "taman_kelurahan": [r"taman\s+kelurahan"],
-        "taman_kecamatan": [r"taman\s+kecamatan"],
-        "stasiun_transit": [r"stasiun", r"\bmrt\b", r"\blrt\b", r"\bkrl\b"],
-        "halte_transjakarta": [r"halte\s+transjakarta", r"halte\s+tj", r"halte"],
-        "pasar_tradisional": [r"pasar\s+tradisional", r"pasar\s+jaya", r"\bpasar\b"],
+        "sekolah_dasar": [r"sekolah[\s_]+dasar", r"\bsd\b", r"\bsdn\b", r"madrasah[\s_]+ibtidaiyah"],
+        "sekolah_menengah_pertama": [r"sekolah[\s_]+menengah[\s_]+pertama", r"\bsmp\b", r"\bsmpn\b", r"madrasah[\s_]+tsanawiyah"],
+        "sekolah_menengah_atas": [r"sekolah[\s_]+menengah[\s_]+atas", r"\bsma\b", r"\bsman\b", r"\bsmk\b", r"madrasah[\s_]+aliyah"],
+        "taman_kanak_kanak": [r"taman[\s_]+kanak", r"\btk\b", r"\bpaud\b"],
+        "taman_rptra": [r"rptra", r"taman[\s_]+rptra"],
+        "taman_kelurahan": [r"taman[\s_]+kelurahan"],
+        "taman_kecamatan": [r"taman[\s_]+kecamatan"],
+        "stasiun_transit": [r"stasiun[\s_]+transit", r"stasiun", r"\bmrt\b", r"\blrt\b", r"\bkrl\b"],
+        "halte_transjakarta": [r"halte[\s_]+transjakarta", r"halte[\s_]+tj", r"halte"],
+        "pasar_tradisional": [r"pasar[\s_]+tradisional", r"pasar[\s_]+jaya", r"\bpasar\b"],
     }
 
     for sent in sentences:
@@ -429,13 +587,21 @@ def validate_label_bindings(
                 sent,
                 re.IGNORECASE
             )
+            if comp_match:
+                s_pos, e_pos = comp_match.span(1)
+                if is_list_marker(sent, s_pos, e_pos):
+                    comp_match = None
             if not comp_match:
                 # Reverse syntax: "40.71 adalah indeks kecukupan fasilitas"
-                comp_match = re.search(
+                for rev_m in re.finditer(
                     r"(-?\d+(?:[.,]\d+)*(?:%)?)\s*(?:merupakan|adalah|sebagai)?\s*(?:indeks\s+kecukupan(?:\s+fasilitas(?:\s+dasar)?)?|skor\s+kelayakan(?:\s+hidup)?|skor\s+komposit|livability\s+score)",
                     sent,
                     re.IGNORECASE
-                )
+                ):
+                    s_pos, e_pos = rev_m.span(1)
+                    if not is_list_marker(sent, s_pos, e_pos):
+                        comp_match = rev_m
+                        break
             if comp_match:
                 raw_comp = comp_match.group(1).strip()
                 # Check if number is directly preceded by a pillar keyword (e.g. "Pilar Kesehatan: 56.71")
@@ -465,34 +631,78 @@ def validate_label_bindings(
             if not exp_scores:
                 continue
 
-            p_match = re.search(
-                rf"{p_regex}[^0-9\n]{{0,50}}?(-?\d+(?:[.,]\d+)*(?:%)?)",
-                sent,
-                re.IGNORECASE
-            )
-            if p_match:
-                raw_p_num = p_match.group(1).strip()
-                cands = parse_number_candidates(raw_p_num)
-                score_set = exp_scores if isinstance(exp_scores, set) else {exp_scores}
-                if cands and not any(math.isclose(cands[0], s, abs_tol=tolerance) for s in score_set):
+            for p_m in re.finditer(p_regex, sent, re.IGNORECASE):
+                post_text = sent[p_m.end():]
+                found_candidate = False
+                for n_m in re.finditer(num_pattern, post_text):
+                    if n_m.start() > 50:
+                        break
+                    raw_p_num = n_m.group(0).strip()
+                    abs_s = p_m.end() + n_m.start()
+                    abs_e = p_m.end() + n_m.end()
+                    cands = parse_number_candidates(raw_p_num)
+                    if not cands:
+                        continue
                     val = cands[0]
-                    found_lbl = "unknown_metric"
-                    if any(math.isclose(val, cs, abs_tol=tolerance) for cs in comp_scores):
-                        found_lbl = "composite_score"
-                    else:
-                        for other_p, o_scores in pillar_scores.items():
-                            o_set = o_scores if isinstance(o_scores, set) else {o_scores}
-                            if any(math.isclose(val, os, abs_tol=tolerance) for os in o_set):
-                                found_lbl = f"pillar_score:{other_p}"
-                                break
-                    mislabeled_numbers.append({
-                        "number": raw_p_num,
-                        "expected_label": f"pillar_score:{p_key}",
-                        "found_label": found_lbl
-                    })
+                    # Ignore list-enumeration tokens (line-start ordinal, headings, Pilar 1, etc.)
+                    if is_list_marker(sent, abs_s, abs_e):
+                        continue
+                    # Skip numbers with physical units or demographic counts that cannot be a pillar score
+                    post_num = sent[abs_e:min(len(sent), abs_e + 20)].lower()
+                    if re.search(r"^\s*(?:unit|buah|fasilitas|jiwa|orang|penduduk|km|m²|m2|meter)\b", post_num):
+                        continue
+
+                    found_candidate = True
+                    score_set = exp_scores if isinstance(exp_scores, set) else {exp_scores}
+                    if not any(math.isclose(val, s, abs_tol=tolerance) for s in score_set):
+                        found_lbl = "unknown_metric"
+                        if any(math.isclose(val, cs, abs_tol=tolerance) for cs in comp_scores):
+                            found_lbl = "composite_score"
+                        else:
+                            for other_p, o_scores in pillar_scores.items():
+                                o_set = o_scores if isinstance(o_scores, set) else {o_scores}
+                                if any(math.isclose(val, os, abs_tol=tolerance) for os in o_set):
+                                    found_lbl = f"pillar_score:{other_p}"
+                                    break
+                        mislabeled_numbers.append({
+                            "number": raw_p_num,
+                            "expected_label": f"pillar_score:{p_key}",
+                            "found_label": found_lbl
+                        })
+                    break
+
+                if not found_candidate:
+                    # Check reverse syntax: number preceding the pillar mention
+                    pre_text = sent[:p_m.start()]
+                    rev_matches = list(re.finditer(num_pattern, pre_text))
+                    if rev_matches:
+                        last_m = rev_matches[-1]
+                        if p_m.start() - last_m.end() <= 35:
+                            raw_p_num = last_m.group(0).strip()
+                            abs_s = last_m.start()
+                            abs_e = last_m.end()
+                            cands = parse_number_candidates(raw_p_num)
+                            if cands and not is_list_marker(sent, abs_s, abs_e):
+                                val = cands[0]
+                                score_set = exp_scores if isinstance(exp_scores, set) else {exp_scores}
+                                if not any(math.isclose(val, s, abs_tol=tolerance) for s in score_set):
+                                    found_lbl = "unknown_metric"
+                                    if any(math.isclose(val, cs, abs_tol=tolerance) for cs in comp_scores):
+                                        found_lbl = "composite_score"
+                                    else:
+                                        for other_p, o_scores in pillar_scores.items():
+                                            o_set = o_scores if isinstance(o_scores, set) else {o_scores}
+                                            if any(math.isclose(val, os, abs_tol=tolerance) for os in o_set):
+                                                found_lbl = f"pillar_score:{other_p}"
+                                                break
+                                    mislabeled_numbers.append({
+                                        "number": raw_p_num,
+                                        "expected_label": f"pillar_score:{p_key}",
+                                        "found_label": found_lbl
+                                    })
 
         # Rule 3: Facility type metrics (defisit, kebutuhan, tersedia)
-        clauses = re.split(r"[,;\n]|(?:\s+(?:namun|tetapi|sedangkan)\s+)", sent)
+        clauses = re.split(r"(?:(?<!\d),|,(?!\d)|[;\n])|(?:\s+(?:namun|tetapi|sedangkan)\s+)", sent)
         for clause in clauses:
             cl_lower = clause.lower().strip()
             if not cl_lower:
@@ -518,18 +728,45 @@ def validate_label_bindings(
             if not fac_spans:
                 continue
 
+            kw_matches = find_metric_keywords(cl_lower)
+
+            # Find if any non-% unit number in the clause is bound to "defisit"
+            deficit_bound_unit_numbers = []
+            for raw_u, val_u, s_u, e_u in cl_tokens:
+                is_pct_u = raw_u.endswith("%") or "%" in clause[s_u:min(len(clause), e_u + 2)] or "persen" in clause[e_u:min(len(clause), e_u + 10)].lower()
+                if not is_pct_u:
+                    closest_k_u = find_closest_metric_keyword(cl_lower, s_u, e_u, kw_matches)
+                    if closest_k_u and closest_k_u["role"] == "deficit":
+                        deficit_bound_unit_numbers.append((raw_u, val_u, closest_k_u["start"]))
+
             for raw, val, s_pos, e_pos in cl_tokens:
-                if 1.0 <= abs(val) <= 10.0 and is_list_marker(clause, s_pos, e_pos):
+                if 1.0 <= abs(val) <= 20.0 and is_list_marker(clause, s_pos, e_pos):
                     continue
 
                 # Ignore numbers in legal references: e.g. "Bagian 7.2", "Pasal 64", "Tahun 2022", "No. 31/2022", "Tabel 3"
-                pre_token = clause[max(0, s_pos - 15):s_pos].lower()
+                pre_token = clause[max(0, s_pos - 25):s_pos].lower()
                 if any(w in pre_token for w in ["bab", "pasal", "tabel", "ayat", "no.", "no ", "nomor", "sni", "tahun", "perda", "pergub", "uu "]):
                     continue
 
-                # Ignore numbers specifying physical site dimensions or areas: e.g. "15000 m2", "150 mm", "3.5 km"
-                post_token = clause[e_pos:min(len(clause), e_pos + 10)].lower()
-                if any(w in post_token for w in ["m²", "m2", "m³", "m3", "meter", "km", "%", "mm"]):
+                # Check if this token is a percentage or physical dimension
+                post_token = clause[e_pos:min(len(clause), e_pos + 25)].lower()
+                is_percent = raw.endswith("%") or "%" in clause[s_pos:min(len(clause), e_pos + 2)] or "persen" in post_token
+                is_dimension = any(w in post_token for w in ["m²", "m2", "m³", "m3", "meter", "km", "mm"])
+                if is_dimension:
+                    continue
+
+                # Skip population/demographic/score/time tokens:
+                # e.g. "10,000 jiwa", "238,450 penduduk", "228450 orang", "populasi 228,450", "+2 poin",
+                # or exact matching population numbers from tool outputs
+                is_demographic_or_score = bool(
+                    re.search(r"^\s*(?:jiwa|penduduk|penghuni|orang|kk|poin|lantai|ha|hektar|hari)\b", post_token)
+                    or re.search(r"\b(?:populasi|penduduk|penghuni)\s*(?:sebesar\s*)?$", pre_token)
+                )
+                is_known_population = (
+                    any(math.isclose(abs(val), pn, abs_tol=tolerance) for pn in pop_numbers)
+                    and abs(val) >= 1000
+                )
+                if is_demographic_or_score or is_known_population:
                     continue
 
                 # Bind to the closest facility keyword in the clause (prefer preceding)
@@ -543,8 +780,60 @@ def validate_label_bindings(
                 if not fm:
                     continue
 
+                # Find closest metric keyword for this token
+                closest_kw = find_closest_metric_keyword(cl_lower, s_pos, e_pos, kw_matches)
+
+                # Skip if closest keyword is dimension/radius
+                if closest_kw and closest_kw["role"] == "radius":
+                    continue
+
+                # Percentages represent compliance rate or service coverage, never physical unit counts
+                if is_percent:
+                    # a. A % number is a mislabeled deficit ONLY IF "defisit" is its closest keyword
+                    # and "defisit" is not already bound to a non-% unit number
+                    if closest_kw and closest_kw["role"] == "deficit":
+                        already_bound = any(db[2] == closest_kw["start"] for db in deficit_bound_unit_numbers)
+                        if not already_bound:
+                            mislabeled_numbers.append({
+                                "number": raw,
+                                "expected_label": f"defisit:{closest_ftype} (unit deficit tidak boleh persen)",
+                                "found_label": f"persentase:{raw}"
+                            })
+                            continue
+
+                    # b. A compliance % bound to a facility with no compliance_pcts and no blank-spot coverage is flagged
+                    exp_pcts = fm.get("compliance_pcts", set())
+                    exp_cov = fm.get("coverage_pcts", set())
+                    valid_pcts = exp_pcts | exp_cov
+
+                    if not valid_pcts:
+                        mislabeled_numbers.append({
+                            "number": raw,
+                            "expected_label": f"persentase:{closest_ftype} (fasilitas tidak memiliki data persentase)",
+                            "found_label": f"persentase_tidak_terdaftar:{raw}"
+                        })
+                        continue
+
+                    # If this facility has percentages (compliance or blank-spot coverage), validate semantic binding
+                    if not any(math.isclose(val, vp, abs_tol=tolerance) for vp in valid_pcts):
+                        found_f = "other_facility_metric"
+                        for other_ft, ofm in facility_metrics.items():
+                            o_pcts = ofm.get("compliance_pcts", set()) | ofm.get("coverage_pcts", set())
+                            if any(math.isclose(val, op, abs_tol=tolerance) for op in o_pcts):
+                                 found_f = f"compliance_pct:{other_ft}"
+                                 break
+                        mislabeled_numbers.append({
+                            "number": raw,
+                            "expected_label": f"kepatuhan:{closest_ftype} ({valid_pcts})",
+                            "found_label": found_f
+                        })
+                    continue
+
+                # Non-% numbers: determine active role based on closest keyword
+                active_role = closest_kw["role"] if closest_kw else None
+
                 # Check "defisit"
-                if "defisit" in cl_lower:
+                if active_role == "deficit":
                     exp_defs = fm.get("deficits", {abs(float(fm.get("deficit", 0)))})
                     exp_def = abs(float(fm.get("deficit", 0)))
                     if not any(math.isclose(abs(val), ed, abs_tol=tolerance) for ed in exp_defs):
@@ -561,8 +850,9 @@ def validate_label_bindings(
                         })
 
                 # Check "kebutuhan" or "standar"
-                elif ("kebutuhan" in cl_lower or "standar" in cl_lower) and "defisit" not in cl_lower:
-                    if "radius" in cl_lower or "meter" in cl_lower or "km" in cl_lower:
+                elif active_role == "required":
+                    pre_token_r = clause[max(0, s_pos - 15):s_pos].lower()
+                    if "radius" in pre_token_r or "meter" in post_token or "km" in post_token:
                         continue
                     exp_reqs = fm.get("required", {float(fm.get("required_val", 0))})
                     exp_req = float(fm.get("required_val", 0))
@@ -580,8 +870,9 @@ def validate_label_bindings(
                         })
 
                 # Check "tersedia" or "eksisting"
-                elif ("tersedia" in cl_lower or "eksisting" in cl_lower) and "defisit" not in cl_lower and "kebutuhan" not in cl_lower:
-                    if "radius" in cl_lower or "meter" in cl_lower or "km" in cl_lower:
+                elif active_role == "existing":
+                    pre_token_r = clause[max(0, s_pos - 15):s_pos].lower()
+                    if "radius" in pre_token_r or "meter" in post_token or "km" in post_token:
                         continue
                     exp_exists = fm.get("existing", {float(fm.get("existing_val", 0))})
                     exp_exist = float(fm.get("existing_val", 0))
@@ -595,6 +886,28 @@ def validate_label_bindings(
                         mislabeled_numbers.append({
                             "number": raw,
                             "expected_label": f"tersedia:{closest_ftype} ({exp_exist})",
+                            "found_label": found_f
+                        })
+
+                # Check "kepatuhan" or "keterpenuhan" with non-% number (rule d)
+                elif active_role == "compliance":
+                    exp_pcts = fm.get("compliance_pcts", set())
+                    if not exp_pcts:
+                        mislabeled_numbers.append({
+                            "number": raw,
+                            "expected_label": f"kepatuhan:{closest_ftype} (fasilitas tidak memiliki data kepatuhan)",
+                            "found_label": f"non_percent:{raw}"
+                        })
+                    elif not any(math.isclose(val, ep, abs_tol=tolerance) for ep in exp_pcts):
+                        found_f = "other_facility_metric"
+                        for other_ft, ofm in facility_metrics.items():
+                            o_pcts = ofm.get("compliance_pcts", set())
+                            if any(math.isclose(val, op, abs_tol=tolerance) for op in o_pcts):
+                                found_f = f"compliance_pct:{other_ft}"
+                                break
+                        mislabeled_numbers.append({
+                            "number": raw,
+                            "expected_label": f"kepatuhan:{closest_ftype} ({exp_pcts})",
                             "found_label": found_f
                         })
 
@@ -844,7 +1157,7 @@ def build_simulation_deterministic_block(tool_name: str, out: Dict[str, Any]) ->
             lines.append(f"- **Estimasi Alokasi RTH (Asumsi 20%):** {out.get('mandated_public_rth_m2'):,.1f} m²")
         if out.get("mandated_water_retention_m3"):
             lines.append(f"- **Estimasi Kolam Retensi (Asumsi 150 mm/hari):** {out.get('mandated_water_retention_m3'):,.1f} m³")
-        lines.append("- **Catatan Parameter:** Parameter asumsi (belum diverifikasi ke Perda 31/2022): RTH 20%, retensi 150 mm/hari, KDB 50%")
+        lines.append("- **Catatan Parameter:** Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%")
         delta_data = out.get("simulation_delta") or out
     else:
         lines.append(f"### 📈 Hasil Simulasi Perubahan Populasi ({d_name})")
