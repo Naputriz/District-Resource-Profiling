@@ -61,6 +61,7 @@ services:
       REDIS_HOST: cache
       REDIS_PORT: 6379
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
+      EDGE_SHARED_SECRET: ${EDGE_SHARED_SECRET:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       PYTHONPATH: /app
     ports:
