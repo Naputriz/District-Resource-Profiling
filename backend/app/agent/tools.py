@@ -26,13 +26,13 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_district_scorecard",
-            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas 4 pilar untuk kecamatan di DKI Jakarta.",
+            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di DKI Jakarta. Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "district_code": {
                         "type": "string",
-                        "description": "Kode Kemendagri kecamatan (misal '31.71.09' untuk Tebet) atau nama kecamatan (misal 'Tebet', 'Cilandak')"
+                        "description": "Kode Kemendagri kecamatan atau nama kecamatan (misal 'Tebet', 'Cilandak')"
                     }
                 },
                 "required": ["district_code"]
@@ -43,13 +43,13 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_unserved_blank_spots",
-            "description": "Hitung area blank spot (zona tidak terlayani fasilitas dalam radius standar SNI) menggunakan komputasi spasial PostGIS ST_Difference.",
+            "description": "Hitung area blank spot spasial dan persentase cakupan geografis dalam radius jangkauan fasilitas (cakupan % = luas terlayani radius dari blank spot). PERHATIAN: Tool ini mengukur cakupan radius geografis, BUKAN menghitung defisit unit fasilitas.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "district_code": {
                         "type": "string",
-                        "description": "Kode Kemendagri atau nama kecamatan (misal '31.71.09' atau 'Tebet')"
+                        "description": "Kode Kemendagri atau nama kecamatan (misal 'Tebet')"
                     },
                     "facility_type": {
                         "type": "string",
@@ -65,7 +65,7 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "search_regulations",
-            "description": "Cari rujukan pasal hukum resmi dari standar nasional (SNI 03-1733-2004) dan Perda RDTR DKI Jakarta No. 31/2022 via pencarian leksikal (trigram + hashed bag-of-words + sinonim).",
+            "description": "Cari rujukan pasal hukum resmi dari standar nasional (SNI 03-1733-2004) via pencarian leksikal (trigram + hashed bag-of-words + sinonim).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -93,16 +93,16 @@ SPATIAL_AGENT_TOOLS = [
                 "properties": {
                     "district_code": {
                         "type": "string",
-                        "description": "Kode Kemendagri atau nama kecamatan (misal '31.71.09')"
+                        "description": "Kode Kemendagri atau nama kecamatan"
                     },
                     "population_shock_count": {
                         "type": "integer",
-                        "description": "Jumlah pertambahan penduduk hipotetis (misal 10000)",
+                        "description": "Jumlah pertambahan penduduk hipotetis",
                         "default": 0
                     },
                     "population_shock_percent": {
                         "type": "number",
-                        "description": "Persentase lonjakan populasi (misal 15.0 untuk +15%)",
+                        "description": "Persentase lonjakan populasi",
                         "default": 0.0
                     }
                 },
@@ -114,7 +114,7 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "run_superblock_simulation",
-            "description": "Simulasikan dampak pembangunan superblok/apartemen baru terhadap fasilitas lingkungan dengan estimasi alokasi RTH 20% dan sumur resapan Zero Delta Q (parameter asumsi).",
+            "description": "Simulasikan dampak pembangunan superblok/apartemen baru terhadap fasilitas lingkungan dengan estimasi alokasi RTH dan sumur resapan Zero Delta Q (parameter asumsi).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -128,11 +128,11 @@ SPATIAL_AGENT_TOOLS = [
                     },
                     "residential_units": {
                         "type": "integer",
-                        "description": "Jumlah total unit hunian baru (misal 3500)"
+                        "description": "Jumlah total unit hunian baru"
                     },
                     "site_area_m2": {
                         "type": "number",
-                        "description": "Luas lahan bruto proyek dalam meter persegi (misal 20000.0 untuk 2 hektar)"
+                        "description": "Luas lahan bruto proyek dalam meter persegi"
                     }
                 },
                 "required": ["district_code", "project_name", "residential_units", "site_area_m2"]
@@ -265,12 +265,6 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
 
         elif tool_name == "run_superblock_simulation":
             code = arguments["district_code"]
-            req = SuperblockSimulationRequest(
-                district_code=code,
-                project_name=arguments.get("project_name", "Proyek Superblok"),
-                residential_units=arguments.get("residential_units", 2000),
-                site_area_m2=arguments.get("site_area_m2", 15000.0)
-            )
 
             with get_db_cursor() as cur:
                 cur.execute("SELECT id, kemendagri_code, name, population FROM kecamatan WHERE kemendagri_code = %s OR LOWER(name) = LOWER(%s);", (code, code))
@@ -283,6 +277,13 @@ def execute_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, An
 
                 cur.execute("SELECT facility_type, pillar, population_threshold, service_radius_meters, legal_reference FROM regulatory_standards;")
                 stds = cur.fetchall()
+
+            req = SuperblockSimulationRequest(
+                district_code=dist["kemendagri_code"],
+                project_name=arguments.get("project_name", "Proyek Superblok"),
+                residential_units=arguments.get("residential_units", 2000),
+                site_area_m2=arguments.get("site_area_m2", 15000.0)
+            )
 
             impact = WhatIfSimulationEngine.simulate_superblock_development(
                 req=req,

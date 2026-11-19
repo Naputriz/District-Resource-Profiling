@@ -102,7 +102,7 @@ def run_api_suite(close_pool: bool = True):
     assert sb_res["impact_level"] in ["Rendah", "Sedang", "Tinggi"]
     assert "assumptions" in sb_res
     assert sb_res["assumptions"]["kdb_ratio"] == 0.50
-    assert sb_res["assumptions"]["rth_article_reference"] == "Asumsi RTH 20% (belum diverifikasi ke Perda 31/2022)"
+    assert sb_res["assumptions"]["rth_article_reference"] == "Asumsi RTH 20% (belum diverifikasi terhadap peraturan daerah)"
     dump_sb = json.dumps(sb_res).lower()
     assert "wajib" not in dump_sb
     assert "pasal 64" not in dump_sb

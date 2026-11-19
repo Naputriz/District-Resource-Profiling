@@ -29,6 +29,7 @@ from backend.app.agent.guardrails import (
     log_numeric_violation
 )
 from backend.app.core.config import settings
+from backend.app.core.db import get_db_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +39,31 @@ TUGAS DAN ATURAN KETAT ANDA:
 1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri.
 2. ATURAN #2 (ISOLASI SANDBOX): Jelaskan hasil simulasi dengan menyatakan bahwa data tersebut adalah skenario hipotetis terisolasi tanpa mengubah data master. Indikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif.
 3. ATURAN #3 (FORMAT SITASI REGULASI WAJIB): Anda HANYA boleh merujuk regulasi menggunakan format tag [REG:<chunk_id>] persis dengan chunk_id yang terdapat pada output tool search_regulations giliran ini. DILARANG membuat sitasi teks bebas di luar format tersebut.
-4. Gaya Bahasa: Profesional, solutif, berbasis data spasial konkret, dan objektif sebagai analis tata ruang / perencana kota senior."""
+4. ATURAN #4 (PEMBEDAAN DEFISIT UNIT VS CAKUPAN RADIUS):
+   - "defisit unit" = kebutuhan - jumlah fasilitas (dari scorecard tool get_district_scorecard pada metrics_payload). Ini adalah defisit fisik unit fasilitas (misal: "kebutuhan <N> unit, eksisting <M> unit, defisit <N-M> unit (semua angka dari output tool)").
+   - "cakupan %" = luas terlayani radius (dari blank spot tool get_unserved_blank_spots). Ini BUKAN defisit unit fasilitas.
+   DILARANG menukar defisit unit dengan persentase cakupan radius.
+5. Gaya Bahasa: Profesional, solutif, berbasis data spasial konkret, dan objektif sebagai analis tata ruang / perencana kota senior."""
 
 # -----------------------------------------------------------------------------
 # Out-of-Scope Detection & Refusal (README.md §4, §11)
 # -----------------------------------------------------------------------------
 OUT_OF_SCOPE_PATTERNS = [
     r"boleh(?:kah)?\s+(?:di)?setujui",
-    r"izin(?:nya)?\s+(?:sah|legal|berlaku)",
-    r"apakah\s+izin",
+    r"izin(?:nya)?\s+(?:sah|legal|berlaku|keluar|terbit|lolos)",
+    r"apakah\s+.*(?:izin|perizinan)\s+.*(?:bisa|dapat|boleh)?\s*(?:di)?(?:setujui|terbit|diterbitkan|keluar|dikeluarkan|disahkan|lolos)",
+    r"apakah\s+.*(?:izin|perizinan)\s+.*(?:sah|legal|resmi|valid)",
+    r"apakah\s+.*(?:boleh|layak|bisa|dapat)\s+(?:di)?(?:setujui|izinkan|diberi(?:kan)?\s+izin)",
+    r"boleh(?:kah)?\s+(?:di)?(?:beri|berikan|terbitkan|keluarkan|miliki|kantongi)?\s*izin",
+    r"(?:beri|berikan|memberikan)\s+izin",
+    r"rekomendasi\s+(?:keputusan\s+)?perizin(?:an)?",
     r"rekomendasi\s+izin",
     r"keputusan\s+perizin(?:an)?",
     r"nasihat\s+hukum",
     r"fatwa\s+hukum",
     r"persetujuan\s+izin",
     r"legalitas\s+izin",
-    r"proyek\s+ini\s+boleh",
-    r"apakah\s+(?:boleh|layak)\s+diberi(?:kan)?\s+izin"
+    r"proyek\s+.*boleh\s+(?:di)?(?:setujui|izinkan|diberi(?:kan)?\s+izin)",
 ]
 
 OUT_OF_SCOPE_REFUSAL = (
@@ -531,6 +540,42 @@ class CognitiveSpatialAgentOrchestrator:
             answer_mode=answer_mode
         )
 
+    def _resolve_district_code(self, raw_code: Optional[str], output: Optional[Dict[str, Any]]) -> Optional[str]:
+        """
+        Resolves canonical Kemendagri code deterministically per W11 D2:
+        1. Prefer canonical code in tool output.
+        2. Else look it up by case-insensitive name or code from database.
+        3. If unresolvable, returns None.
+        """
+        if isinstance(output, dict) and not output.get("error"):
+            if output.get("kemendagri_code"):
+                return str(output["kemendagri_code"])
+            out_dc = output.get("district_code")
+            if out_dc and re.match(r"^\d{2}(\.\d{2})+(\.\d{2,4})?$", str(out_dc)):
+                return str(out_dc)
+            if isinstance(output.get("simulation_delta"), dict):
+                sim_dc = output["simulation_delta"].get("district_code")
+                if sim_dc and re.match(r"^\d{2}(\.\d{2})+(\.\d{2,4})?$", str(sim_dc)):
+                    return str(sim_dc)
+
+        target = raw_code or (output.get("district_code") if isinstance(output, dict) else None)
+        if not target:
+            return None
+
+        try:
+            with get_db_cursor() as cur:
+                cur.execute(
+                    "SELECT kemendagri_code FROM kecamatan WHERE kemendagri_code = %s OR LOWER(name) = LOWER(%s);",
+                    (str(target), str(target))
+                )
+                row = cur.fetchone()
+                if row and row.get("kemendagri_code"):
+                    return str(row["kemendagri_code"])
+        except Exception as e:
+            logger.warning(f"Database lookup for district code '{target}' failed: {e}")
+
+        return None
+
     def _extract_map_actions(
         self,
         tool_name: str,
@@ -541,9 +586,12 @@ class CognitiveSpatialAgentOrchestrator:
         """
         Translates tool results into real-time frontend map actions deterministically.
         Map actions are NEVER generated from LLM text (§5C).
+        Resolves canonical Kemendagri code deterministically; emits no action if unresolvable.
         """
-        d_code = args.get("district_code")
+        raw_code = args.get("district_code")
+        d_code = self._resolve_district_code(raw_code, output)
         if not d_code:
+            logger.warning(f"Could not resolve canonical district_code for map action from args={args}, output={output}. Skipping map action.")
             return
 
         if tool_name == "get_district_scorecard":
@@ -572,12 +620,13 @@ class CognitiveSpatialAgentOrchestrator:
                 ))
 
         elif tool_name in ["run_what_if_simulation", "run_superblock_simulation"]:
+            delta_dict = output.get("simulation_delta") if isinstance(output.get("simulation_delta"), dict) else output
             map_actions.append(MapActionEvent(
                 action_type="render_simulation_layer",
                 payload={
                     "district_code": d_code,
                     "is_simulated": True,
-                    "score_delta": output.get("score_delta", 0.0),
-                    "simulated_score": output.get("simulated_composite_score") or output.get("simulated_score")
+                    "score_delta": delta_dict.get("score_delta", 0.0),
+                    "simulated_score": delta_dict.get("simulated_composite_score") or delta_dict.get("simulated_score")
                 }
             ))
