@@ -1,5 +1,5 @@
 """
-Unit & Integration Tests for Multi-Stage Hybrid RAG Engine.
+Unit Tests for Multi-Stage Hybrid RAG Engine and Citation Sanitization.
 Validates pseudo-dense vector generation, RRF rank merger, and citation formatting.
 """
 
@@ -10,8 +10,10 @@ from backend.app.rag.hybrid_search import (
     LegalCitation,
     HybridRegulationRetriever
 )
+from backend.app.agent.guardrails import validate_and_sanitize_citations
 
 pytestmark = pytest.mark.unit
+
 
 def test_dense_embedding_properties():
     text1 = "Puskesmas kelurahan radius 1000 meter melayani 30000 penduduk"
@@ -31,6 +33,7 @@ def test_dense_embedding_properties():
     # Check semantic difference: distinct text produces distinct vector
     vec_diff = compute_query_dense_embedding("Taman RPTRA ramah anak 500 meter", dim=1024)
     assert vec1 != vec_diff
+
 
 def test_citation_markdown_formatting():
     citations = [
@@ -66,7 +69,24 @@ def test_citation_markdown_formatting():
     assert "Tabel 12" in md
     assert "Rujukan Hukum Terverifikasi" in md
 
-if __name__ == "__main__":
-    test_dense_embedding_properties()
-    test_citation_markdown_formatting()
-    print("ALL HYBRID RAG UNIT TESTS PASSED!")
+
+def test_rag_sanitizer_removes_unknown_citations():
+    """Requirement: unknown citations are removed from RAG output."""
+    known_citations = [
+        {
+            "chunk_id": "c01-sni-tk",
+            "regulation_code": "SNI 03-1733-2004",
+            "article_number": "Tabel 8",
+            "chapter": "Sarana Pendidikan",
+        }
+    ]
+    raw_text = (
+        "Berdasarkan [REG:c01-sni-tk] standar TK adalah 1 unit per 1.250 jiwa. "
+        "Namun menurut [REG:unknown-chunk-999] dan Permenkes No. 99/2025 ada aturan lain."
+    )
+    cleaned, valid_cits, removed_cits = validate_and_sanitize_citations(raw_text, known_citations)
+    assert "c01-sni-tk" in valid_cits
+    assert "[REG:unknown-chunk-999]" in removed_cits
+    assert "[REG:unknown-chunk-999]" not in cleaned
+    assert "Permenkes No. 99/2025" not in cleaned
+    assert "SNI 03-1733-2004" in cleaned

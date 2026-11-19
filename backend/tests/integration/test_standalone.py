@@ -3,7 +3,7 @@ from backend.app.core.config import settings
 from backend.app.core.db import init_db_pool, close_db_pool, get_db_cursor, get_redis_client
 from backend.app.engine.simulation import WhatIfSimulationEngine, HypotheticalAmenity
 
-pytestmark = pytest.mark.db
+pytestmark = [pytest.mark.db, pytest.mark.usefixtures("requires_seed")]
 
 def test_standalone_integration():
     init_db_pool()

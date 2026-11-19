@@ -1,6 +1,6 @@
 """
 Data Integrity Tests for OpenStreetMap (OSM) Ingestion & Spatial Sync.
-Data integrity validation:
+Enforces REBUILD_PROMPT_P3.md §3F.2:
 1. No facility with source = 'osm' has a null osm_id.
 2. No active facility has source = 'seed_manual' after OSM load.
 3. Every active facility has an associated kecamatan (kecamatan_id is not null).
@@ -10,7 +10,7 @@ import pytest
 import psycopg2
 from backend.app.core.config import settings
 
-pytestmark = pytest.mark.db
+pytestmark = [pytest.mark.db, pytest.mark.usefixtures("requires_seed")]
 
 def test_data_integrity_post_osm_load():
     conn = psycopg2.connect(

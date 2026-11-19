@@ -1,6 +1,6 @@
 """
 Unit tests for AI Numeric Guardrail and Citation Validator.
-Guardrail compliance tests:
+Complies with REBUILD_PROMPT_P4.md §4D:
 - Tests with MOCKED LLM (no GPU required).
 - Fabricated number triggers retry; second bad answer triggers numeric_fallback.
 - Only tool numbers -> guardrail == 'passed'.
@@ -11,24 +11,26 @@ Guardrail compliance tests:
 import os
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-
 import json
 import pytest
 from unittest.mock import patch, MagicMock
+
 from backend.app.agent.orchestrator import (
     CognitiveSpatialAgentOrchestrator,
     AgentChatRequest,
     ChatMessage
 )
-
-pytestmark = pytest.mark.unit
 from backend.app.agent.guardrails import (
     build_allowed_numbers,
     validate_numeric_claims,
     validate_and_sanitize_citations,
-    parse_number_candidates
+    parse_number_candidates,
+    validate_label_bindings,
+    build_deterministic_fallback_summary
 )
+
+pytestmark = pytest.mark.unit
+
 
 def test_parse_number_candidates():
     # Indonesian comma decimal
@@ -43,6 +45,7 @@ def test_parse_number_candidates():
     # Negative values
     assert -1.0 in parse_number_candidates("-1")
     assert -3.4 in parse_number_candidates("-3.4")
+
 
 def test_numeric_guardrail_unit_pass():
     tool_outputs = [
@@ -77,6 +80,7 @@ def test_numeric_guardrail_unit_pass():
     assert passed is True, f"Expected passed, got unsupported: {unsupported}"
     assert len(unsupported) == 0
 
+
 def test_citation_validator_unit():
     returned_cits = [
         {
@@ -102,9 +106,10 @@ def test_citation_validator_unit():
     assert "99/2099" not in cleaned
     assert "SNI 03-1733-2004" in cleaned
 
+
 def test_citation_sanitizer_empty_shells_and_valid_render():
     """
-    Tests edge cases:
+    Tests edge cases from Phase 12.1 §B:
     - broken empty shells: "... [REG:] ..."
     - malformed tag: "... [REG: & ] ..."
     - unbacked bold header: "1. **** - Rencana..."
@@ -138,6 +143,7 @@ def test_citation_sanitizer_empty_shells_and_valid_render():
     assert "c99-perda-rth" in v4
     assert "**[Perda DKI Jakarta No. 31/2022: Pasal 64]**" in c4
 
+
 def test_mocked_llm_fabricated_number_triggers_fallback():
     orchestrator = CognitiveSpatialAgentOrchestrator()
 
@@ -152,10 +158,6 @@ def test_mocked_llm_fabricated_number_triggers_fallback():
         "metrics_payload": []
     }
 
-    # Simulate LLM turns:
-    # Turn 1: tool call
-    # Turn 2: fabricated number "skor 28.57" (first attempt)
-    # Turn 3 (retry): still fabricated number "skor 99.99"
     responses = [
         {
             "model": "mock-qwen",
@@ -198,6 +200,7 @@ def test_mocked_llm_fabricated_number_triggers_fallback():
     assert "Fallback" in res.reply
     assert "33.57" in res.reply
 
+
 def test_mocked_llm_retry_success():
     orchestrator = CognitiveSpatialAgentOrchestrator()
 
@@ -212,9 +215,6 @@ def test_mocked_llm_retry_success():
         "metrics_payload": []
     }
 
-    # Turn 1: tool call
-    # Turn 2: fabricated number "28.57"
-    # Turn 3 (retry): corrected with real number "33.57"
     responses = [
         {
             "model": "mock-qwen",
@@ -255,6 +255,7 @@ def test_mocked_llm_retry_success():
     assert res.guardrail == "retried"
     assert len(res.unsupported_numbers) == 0
     assert "33.57" in res.reply
+
 
 def test_mocked_llm_all_numbers_valid():
     orchestrator = CognitiveSpatialAgentOrchestrator()
@@ -303,14 +304,8 @@ def test_mocked_llm_all_numbers_valid():
     assert res.guardrail == "passed"
     assert len(res.unsupported_numbers) == 0
 
-def test_label_aware_guardrail_reproduces_original_bug():
-    """
-    Reproduces original bug exactly: LLM outputs pillar score 28.57 when reporting
-    composite livability score (expected 40.71).
-    Must be caught by validate_label_bindings and trigger retry/fallback.
-    """
-    from backend.app.agent.guardrails import validate_label_bindings
 
+def test_label_aware_guardrail_reproduces_original_bug():
     mock_tool_output = {
         "district_code": "31.71.09",
         "district_name": "Tebet",
@@ -322,7 +317,6 @@ def test_label_aware_guardrail_reproduces_original_bug():
         "metrics_payload": []
     }
 
-    # Direct unit test
     passed, mislabeled = validate_label_bindings("Skor kelayakan hidup Tebet adalah 28.57.", [mock_tool_output])
     assert passed is False
     assert len(mislabeled) == 1
@@ -330,7 +324,6 @@ def test_label_aware_guardrail_reproduces_original_bug():
     assert "composite_score (40.71)" in mislabeled[0]["expected_label"]
     assert mislabeled[0]["found_label"] == "pillar_score:urban_livability"
 
-    # Orchestrator flow test
     orchestrator = CognitiveSpatialAgentOrchestrator()
     responses = [
         {
@@ -375,13 +368,8 @@ def test_label_aware_guardrail_reproduces_original_bug():
     assert res.mislabeled_numbers[0]["found_label"] == "pillar_score:urban_livability"
     assert "Fallback" in res.reply
 
-def test_label_aware_guardrail_passes_correct_labels():
-    """
-    Same tool output: composite 40.71, livability 28.57.
-    Answer: 'Skor kelayakan hidup Tebet adalah 40.71 dan skor pilar ruang hidup 28.57' -> passes.
-    """
-    from backend.app.agent.guardrails import validate_label_bindings
 
+def test_label_aware_guardrail_passes_correct_labels():
     mock_tool_output = {
         "district_code": "31.71.09",
         "district_name": "Tebet",
@@ -393,13 +381,11 @@ def test_label_aware_guardrail_passes_correct_labels():
         "metrics_payload": []
     }
 
-    # Direct unit test
     text = "Skor kelayakan hidup Tebet adalah 40.71 dan skor pilar ruang hidup 28.57."
     passed, mislabeled = validate_label_bindings(text, [mock_tool_output])
     assert passed is True, f"Expected passed, got mislabeled: {mislabeled}"
     assert len(mislabeled) == 0
 
-    # Orchestrator flow test
     orchestrator = CognitiveSpatialAgentOrchestrator()
     responses = [
         {
@@ -434,12 +420,8 @@ def test_label_aware_guardrail_passes_correct_labels():
     assert len(res.mislabeled_numbers) == 0
     assert len(res.unsupported_numbers) == 0
 
-def test_label_aware_guardrail_wrong_facility_deficit():
-    """
-    Deficit of wrong facility type in a sentence is flagged as mislabeled.
-    """
-    from backend.app.agent.guardrails import validate_label_bindings
 
+def test_label_aware_guardrail_wrong_facility_deficit():
     mock_tool_output = {
         "district_code": "31.71.09",
         "district_name": "Tebet",
@@ -453,7 +435,6 @@ def test_label_aware_guardrail_wrong_facility_deficit():
         ]
     }
 
-    # Direct unit test
     passed, mislabeled = validate_label_bindings("Defisit rumah sakit di Tebet adalah 0 unit.", [mock_tool_output])
     assert passed is False
     assert len(mislabeled) == 1
@@ -461,18 +442,12 @@ def test_label_aware_guardrail_wrong_facility_deficit():
     assert "defisit:rumah_sakit (2.0)" in mislabeled[0]["expected_label"]
     assert mislabeled[0]["found_label"] == "deficit:puskesmas_kecamatan"
 
-    # Correct sentence passes
     passed_ok, mislabeled_ok = validate_label_bindings("Defisit rumah sakit di Tebet adalah 2 unit.", [mock_tool_output])
     assert passed_ok is True
     assert len(mislabeled_ok) == 0
 
-def test_fallback_scorecard_null_safe_rendering():
-    """
-    Scorecard tool output with excluded pillars (score: None) and composite None
-    must render without error and must not print numbers for excluded pillars.
-    """
-    from backend.app.agent.guardrails import build_deterministic_fallback_summary
 
+def test_fallback_scorecard_null_safe_rendering():
     mock_tool_output = {
         "district_code": "31.75.05",
         "district_name": "Kelapa Gading",
@@ -525,34 +500,7 @@ def test_fallback_scorecard_null_safe_rendering():
     assert "Pilar 1: Kesehatan & Keselamatan: 66.67%" in text
     assert "Pilar 3: Ruang Hidup & Rekreasi: tidak dinilai" in text
     assert "Pilar 4: Mobilitas & Aksesibilitas: tidak dinilai" in text
-    # Ensure no number or None is printed for excluded pillars
     assert "Pilar 3: Ruang Hidup & Rekreasi: None" not in text
     assert "Pilar 4: Mobilitas & Aksesibilitas: None" not in text
     assert "Pilar 3: Ruang Hidup & Rekreasi: 0" not in text
     assert "rumah_sakit`: Ada 12 unit (Fasilitas informasi - tidak dinilai)" in text
-
-if __name__ == "__main__":
-    from backend.app.core.db import init_db_pool, close_db_pool
-    try:
-        init_db_pool()
-    except Exception:
-        pass
-
-    try:
-        test_parse_number_candidates()
-        test_numeric_guardrail_unit_pass()
-        test_citation_validator_unit()
-        test_mocked_llm_fabricated_number_triggers_fallback()
-        test_mocked_llm_retry_success()
-        test_mocked_llm_all_numbers_valid()
-        test_label_aware_guardrail_reproduces_original_bug()
-        test_label_aware_guardrail_passes_correct_labels()
-        test_label_aware_guardrail_wrong_facility_deficit()
-        test_fallback_scorecard_null_safe_rendering()
-        print(">> [PASSED] All AI Guardrail & Citation Validator Unit Tests Passed!")
-    finally:
-        try:
-            close_db_pool()
-        except Exception:
-            pass
-

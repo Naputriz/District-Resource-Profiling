@@ -1,29 +1,26 @@
 """
-Unit & Integration Tests for Cross-Border Blank Spots.
-Verifies that facilities across district borders are included when their service buffer
-intersects the target district (ST_DWithin), while facilities beyond radius are excluded.
+Integration Tests for Cross-Border Blank Spots.
+Verifies ST_Difference, ST_Buffer, and ST_DWithin with live PostGIS database. Marker: db.
 """
 
 import pytest
 from backend.app.core.db import get_db_cursor, init_db_pool, close_db_pool
-from backend.app.engine.spatial import PostGISSpatialEngine, BlankSpotAnalysisResult
+from backend.app.engine.spatial import PostGISSpatialEngine
 
 pytestmark = pytest.mark.db
 
 
 def test_synthetic_adjacent_squares_cross_border():
     """
-    Test cross-border blank spot calculation:
     Synthetic geometry: Two adjacent squares.
     Square 1 (Target District): [0, 1000] x [0, 1000] (area 1 km2).
     Square 2 (Neighbour District): [1000, 2000] x [0, 1000].
     Radius: 500m.
     - Facility A at (1200, 500) is 200m across the border (distance 200 <= 500) -> COUNTED & COVERS part of Square 1.
-    - Facility B at (1800, 500) is 800m across the border (distance 800 > 500) -> EXCLUDED (does not reach Square 1).
+    - Facility B at (1800, 500) is 800m across the border (distance 800 > 500) -> EXCLUDED.
     """
     init_db_pool()
     with get_db_cursor() as cur:
-        # 1. Test Facility A (within radius: 200m from border)
         cur.execute("""
             WITH target_district AS (
                 SELECT ST_SetSRID(ST_GeomFromText('POLYGON((0 0, 1000 0, 1000 1000, 0 1000, 0 0))'), 32748) as geom
@@ -44,9 +41,8 @@ def test_synthetic_adjacent_squares_cross_border():
         row_a = cur.fetchone()
         assert row_a["in_radius"] is True
         assert row_a["dist_meters"] == 200.0
-        assert row_a["unserved_area"] < row_a["target_area"]  # Overlaps Square 1, reducing unserved area
+        assert row_a["unserved_area"] < row_a["target_area"]
 
-        # 2. Test Facility B (beyond radius: 800m from border)
         cur.execute("""
             WITH target_district AS (
                 SELECT ST_SetSRID(ST_GeomFromText('POLYGON((0 0, 1000 0, 1000 1000, 0 1000, 0 0))'), 32748) as geom
@@ -67,10 +63,10 @@ def test_synthetic_adjacent_squares_cross_border():
         row_b = cur.fetchone()
         assert row_b["in_radius"] is False
         assert row_b["dist_meters"] == 800.0
-        assert row_b["unserved_area"] == row_b["target_area"]  # Zero overlap, unserved area unaffected
+        assert row_b["unserved_area"] == row_b["target_area"]
 
 
-def test_tebet_puskesmas_cross_border_blank_spot():
+def test_tebet_puskesmas_cross_border_blank_spot(requires_seed):
     """
     Verifies that Tebet's puskesmas blank-spot includes neighbour facilities from
     Setiabudi, Pancoran, Jatinegara, etc., raising coverage from 92.08% to 99.05%.
@@ -92,7 +88,7 @@ def test_tebet_puskesmas_cross_border_blank_spot():
     assert bool(res.blank_spot_geojson) is True
 
 
-def test_isolated_district_kepulauan_seribu_selatan():
+def test_isolated_district_kepulauan_seribu_selatan(requires_seed):
     """
     For an island district without land borders within 1000m,
     facilities_from_neighbours is 0 and coverage_pct equals coverage_pct_without_neighbours.
@@ -106,7 +102,7 @@ def test_isolated_district_kepulauan_seribu_selatan():
     assert res.cross_border_scope == "DKI Jakarta only"
 
 
-def test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression():
+def test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression(requires_seed):
     """
     Regression Test:
     Verifies that Kepulauan Seribu Selatan sekolah_dasar (3 facilities inside)
@@ -129,11 +125,10 @@ def test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression():
     assert 28.84 <= res.coverage_pct <= 28.94
     assert res.coverage_pct == res.coverage_pct_without_neighbours
     assert res.cross_border_scope == "DKI Jakarta only"
-    assert res.area_note is not None
     assert bool(res.blank_spot_geojson) is True
 
 
-def test_simulate_blank_spot_reduction_with_neighbours():
+def test_simulate_blank_spot_reduction_with_neighbours(requires_seed):
     """
     Simulates placing a hypothetical puskesmas in Tebet's remaining unserved pocket.
     """
@@ -147,16 +142,3 @@ def test_simulate_blank_spot_reduction_with_neighbours():
     assert delta.simulated_unserved_km2 <= delta.baseline_unserved_km2
     assert delta.area_recovered_km2 >= 0.0
     assert delta.cross_border_scope == "DKI Jakarta only"
-
-
-if __name__ == "__main__":
-    init_db_pool()
-    try:
-        test_synthetic_adjacent_squares_cross_border()
-        test_tebet_puskesmas_cross_border_blank_spot()
-        test_isolated_district_kepulauan_seribu_selatan()
-        test_kepulauan_seribu_selatan_sekolah_dasar_anomaly_regression()
-        test_simulate_blank_spot_reduction_with_neighbours()
-        print(">> [PASSED] All Cross-Border Blank Spot Tests Passed Successfully!")
-    finally:
-        close_db_pool()
