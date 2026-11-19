@@ -1,5 +1,5 @@
 """
-Unit tests for PostGISSpatialEngine logic (README §17).
+Unit tests for PostGISSpatialEngine logic (README.revised.md §17, Phase 10.1).
 Validates:
 1. SQL query construction and parameterization (buffers, boundaries).
 2. Result post-processing and GeoJSON FeatureCollection generation.
@@ -39,7 +39,6 @@ def test_get_district_boundary_geojson_unit():
         assert res["type"] == "Polygon"
         assert len(res["coordinates"]) == 1
 
-        # Test district not found
         mock_cur.fetchone.side_effect = None
         mock_cur.fetchone.return_value = None
         res_none = PostGISSpatialEngine.get_district_boundary_geojson("invalid_code")
@@ -80,7 +79,6 @@ def test_compute_facility_buffers_unit():
         yield mock_cur
 
     with patch("backend.app.engine.spatial.get_db_cursor", side_effect=mock_cursor_ctx):
-        # 1. Query with facility_type and pillar
         fc = PostGISSpatialEngine.compute_facility_buffers(
             district_code="31.71.09",
             facility_type="puskesmas_kelurahan",
@@ -93,7 +91,6 @@ def test_compute_facility_buffers_unit():
         assert fc["features"][0]["properties"]["facility_id"] == "101"
         assert fc["features"][0]["properties"]["coordinates"] == [106.845, -6.235]
 
-        # Verify query had WHERE clauses for facility_type and pillar
         called_sql = mock_cur.execute.call_args[0][0]
         called_params = mock_cur.execute.call_args[0][1]
         assert "AND f.facility_type = %s" in called_sql
@@ -104,7 +101,6 @@ def test_compute_facility_buffers_unit():
 def test_calculate_blank_spots_normal_area_ratio():
     """Verifies blank spot calculation when polygon/BPS ratio <= 1.5 (area_note should be None)."""
     mock_cur = MagicMock()
-    # 1. District info
     mock_dist = {
         "id": 1,
         "kemendagri_code": "31.71.09",
@@ -113,7 +109,6 @@ def test_calculate_blank_spots_normal_area_ratio():
         "pillar": "lifeline_health",
         "radius_m": 1000
     }
-    # 2. Spatial query result: geom area 9.37 km2, served 9.28 km2, unserved 0.09 km2
     mock_spatial = {
         "geom_area_km2": 9.37,
         "inside_cnt": 7,
@@ -135,20 +130,17 @@ def test_calculate_blank_spots_normal_area_ratio():
         assert res.district_name == "Tebet"
         assert res.district_area_km2 == 9.37
         assert res.bps_area_km2 == 9.03
-        assert res.area_ratio == 1.04  # 9.37 / 9.03 = 1.037... -> 1.04
-        assert res.area_note is None   # <= 1.5
+        assert res.area_ratio == 1.04
+        assert res.area_note is None
         assert res.facilities_inside == 7
         assert res.facilities_from_neighbours == 19
-        assert res.coverage_pct == 99.09  # 9.2843 / 9.37 * 100 = 99.085... -> 99.09
-        assert res.coverage_pct_without_neighbours == 92.32  # 8.65 / 9.37 * 100 = 92.315... -> 92.32
+        assert res.coverage_pct == 99.09
+        assert res.coverage_pct_without_neighbours == 92.32
         assert res.unserved_area_km2 == 0.0857
 
 
 def test_calculate_blank_spots_high_ratio_area_note():
-    """
-    Verifies area_note rule for anomalous geometry/BPS ratios (> 1.5x),
-    (mocked values: geom 42.48 km2 vs BPS 1.13 km2).
-    """
+    """Verifies area_note rule for anomalous geometry/BPS ratios (> 1.5x)."""
     mock_cur = MagicMock()
     mock_dist = {
         "id": 2,
@@ -175,9 +167,9 @@ def test_calculate_blank_spots_high_ratio_area_note():
 
     with patch("backend.app.engine.spatial.get_db_cursor", side_effect=mock_cursor_ctx):
         res = PostGISSpatialEngine.calculate_blank_spots("31.01.01", "puskesmas_kelurahan")
-        assert res.area_ratio == 37.59  # 42.48 / 1.13 = 37.5929...
+        assert res.area_ratio == 37.59
         assert res.area_note is not None
-        assert "berbeda jauh" in res.area_note
+        assert "berbeda jauh dari luas administratif BPS" in res.area_note
         assert "42.48 km²" in res.area_note
         assert "1.13 km²" in res.area_note
         assert "37.59x" in res.area_note
@@ -194,14 +186,13 @@ def test_calculate_blank_spots_clamping_and_bounds():
         "pillar": "lifeline_health",
         "radius_m": 1000
     }
-    # Raw served exceeds raw geom area due to slight floating point or multi-part intersection
     mock_spatial = {
         "geom_area_km2": 7.59,
         "inside_cnt": 5,
         "neighbour_cnt": 10,
-        "served_no_neigh": 7.60,  # Exceeds 7.59
-        "served_all": 7.75,       # Exceeds 7.59
-        "unserved_all": -0.05,    # Negative area
+        "served_no_neigh": 7.60,
+        "served_all": 7.75,
+        "unserved_all": -0.05,
         "blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
     mock_cur.fetchone.side_effect = [mock_dist, mock_dist, mock_spatial]
@@ -212,8 +203,8 @@ def test_calculate_blank_spots_clamping_and_bounds():
 
     with patch("backend.app.engine.spatial.get_db_cursor", side_effect=mock_cursor_ctx):
         res = PostGISSpatialEngine.calculate_blank_spots("31.73.08", "puskesmas_kelurahan")
-        assert res.served_area_km2 == 7.59  # Clamped to geom_area_km2
-        assert res.coverage_pct == 100.0    # Clamped to 100.0%
+        assert res.served_area_km2 == 7.59
+        assert res.coverage_pct == 100.0
         assert res.coverage_pct_without_neighbours == 100.0
 
 
@@ -235,7 +226,6 @@ def test_simulate_blank_spot_reduction_unit():
     """Verifies simulation delta calculation for hypothetical amenity addition."""
     mock_cur = MagicMock()
 
-    # Step 1: calculate_blank_spots baseline mock
     mock_dist = {
         "id": 1,
         "kemendagri_code": "31.71.09",
@@ -254,7 +244,6 @@ def test_simulate_blank_spot_reduction_unit():
         "blank_geojson": {"type": "MultiPolygon", "coordinates": []}
     }
 
-    # Step 2: simulate query mock: unserved reduced from 0.09 to 0.02
     mock_kec_id = {"id": 1, "kemendagri_code": "31.71.09", "utm_srid": 32748}
     mock_sim_result = {
         "sim_unserved_km2": 0.02,
@@ -278,6 +267,6 @@ def test_simulate_blank_spot_reduction_unit():
         assert delta.facility_type == "puskesmas_kelurahan"
         assert delta.baseline_unserved_km2 == 0.09
         assert delta.simulated_unserved_km2 == 0.02
-        assert delta.area_recovered_km2 == 0.07  # 0.09 - 0.02
-        assert delta.coverage_improvement_pct == 0.75  # 0.07 / 9.37 * 100 = 0.747... -> 0.75%
+        assert delta.area_recovered_km2 == 0.07
+        assert delta.coverage_improvement_pct == 0.75
         assert delta.cross_border_scope == "DKI Jakarta only"

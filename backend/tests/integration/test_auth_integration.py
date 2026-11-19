@@ -5,7 +5,7 @@ Enforces:
 - Registration & login flow with user teardown
 - Identical responses for unknown email & wrong password with brute-force reset
 - AUTH_ALLOW_REGISTER=False -> 403
-- Dynamic route table iteration verifying every protected route returns 401 without token and with garbage bearer (API_KEY unset and set)
+- Dynamic route table iteration verifying every protected route returns 401 without token and with garbage bearer
 - Public GET routes remain accessible without token (200 OK)
 - Authenticated user can access /api/v1/auth/me and protected routes
 - Register -> login -> POST /api/v1/chat with mocked orchestrator
@@ -24,8 +24,8 @@ from fastapi.routing import APIRoute
 
 from backend.app.main import app
 from backend.app.core.config import settings
-from backend.app.core.db import init_db_pool, close_db_pool, get_db_cursor
-from backend.app.core.auth import reset_failed_login, decode_access_token
+from backend.app.core.db import init_db_pool, close_db_pool, get_db_cursor, get_redis_client
+from backend.app.core.auth import reset_failed_login, decode_access_token, create_access_token
 from backend.app.api.deps import AUTH_REQUIRED_MESSAGE
 from backend.app.agent.orchestrator import AgentChatResponse
 
@@ -43,7 +43,7 @@ def setup_db():
     close_db_pool()
 
 
-def test_auth_registration_and_login():
+def test_auth_registration_and_login(requires_seed):
     client = TestClient(app)
     unique_suffix = uuid.uuid4().hex[:8]
     test_email = f"user_{unique_suffix}@jakarta.go.id"
@@ -68,7 +68,7 @@ def test_auth_registration_and_login():
         assert "id" in user_data
         created_id = user_data["id"]
 
-        # 2. Duplicate registration fails (case-insensitive)
+        # 2. Duplicate registration fails
         res_dup = client.post(
             "/api/v1/auth/register",
             json={
@@ -133,21 +133,18 @@ def test_identical_login_error_for_unknown_email_and_wrong_password():
     reset_failed_login(known_email, "testclient")
 
     try:
-        # Unknown email
         res_unknown = client.post(
             "/api/v1/auth/login",
             json={"email": unk_email, "password": "wrongpassword123"},
         )
         assert res_unknown.status_code == 401
 
-        # Known email with wrong password
         res_wrong_pw = client.post(
             "/api/v1/auth/login",
             json={"email": known_email, "password": "definitelyWrongPassword123!"},
         )
         assert res_wrong_pw.status_code == 401
 
-        # Exact error message equality check
         assert res_unknown.json() == res_wrong_pw.json()
         assert res_unknown.json()["detail"] == "Email atau kata sandi salah."
     finally:
@@ -174,13 +171,7 @@ def test_auth_allow_register_disabled():
         settings.AUTH_ALLOW_REGISTER = original
 
 
-def test_route_table_protection_and_public_routes():
-    """
-    Dynamically inspects FastAPI route table:
-    Iterates over ALL APIRoute entries where "POST" in route.methods and not route.path.startswith("/api/v1/auth/").
-    Asserts 401 under all 4 conditions (unset+missing, unset+garbage, set+missing, set+garbage).
-    Verifies public GET routes return 200 without token.
-    """
+def test_route_table_protection_and_public_routes(requires_seed):
     client = TestClient(app)
 
     dummy_payloads = {
@@ -241,13 +232,11 @@ def test_route_table_protection_and_public_routes():
         for r in post_routes_to_test:
             payload = dummy_payloads.get(r.path, {})
 
-            # 1. API_KEY unset, missing token -> 401
             os.environ.pop("API_KEY", None)
             res_unset_no_tok = client.post(r.path, json=payload)
             assert res_unset_no_tok.status_code == 401, f"{r.path} expected 401 on unset+no_tok, got {res_unset_no_tok.status_code}"
             assert res_unset_no_tok.json().get("detail") == AUTH_REQUIRED_MESSAGE
 
-            # 2. API_KEY unset, garbage bearer -> 401
             res_unset_garb = client.post(
                 r.path,
                 json=payload,
@@ -256,12 +245,10 @@ def test_route_table_protection_and_public_routes():
             assert res_unset_garb.status_code == 401, f"{r.path} expected 401 on unset+garbage, got {res_unset_garb.status_code}"
             assert res_unset_garb.json().get("detail") == AUTH_REQUIRED_MESSAGE
 
-            # 3. API_KEY set, missing credentials -> 401
             os.environ["API_KEY"] = "integration-test-secret-key"
             res_set_no_tok = client.post(r.path, json=payload)
             assert res_set_no_tok.status_code == 401, f"{r.path} expected 401 on set+no_tok, got {res_set_no_tok.status_code}"
 
-            # 4. API_KEY set, garbage bearer -> 401
             res_set_garb = client.post(
                 r.path,
                 json=payload,
@@ -274,13 +261,11 @@ def test_route_table_protection_and_public_routes():
         else:
             os.environ.pop("API_KEY", None)
 
-    # Verify /api/v1/auth/me returns 401 without token and with garbage
     res_me_no_token = client.get("/api/v1/auth/me")
     assert res_me_no_token.status_code == 401
     res_me_garb = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer garbage"})
     assert res_me_garb.status_code == 401
 
-    # Verify public GET routes return 200 without token
     public_get_routes = [
         "/health",
         "/api/v1/meta/standards",
@@ -300,7 +285,6 @@ def test_route_table_protection_and_public_routes():
 
 
 def test_authenticated_chat_with_mocked_orchestrator():
-    """Verifies register -> login -> POST /api/v1/chat with orchestrator mocked."""
     client = TestClient(app)
     uid = uuid.uuid4().hex[:8]
     email = f"chat_user_{uid}@jakarta.go.id"
@@ -350,7 +334,6 @@ def test_authenticated_chat_with_mocked_orchestrator():
             assert len(data["tool_calls_executed"]) == 1
             assert data["tool_calls_executed"][0]["name"] == "get_district_scorecard"
 
-        # Verify chat_audit row written in database with dict tool extraction
         with get_db_cursor() as cur:
             cur.execute(
                 "SELECT tools_used, guardrail_status, question_length FROM chat_audit WHERE user_id = %s;",
@@ -366,15 +349,35 @@ def test_authenticated_chat_with_mocked_orchestrator():
             with get_db_cursor() as cur:
                 cur.execute("DELETE FROM chat_audit WHERE user_id = %s;", (user_id,))
                 cur.execute("DELETE FROM app_users WHERE id = %s;", (user_id,))
+            r = get_redis_client()
+            if r:
+                r.delete(f"rate:chat:user:{user_id}")
         reset_failed_login(email, "testclient")
 
 
 def test_service_principal_client_forgery_fails():
-    """Verifies 4 forgery vectors cannot obtain or forge a service principal from client side."""
     client = TestClient(app)
+
+    # 1. Valid service principal token succeeds on protected endpoint without DB app_users row
+    valid_service_token = create_access_token({
+        "sub": "00000000-0000-0000-0000-000000000000",
+        "email": "service@drp.local",
+        "role": "admin",
+        "is_service": True,
+    })
+    with get_db_cursor() as cur:
+        cur.execute("SELECT 1 FROM app_users WHERE id = '00000000-0000-0000-0000-000000000000';")
+        assert cur.fetchone() is None
+    res_valid = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {valid_service_token}"})
+    assert res_valid.status_code == 200
+    data_valid = res_valid.json()
+    assert data_valid["email"] == "service@drp.local"
+    assert data_valid["role"] == "admin"
+    assert data_valid["display_name"] == "Service Principal"
+
+    # 2. Client forgery attempts fail with 401
     orig_key = os.environ.pop("API_KEY", None)
     try:
-        # a.1 Wrong secret
         forged_jwt_wrong_secret = jwt.encode(
             {
                 "sub": "00000000-0000-0000-0000-000000000000",
@@ -390,7 +393,6 @@ def test_service_principal_client_forgery_fails():
         r1 = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {forged_jwt_wrong_secret}"})
         assert r1.status_code == 401
 
-        # a.2 alg=none
         forged_jwt_none = jwt.encode(
             {
                 "sub": "00000000-0000-0000-0000-000000000000",
@@ -404,7 +406,6 @@ def test_service_principal_client_forgery_fails():
         r2 = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {forged_jwt_none}"})
         assert r2.status_code == 401
 
-        # a.3 Register with extra fields
         forge_email = f"attacker_{uuid.uuid4().hex[:8]}@jakarta.go.id"
         created_id = None
         try:
@@ -438,7 +439,6 @@ def test_service_principal_client_forgery_fails():
                     cur.execute("DELETE FROM app_users WHERE id = %s;", (created_id,))
             reset_failed_login(forge_email, "testclient")
 
-        # a.4 Forged X-API-Key when API_KEY is unset
         r4 = client.get("/api/v1/auth/me", headers={"X-API-Key": "attacker-forged-api-key"})
         assert r4.status_code == 401
     finally:

@@ -1,5 +1,5 @@
 """
-Unit tests for deterministic simulation answers:
+Unit tests for deterministic simulation answers per REBUILD_PROMPT_P13_1 §13.1B:
 Validates:
 1. build_simulation_deterministic_block output structure.
 2. CognitiveSpatialAgentOrchestrator answer_mode: "template+narrative" when LLM writes text without digits.
@@ -22,6 +22,8 @@ from backend.app.agent.orchestrator import (
     AgentChatRequest,
     ChatMessage
 )
+
+pytestmark = pytest.mark.unit
 
 SAMPLE_WHAT_IF_OUTPUT = {
     "district_code": "31.71.09",
@@ -89,9 +91,8 @@ SAMPLE_SUPERBLOCK_OUTPUT = {
 }
 
 
-@pytest.mark.unit
 def test_build_simulation_deterministic_block_structure():
-    """Verify deterministic block contents."""
+    """Verify deterministic block contents per REBUILD_PROMPT_P13_1 §13.1B."""
     block = build_simulation_deterministic_block("run_what_if_simulation", SAMPLE_WHAT_IF_OUTPUT)
 
     assert "### 📈 Hasil Simulasi Perubahan Populasi (Tebet)" in block
@@ -111,7 +112,6 @@ def test_build_simulation_deterministic_block_structure():
     assert p_lbl is True, f"Mislabeled numbers found: {mislbl}"
 
 
-@pytest.mark.unit
 def test_orchestrator_simulation_template_plus_narrative():
     """LLM provides qualitative narrative without digits -> answer_mode: template+narrative."""
     orchestrator = CognitiveSpatialAgentOrchestrator()
@@ -155,7 +155,6 @@ def test_orchestrator_simulation_template_plus_narrative():
             assert len(res.unsupported_numbers) == 0
 
 
-@pytest.mark.unit
 def test_orchestrator_simulation_template_only_when_digits_persist():
     """LLM narrative has digits, retry still has digits -> answer_mode: template_only."""
     orchestrator = CognitiveSpatialAgentOrchestrator()
@@ -206,7 +205,6 @@ def test_orchestrator_simulation_template_only_when_digits_persist():
             assert len(res.unsupported_numbers) == 0
 
 
-@pytest.mark.unit
 def test_orchestrator_simulation_retry_succeeds_without_digits():
     """LLM narrative has digits, but retry succeeds without digits -> answer_mode: template+narrative."""
     orchestrator = CognitiveSpatialAgentOrchestrator()
