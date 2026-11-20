@@ -472,3 +472,131 @@ def test_system_ui_splitter_clamp_persist_and_keyboard(live_server_url):
             assert len(errors) == 0, f"Splitter UI test console errors at {vp_width}x{vp_height}: {errors}"
 
         browser.close()
+
+
+def test_system_ui_map_indonesia_bounds_and_min_zoom(browser_page):
+    """
+    M1: Keep the map inside Indonesia (padded maxBounds + dynamic minZoom).
+    1. After load, zoom out 6 times; check map stays within padded Indonesia box
+       and zoom >= minZoom (>= 3).
+    2. Zoom out to minZoom; verify zoom-out stops at minZoom and control disables.
+    3. Drag far east; verify centre longitude stays <= 141.5.
+    4. Resize viewport to mobile (390x844) and back to 1440x900; verify minZoom
+       recomputes dynamically and zoom clamps up if below the new minZoom.
+    """
+    page, errors, url, _ = browser_page
+    page.goto(url, wait_until="networkidle")
+    page.wait_for_selector("#gis-map-canvas .leaflet-control-zoom-out", timeout=10000)
+
+    def read_map_state():
+        return page.evaluate("""async () => {
+            const { state } = await import('/js/state.js');
+            const m = state.map;
+            const b = m.getBounds();
+            const c = m.getCenter();
+            const mb = m.options.maxBounds;
+            const tileBounds = [];
+            m.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    tileBounds.push(Boolean(layer.options && layer.options.bounds));
+                }
+            });
+            return {
+                zoom: m.getZoom(),
+                minZoom: m.getMinZoom(),
+                maxZoom: m.getMaxZoom(),
+                center: [c.lat, c.lng],
+                bounds: {
+                    south: b.getSouth(),
+                    west: b.getWest(),
+                    north: b.getNorth(),
+                    east: b.getEast(),
+                },
+                maxBounds: mb ? {
+                    south: mb.getSouth(),
+                    west: mb.getWest(),
+                    north: mb.getNorth(),
+                    east: mb.getEast(),
+                } : null,
+                viscosity: m.options.maxBoundsViscosity,
+                tileBoundsSet: tileBounds,
+                zoomOutDisabled: document.querySelector('.leaflet-control-zoom-out')?.classList.contains('leaflet-disabled') || false,
+            };
+        }""")
+
+    init_state = read_map_state()
+    assert init_state["maxBounds"] is not None
+    assert init_state["viscosity"] == 1.0
+    assert init_state["minZoom"] >= 3
+    assert len(init_state["tileBoundsSet"]) >= 2 and all(init_state["tileBoundsSet"])
+
+    mb = init_state["maxBounds"]
+    assert mb["south"] < -11.5 and mb["west"] < 94.5
+    assert mb["north"] > 6.5 and mb["east"] > 141.5
+
+    # 1. Zoom out 6 times via UI zoom-out button
+    zoom_out_btn = page.locator("#gis-map-canvas .leaflet-control-zoom-out")
+    for _ in range(6):
+        if "leaflet-disabled" in (zoom_out_btn.get_attribute("class") or ""):
+            break
+        zoom_out_btn.click()
+        page.wait_for_timeout(350)
+
+    after_6 = read_map_state()
+    assert after_6["zoom"] >= after_6["minZoom"] >= 3
+    # Center stays inside the padded Indonesia box
+    assert mb["south"] <= after_6["center"][0] <= mb["north"]
+    assert mb["west"] <= after_6["center"][1] <= mb["east"]
+    # Horizontal bounds stay inside padded Indonesia box when viewport width <= maxBounds width
+    assert after_6["bounds"]["west"] >= mb["west"] - 0.1
+    assert after_6["bounds"]["east"] <= mb["east"] + 0.1
+
+    # 2. Drag the map far east; check centre longitude stays <= 141.5
+    canvas_box = page.locator("#gis-map-canvas").bounding_box()
+    assert canvas_box is not None
+    start_x = canvas_box["x"] + canvas_box["width"] * 0.8
+    end_x = canvas_box["x"] + 20
+    drag_y = canvas_box["y"] + canvas_box["height"] * 0.4
+    for _ in range(3):
+        page.mouse.move(start_x, drag_y)
+        page.mouse.down()
+        page.mouse.move(end_x, drag_y, steps=10)
+        page.mouse.up()
+        page.wait_for_timeout(350)
+
+    after_east = read_map_state()
+    assert after_east["center"][1] <= 141.5, f"Center lng drifted past 141.5: {after_east['center']}"
+    assert after_east["center"][1] >= 94.5
+
+    # 3. Zoom out all the way to minZoom and confirm user cannot zoom out past it
+    for _ in range(6):
+        if "leaflet-disabled" in (zoom_out_btn.get_attribute("class") or ""):
+            break
+        zoom_out_btn.click()
+        page.wait_for_timeout(350)
+
+    at_min = read_map_state()
+    assert at_min["zoom"] == at_min["minZoom"]
+    assert at_min["zoomOutDisabled"] is True
+
+    # 4. Resize to narrow mobile viewport -> minZoom drops to 3; zoom back out to 3;
+    #    then resize back to desktop -> minZoom rises to 4 and map zooms in automatically.
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.wait_for_timeout(400)
+    mobile_state = read_map_state()
+    assert mobile_state["minZoom"] == 3
+
+    for _ in range(3):
+        if "leaflet-disabled" in (zoom_out_btn.get_attribute("class") or ""):
+            break
+        zoom_out_btn.click()
+        page.wait_for_timeout(350)
+    assert read_map_state()["zoom"] == 3
+
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.wait_for_timeout(400)
+    restored_state = read_map_state()
+    assert restored_state["minZoom"] >= 4
+    assert restored_state["zoom"] >= restored_state["minZoom"]
+
+    assert len(errors) == 0, f"Map bounds UI test console errors: {errors}"

@@ -12,11 +12,11 @@ Platform mengadopsi prinsip piramida pengujian terstruktur untuk memastikan kean
 ```mermaid
 flowchart TD
     subgraph Pyramid ["Piramida Pengujian Platform"]
-        SYS["Lapis 3: System Tests (29 Kasus Uji)
+        SYS["Lapis 3: System Tests (30 Kasus Uji)
         - E2E Playwright UI (0 console errors, input search, region switcher, UI login, legend, splitter & Riwayat)
         - Live HTTP Uvicorn Server (API, Auth, 401, Refusal)
         - Live Cognitive Spatial Agent (Ollama Qwen 2.5 14B)
-        Waktu non-LLM 22 uji: ~39.73 detik / ~80 detik (LLM)"]
+        Waktu non-LLM 23 uji: ~57.47 detik / ~80 detik (LLM)"]
         
         INT["Lapis 2: Integration Tests (52 Kasus Uji)
         - PostgreSQL 16 + PostGIS 3.4 Spatial Queries
@@ -41,8 +41,8 @@ flowchart TD
 
 | Parameter | Lapis 1: Unit Tests | Lapis 2: Integration Tests | Lapis 3: System Tests |
 |---|---|---|---|
-| **Jumlah Tes** | 143 tes | 52 tes | 29 tes (9 API + 9 UI + 7 Chat + 3 J1b + 1 R1) |
-| **Durasi Riil** | ~1.30 detik | ~4.49 detik (staging 38 provinsi) | 22 non-LLM system: ~39.73s; baseline LLM 7 uji: ~80.30s |
+| **Jumlah Tes** | 143 tes | 52 tes | 30 tes (9 API + 10 UI + 7 Chat + 3 J1b + 1 R1) |
+| **Durasi Riil** | ~1.30 detik | ~4.49 detik (staging 38 provinsi) | 23 non-LLM system: ~57.47s; baseline LLM 7 uji: ~80.30s |
 | **Isolasi** | 100% terisolasi (in-memory mock, no DB/Redis) | Membutuhkan PostgreSQL & Redis | Server uvicorn, Chromium headless, Ollama |
 | **Determinisme** | Deterministik mutlak (bit-level) | Deterministik state database | E2E deterministik (guardrail pass) |
 | **Tujuan Utama** | Verifikasi rumus, guardrail, & logika | Verifikasi query PostGIS & relasi DB | Verifikasi alur pengguna & kepatuhan E2E |
@@ -188,10 +188,10 @@ Hasil eksekusi riil dari runner suite terpadu (unit + integration diukur pada HE
 | **Unit Tests** | `backend/tests/unit/` | 143 | 143 | 0 | 0 | 1.30s | `pytest backend/tests/unit -m unit -q` |
 | **Integration Tests** | `backend/tests/integration/` | 52 | 52 | 0 | 0 | 4.49s | `pytest backend/tests/integration -m "not llm" -q` |
 | **System API Tests** | `backend/tests/system/test_system_api.py` | 9 | 9 | 0 | 0 | 1.22s *(baseline)* | `pytest backend/tests/system/test_system_api.py -q` |
-| **System UI Tests** | `backend/tests/system/test_system_ui.py` | 9 | 9 | 0 | 0 | 39.73s *(gabungan 22 non-LLM system)* | `pytest backend/tests/system/test_system_ui.py -q` |
+| **System UI Tests** | `backend/tests/system/test_system_ui.py` | 10 | 10 | 0 | 0 | 57.47s *(gabungan 23 non-LLM system)* | `pytest backend/tests/system/test_system_ui.py -q` |
 | **System Chat Tests** | `backend/tests/system/test_system_chat.py` | 7 | 7 *(baseline)* | 0 | 0 | 80.30s *(baseline)* | `pytest backend/tests/system/test_system_chat.py -q` |
 | **System Multi-Region (J1b + R1)** | `backend/tests/system/test_region_*.py` | 4 | 3 *(non-LLM)* | 0 | 1 *(llm)* | 9.86s *(J1b)* | `pytest backend/tests/system/test_region_*.py -q` |
-| **TOTAL TERKOLEKSI** | — | **224** | — | — | — | — | `pytest --collect-only -q` |
+| **TOTAL TERKOLEKSI** | — | **225** | — | — | — | — | `pytest --collect-only -q` |
 
 ### 5.2 Cakupan Kode (Code Coverage Summary)
 

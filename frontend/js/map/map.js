@@ -25,6 +25,31 @@ import { renderScorecard, resetScorecardPanel, updateProvinceOsmNote } from "../
 import { loadDistrictBlankSpots, resetBlankSpotsPanel } from "../panels/blankspots.js";
 import { syncSimulationDistrict, resetSimulationPanel } from "../panels/simulation.js";
 
+const INDONESIA_BOUNDS = [[-11.5, 94.5], [6.5, 141.5]];
+const INDONESIA_BOUNDS_PAD = 0.05;
+
+function getPaddedIndonesiaBounds() {
+  return L.latLngBounds(INDONESIA_BOUNDS).pad(INDONESIA_BOUNDS_PAD);
+}
+
+export function updateIndonesiaMinZoom() {
+  const map = state.map;
+  if (!map) return;
+
+  const prevMinZoom = map.options.minZoom;
+  map.options.minZoom = 0;
+  const rawZoom = map.getBoundsZoom(INDONESIA_BOUNDS, false);
+  map.options.minZoom = prevMinZoom;
+
+  const minZ = Math.max(3, Math.floor(Number.isFinite(rawZoom) ? rawZoom : 3));
+  if (map.getMinZoom() !== minZ) {
+    map.setMinZoom(minZ);
+  }
+  if (map.getZoom() < minZ) {
+    map.setZoom(minZ);
+  }
+}
+
 function formatProvincePopulation(districts) {
   const total = (districts || []).reduce((acc, d) => acc + (Number(d.population) || 0), 0);
   if (total >= 1_000_000) {
@@ -173,7 +198,10 @@ export function initResizableSplitter() {
     if (rafId !== null) return;
     rafId = requestAnimationFrame(() => {
       rafId = null;
-      if (state.map) state.map.invalidateSize();
+      if (state.map) {
+        state.map.invalidateSize();
+        updateIndonesiaMinZoom();
+      }
       syncLegendPositionAboveChat();
     });
   }
@@ -324,20 +352,40 @@ export function initResizableSplitter() {
 export function initLeafletMap() {
   state.choroplethRenderer = L.canvas({ padding: 0.5 });
 
+  const indonesiaMaxBounds = getPaddedIndonesiaBounds();
+
   state.map = L.map("gis-map-canvas", {
     zoomControl: false,
-    attributionControl: true
+    attributionControl: true,
+    maxBounds: indonesiaMaxBounds,
+    maxBoundsViscosity: 1.0
   }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
+
+  updateIndonesiaMinZoom();
+  state.map.on("resize", updateIndonesiaMinZoom);
+
+  const mapCanvas = document.getElementById("gis-map-canvas");
+  if (typeof ResizeObserver !== "undefined" && mapCanvas) {
+    const mapResizeObserver = new ResizeObserver(() => {
+      if (state.map) {
+        state.map.invalidateSize();
+        updateIndonesiaMinZoom();
+      }
+    });
+    mapResizeObserver.observe(mapCanvas);
+  }
 
   state.map.attributionControl.addAttribution("&copy; <a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>");
 
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 16,
+    bounds: indonesiaMaxBounds,
     attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
   }).addTo(state.map);
 
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 16,
+    bounds: indonesiaMaxBounds,
     opacity: 0.75
   }).addTo(state.map);
 
