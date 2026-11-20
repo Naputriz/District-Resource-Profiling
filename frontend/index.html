@@ -98,9 +98,25 @@
             <span>Asisten Tata Ruang</span>
             <span class="chat-model-tag" id="chat-model-tag">Memuat...</span>
           </div>
-          <button id="btn-toggle-chat" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; font-weight: 700;">
-            ▼ Minimize
-          </button>
+          <div class="chat-header-actions">
+            <button type="button" id="btn-chat-history" class="btn-chat-history" style="display: none;" aria-expanded="false" aria-controls="chat-history-drawer">
+              Riwayat
+            </button>
+            <button id="btn-toggle-chat" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; font-weight: 700;">
+              ▼ Minimize
+            </button>
+          </div>
+        </div>
+
+        <div class="chat-history-drawer" id="chat-history-drawer" style="display: none;">
+          <div class="chat-history-drawer-header">
+            <span>Riwayat Percakapan (20 terakhir)</span>
+            <div class="chat-history-drawer-actions">
+              <button type="button" id="btn-clear-chat-history" class="btn-clear-chat-history">Hapus riwayat</button>
+              <button type="button" id="btn-close-chat-history" class="btn-close-chat-history" aria-label="Tutup riwayat">&times;</button>
+            </div>
+          </div>
+          <div class="chat-history-drawer-list" id="chat-history-drawer-list"></div>
         </div>
 
         <div class="chat-history-scroll" id="chat-history">
@@ -122,12 +138,15 @@
           <input type="text" id="chat-msg-input" placeholder="Ketik pertanyaan tata ruang, audit kepatuhan, atau skenario simulasi...">
           <button class="btn-send-chat" id="btn-send-chat">➔</button>
         </div>
+        <div class="chat-privacy-notice" id="chat-privacy-notice">
+          Pertanyaan dan jawaban disimpan untuk evaluasi layanan (90 hari). Lihat atau hapus lewat Riwayat.
+        </div>
       </div>
 
     </main>
 
     <!-- RESIZABLE SPLIT DRAGGER -->
-    <div class="split-resizer" id="split-resizer" title="Tarik untuk mengubah ukuran panel"></div>
+    <div class="split-resizer" id="split-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ubah ukuran panel peta dan panel informasi" title="Tarik atau gunakan tombol panah untuk mengubah ukuran panel (klik ganda untuk reset 70/30)"></div>
 
     <!-- RIGHT PANEL: INFORMATION & SIMULATION (30%) -->
     <aside class="info-sidebar-panel" id="info-panel">

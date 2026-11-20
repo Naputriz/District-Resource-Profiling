@@ -418,6 +418,15 @@ Restart otomatis **tidak** dilakukan dari dalam aplikasi. Restart container adal
 
 ---
 
+### 12.1 Log Chat AI
+
+Setiap giliran chat dari pengguna yang login dicatat di dua tempat:
+
+- **Database**: tabel `chat_logs` (pertanyaan, jawaban, *tools* yang dipakai, status *guardrail*, latensi, model, provinsi). Baris lebih tua dari `CHAT_LOG_RETENTION_DAYS` (bawaan 90 hari) dihapus otomatis. Tabel `chat_audit` tetap hanya menyimpan telemetri tanpa teks.
+- **Berkas lokal**: satu baris JSON per giliran di `/app/logs/chat_log.jsonl` dalam container, di-*mount* ke folder host `CHAT_LOG_HOST_DIR`, dengan rotasi ukuran (`CHAT_LOG_FILE_MAX_MB`, `CHAT_LOG_FILE_BACKUPS`). Berkas tetap ditulis walau insert database gagal. Folder `logs/` dan `chat-logs/` jangan di-*commit*.
+
+Pengguna melihat pemberitahuan di bawah kotak chat dan bisa membuka atau menghapus riwayatnya sendiri lewat tombol **Riwayat** (`GET` / `DELETE /api/v1/chat/history`, hanya baris milik sendiri). Penghapusan oleh pengguna tidak menghapus salinan di berkas lokal server.
+
 ## 13. Ringkasan API
 
 Tamu (*guest*) dapat memanggil seluruh endpoint `GET` publik (kecuali `/api/v1/auth/me`). Endpoint `POST` simulasi, pencarian regulasi, dan chat asisten memerlukan header `Authorization: Bearer <token>` (JWT HS256 dari `/api/v1/auth/login`). Parameter opsional `province_code` memakai kode Kemendagri (default `31` DKI Jakarta).

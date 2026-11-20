@@ -165,6 +165,24 @@ export async function postChatMessage(payload) {
   return handleResponse(res, "chat");
 }
 
+export async function fetchChatHistory(limit = 20) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/chat/history?limit=${encodeURIComponent(limit)}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+  return handleResponse(res, "chat/history");
+}
+
+export async function deleteChatHistory() {
+  const res = await fetch(`${API_BASE}/api/v1/chat/history`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res, "chat/history");
+}
+
 export async function postWhatIfSimulation(payload) {
   const res = await fetch(`${API_BASE}/api/v1/simulation/what-if`, {
     method: "POST",

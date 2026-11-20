@@ -426,3 +426,419 @@ def test_get_client_ip_no_headers_and_no_client(monkeypatch):
 
     req_none = _make_request(client=None)
     assert get_client_ip(req_none) == "127.0.0.1"
+
+
+def test_chat_log_written_with_prompt_response_latency_on_success(monkeypatch):
+    from contextlib import contextmanager
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+    from backend.app.agent.orchestrator import AgentChatResponse
+    from backend.app.api.deps import get_current_user
+
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_RETENTION_DAYS", 90)
+
+    mock_cur = MagicMock()
+
+    @contextmanager
+    def fake_cursor():
+        yield mock_cur
+
+    fake_user_id = uuid.UUID("22222222-2222-2222-2222-222222222222")
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": fake_user_id,
+        "email": "loguser@jakarta.go.id",
+        "role": "user",
+        "is_service": False,
+    }
+
+    mock_response = AgentChatResponse(
+        reply="Skor Tebet adalah 54.61.",
+        tool_calls_executed=[{"name": "get_district_scorecard", "arguments": {}}],
+        guardrail="passed",
+        model_used="qwen2.5:14b",
+    )
+
+    client = TestClient(app)
+    try:
+        with patch("backend.app.api.routers.chat.agent_orchestrator.process_chat", return_value=mock_response):
+            with patch("backend.app.api.routers.chat.record_chat_audit"):
+                with patch("backend.app.core.auth.get_db_cursor", side_effect=fake_cursor):
+                    res = client.post(
+                        "/api/v1/chat",
+                        json={
+                            "messages": [
+                                {"role": "user", "content": "Pertanyaan lama"},
+                                {"role": "assistant", "content": "Jawaban lama"},
+                                {"role": "user", "content": "Berapa skor Tebet?"},
+                            ],
+                            "province_code": "31",
+                        },
+                    )
+                    assert res.status_code == 200
+                    assert mock_cur.execute.call_count == 2
+                    insert_sql, insert_params = mock_cur.execute.call_args_list[0][0]
+                    assert "INSERT INTO chat_logs" in insert_sql
+                    assert insert_params[0] == str(fake_user_id)
+                    assert insert_params[1] == "31"
+                    assert insert_params[2] == "Berapa skor Tebet?"
+                    assert insert_params[3] == "Skor Tebet adalah 54.61."
+                    assert insert_params[4] == ["get_district_scorecard"]
+                    assert insert_params[5] == "passed"
+                    assert isinstance(insert_params[6], int) and insert_params[6] >= 0
+                    assert insert_params[7] == "qwen2.5:14b"
+
+                    delete_sql, delete_params = mock_cur.execute.call_args_list[1][0]
+                    assert "DELETE FROM chat_logs" in delete_sql
+                    assert delete_params == (str(fake_user_id), 90)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_chat_log_failure_never_breaks_chat_response(monkeypatch):
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+    from backend.app.agent.orchestrator import AgentChatResponse
+    from backend.app.api.deps import get_current_user
+
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+
+    fake_user_id = uuid.UUID("22222222-2222-2222-2222-222222222222")
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": fake_user_id,
+        "email": "logfail@jakarta.go.id",
+        "role": "user",
+        "is_service": False,
+    }
+
+    mock_response = AgentChatResponse(
+        reply="Respons tetap aman.",
+        guardrail="passed",
+    )
+
+    client = TestClient(app)
+    try:
+        with patch("backend.app.api.routers.chat.agent_orchestrator.process_chat", return_value=mock_response):
+            with patch("backend.app.api.routers.chat.record_chat_audit"):
+                with patch("backend.app.api.routers.chat.record_chat_log", side_effect=RuntimeError("DB down")):
+                    res = client.post(
+                        "/api/v1/chat",
+                        json={"messages": [{"role": "user", "content": "Halo"}]},
+                    )
+                    assert res.status_code == 200
+                    assert res.json()["reply"] == "Respons tetap aman."
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_chat_log_disabled_writes_nothing(monkeypatch):
+    from backend.app.core.auth import record_chat_log
+
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", False)
+    with patch("backend.app.core.auth.get_db_cursor") as mock_db:
+        record_chat_log(
+            user_id="22222222-2222-2222-2222-222222222222",
+            province_code="31",
+            prompt="Pertanyaan",
+            response="Jawaban",
+            tools_used=[],
+            guardrail_status="passed",
+            latency_ms=10,
+            model="qwen2.5:14b",
+        )
+        mock_db.assert_not_called()
+
+
+def test_chat_log_truncation_limits(monkeypatch):
+    from contextlib import contextmanager
+    from backend.app.core.auth import (
+        record_chat_log,
+        CHAT_LOG_PROMPT_MAX_CHARS,
+        CHAT_LOG_RESPONSE_MAX_CHARS,
+    )
+
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    mock_cur = MagicMock()
+
+    @contextmanager
+    def fake_cursor():
+        yield mock_cur
+
+    long_prompt = "P" * 5500
+    long_response = "R" * 25000
+
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=fake_cursor):
+        record_chat_log(
+            user_id="22222222-2222-2222-2222-222222222222",
+            province_code="31",
+            prompt=long_prompt,
+            response=long_response,
+            tools_used=[],
+            guardrail_status="passed",
+            latency_ms=25,
+            model="qwen2.5:14b",
+        )
+
+    insert_params = mock_cur.execute.call_args_list[0][0][1]
+    assert len(insert_params[2]) == CHAT_LOG_PROMPT_MAX_CHARS == 4000
+    assert len(insert_params[3]) == CHAT_LOG_RESPONSE_MAX_CHARS == 20000
+
+
+def test_chat_log_service_principal_not_logged(monkeypatch):
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+    from backend.app.agent.orchestrator import AgentChatResponse
+    from backend.app.api.deps import get_current_user
+
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": "00000000-0000-0000-0000-000000000000",
+        "email": "service@drp.local",
+        "role": "admin",
+        "is_service": True,
+    }
+
+    mock_response = AgentChatResponse(reply="Service reply.", guardrail="passed")
+    client = TestClient(app)
+    try:
+        with patch("backend.app.api.routers.chat.agent_orchestrator.process_chat", return_value=mock_response):
+            with patch("backend.app.api.routers.chat.record_chat_audit"):
+                with patch("backend.app.api.routers.chat.record_chat_log") as mock_log:
+                    res = client.post(
+                        "/api/v1/chat",
+                        json={"messages": [{"role": "user", "content": "Service query"}]},
+                    )
+                    assert res.status_code == 200
+                    mock_log.assert_not_called()
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_chat_log_file_written_with_all_fields(monkeypatch, tmp_path):
+    import json
+    import os
+    import stat
+    from contextlib import contextmanager
+    from datetime import datetime
+    from backend.app.core.auth import record_chat_log
+
+    log_path = tmp_path / "nested" / "chat_log.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_path))
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_MAX_MB", 20)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_BACKUPS", 10)
+
+    fake_log_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    mock_cur = MagicMock()
+    mock_cur.fetchone.return_value = {"id": fake_log_id}
+
+    @contextmanager
+    def fake_cursor():
+        yield mock_cur
+
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=fake_cursor):
+        record_chat_log(
+            user_id="22222222-2222-2222-2222-222222222222",
+            province_code="31",
+            prompt="Bagaimana indeks fasilitas Kec. Tebet? — cek café",
+            response="Skor kecukupan fasilitas Tebet adalah 54.61 (SNI 03-1733-2004).",
+            tools_used=["get_district_scorecard"],
+            guardrail_status="passed",
+            latency_ms=142,
+            model="qwen2.5:14b",
+        )
+
+    assert log_path.exists()
+    assert stat.S_IMODE(os.stat(log_path).st_mode) == 0o640
+
+    raw_lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(raw_lines) == 1
+    assert "café" in raw_lines[0]  # ensure_ascii=False
+
+    entry = json.loads(raw_lines[0])
+    assert set(entry.keys()) == {
+        "timestamp",
+        "log_id",
+        "user_id",
+        "province_code",
+        "prompt",
+        "response",
+        "tools_used",
+        "guardrail_status",
+        "latency_ms",
+        "model",
+        "db_logged",
+    }
+    parsed_ts = datetime.fromisoformat(entry["timestamp"])
+    assert parsed_ts.utcoffset() is not None
+    assert entry["log_id"] == fake_log_id
+    assert entry["user_id"] == "22222222-2222-2222-2222-222222222222"
+    assert entry["province_code"] == "31"
+    assert entry["prompt"] == "Bagaimana indeks fasilitas Kec. Tebet? — cek café"
+    assert entry["response"] == "Skor kecukupan fasilitas Tebet adalah 54.61 (SNI 03-1733-2004)."
+    assert entry["tools_used"] == ["get_district_scorecard"]
+    assert entry["guardrail_status"] == "passed"
+    assert entry["latency_ms"] == 142
+    assert entry["model"] == "qwen2.5:14b"
+    assert entry["db_logged"] is True
+
+
+def test_chat_log_file_written_when_db_insert_raises(monkeypatch, tmp_path):
+    import json
+    from backend.app.core.auth import record_chat_log
+
+    log_path = tmp_path / "fallback_chat_log.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_path))
+
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=RuntimeError("DB unavailable")):
+        record_chat_log(
+            user_id="33333333-3333-3333-3333-333333333333",
+            province_code="32",
+            prompt="Pertanyaan saat DB down",
+            response="Jawaban tetap tersimpan di file",
+            tools_used=["get_district_scorecard"],
+            guardrail_status="passed",
+            latency_ms=55,
+            model="qwen2.5:14b",
+        )
+
+    assert log_path.exists()
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    assert entry["db_logged"] is False
+    assert entry["log_id"] is None
+    assert entry["user_id"] == "33333333-3333-3333-3333-333333333333"
+    assert entry["province_code"] == "32"
+    assert entry["prompt"] == "Pertanyaan saat DB down"
+    assert entry["response"] == "Jawaban tetap tersimpan di file"
+
+
+def test_chat_log_file_not_written_when_disabled(monkeypatch, tmp_path):
+    from contextlib import contextmanager
+    from backend.app.core.auth import record_chat_log
+
+    log_path = tmp_path / "should_not_exist.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", False)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_path))
+
+    mock_cur = MagicMock()
+    mock_cur.fetchone.return_value = {"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"}
+
+    @contextmanager
+    def fake_cursor():
+        yield mock_cur
+
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=fake_cursor):
+        record_chat_log(
+            user_id="22222222-2222-2222-2222-222222222222",
+            province_code="31",
+            prompt="Pertanyaan",
+            response="Jawaban",
+            tools_used=[],
+            guardrail_status="passed",
+            latency_ms=12,
+            model="qwen2.5:14b",
+        )
+
+    assert not log_path.exists()
+
+
+def test_chat_log_file_rotation_and_no_root_propagation(monkeypatch, tmp_path, caplog):
+    import logging
+    from logging.handlers import RotatingFileHandler
+    from backend.app.core.auth import record_chat_log, _chat_file_logger
+
+    log_path = tmp_path / "rotated.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_path))
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_MAX_MB", 0.0003)  # ~314 bytes -> forces rollover
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_BACKUPS", 3)
+
+    caplog.set_level(logging.INFO)
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=RuntimeError("skip db")):
+        for idx in range(4):
+            record_chat_log(
+                user_id="44444444-4444-4444-4444-444444444444",
+                province_code="31",
+                prompt=f"Secret prompt #{idx} " + ("x" * 120),
+                response=f"Secret response #{idx} " + ("y" * 120),
+                tools_used=[],
+                guardrail_status="passed",
+                latency_ms=10,
+                model="qwen2.5:14b",
+            )
+
+    assert _chat_file_logger.propagate is False
+    assert len(_chat_file_logger.handlers) == 1
+    handler = _chat_file_logger.handlers[0]
+    assert isinstance(handler, RotatingFileHandler)
+    assert handler.backupCount == 3
+    assert handler.maxBytes == int(0.0003 * 1024 * 1024)
+
+    # Prompt text from file logger must never appear in root logger / caplog
+    for rec in caplog.records:
+        if rec.name == _chat_file_logger.name:
+            pytest.fail("Chat file logger must not propagate to root logger")
+        assert "Secret prompt #" not in rec.getMessage()
+
+    assert log_path.exists()
+    assert (tmp_path / "rotated.jsonl.1").exists()
+
+
+def test_chat_log_file_truncation_default_path_and_error_isolation(monkeypatch, tmp_path):
+    import json
+    import os
+    from backend.app.core.config import _resolve_default_chat_log_file_path
+    from backend.app.core.auth import (
+        record_chat_log,
+        CHAT_LOG_PROMPT_MAX_CHARS,
+        CHAT_LOG_RESPONSE_MAX_CHARS,
+    )
+
+    log_path = tmp_path / "truncated.jsonl"
+    monkeypatch.setattr(settings, "CHAT_LOG_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_ENABLED", True)
+    monkeypatch.setattr(settings, "CHAT_LOG_FILE_PATH", str(log_path))
+
+    with patch("backend.app.core.auth.get_db_cursor", side_effect=RuntimeError("skip db")):
+        record_chat_log(
+            user_id="55555555-5555-5555-5555-555555555555",
+            province_code="31",
+            prompt="P" * 5200,
+            response="R" * 24000,
+            tools_used=[],
+            guardrail_status="passed",
+            latency_ms=20,
+            model="qwen2.5:14b",
+        )
+
+    entry = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
+    assert len(entry["prompt"]) == CHAT_LOG_PROMPT_MAX_CHARS == 4000
+    assert len(entry["response"]) == CHAT_LOG_RESPONSE_MAX_CHARS == 20000
+
+    # Default path checks (/app vs local repo)
+    with patch("backend.app.core.config.os.path.isdir", return_value=True):
+        assert _resolve_default_chat_log_file_path() == "/app/logs/chat_log.jsonl"
+    with patch("backend.app.core.config.os.path.isdir", return_value=False):
+        local_default = _resolve_default_chat_log_file_path()
+        assert local_default.endswith(os.path.join("logs", "chat_log.jsonl"))
+
+    # File write failure never raises
+    with patch("backend.app.core.auth._write_chat_log_file", side_effect=PermissionError("read-only")):
+        with patch("backend.app.core.auth.get_db_cursor", side_effect=RuntimeError("skip db")):
+            record_chat_log(
+                user_id="55555555-5555-5555-5555-555555555555",
+                province_code="31",
+                prompt="Hi",
+                response="Hello",
+                tools_used=[],
+                guardrail_status="passed",
+                latency_ms=5,
+                model="qwen2.5:14b",
+            )

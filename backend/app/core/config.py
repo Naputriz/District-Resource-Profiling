@@ -6,8 +6,17 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List, Optional
+
+
+def _resolve_default_chat_log_file_path() -> str:
+    """Returns /app/logs/chat_log.jsonl in Docker, or <repo>/logs/chat_log.jsonl locally."""
+    if os.path.isdir("/app"):
+        return "/app/logs/chat_log.jsonl"
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    return os.path.join(repo_root, "logs", "chat_log.jsonl")
 
 
 def parse_active_provinces(raw: Optional[str]) -> List[str]:
@@ -82,6 +91,21 @@ class Settings(BaseSettings):
     AUTH_BRUTE_FORCE_MAX_ATTEMPTS: int = int(os.getenv("AUTH_BRUTE_FORCE_MAX_ATTEMPTS", "5"))
     AUTH_BRUTE_FORCE_LOCKOUT_SECONDS: int = int(os.getenv("AUTH_BRUTE_FORCE_LOCKOUT_SECONDS", "900"))
     EDGE_SHARED_SECRET: str = os.getenv("EDGE_SHARED_SECRET", "")
+
+    # Chat Logging Settings
+    CHAT_LOG_ENABLED: bool = os.getenv("CHAT_LOG_ENABLED", "true").lower() in ("true", "1", "yes")
+    CHAT_LOG_RETENTION_DAYS: int = int(os.getenv("CHAT_LOG_RETENTION_DAYS", "90"))
+    CHAT_LOG_FILE_ENABLED: bool = os.getenv("CHAT_LOG_FILE_ENABLED", "true").lower() in ("true", "1", "yes")
+    CHAT_LOG_FILE_PATH: str = os.getenv("CHAT_LOG_FILE_PATH", "").strip() or _resolve_default_chat_log_file_path()
+    CHAT_LOG_FILE_MAX_MB: int = int(os.getenv("CHAT_LOG_FILE_MAX_MB", "20"))
+    CHAT_LOG_FILE_BACKUPS: int = int(os.getenv("CHAT_LOG_FILE_BACKUPS", "10"))
+
+    @field_validator("CHAT_LOG_FILE_PATH", mode="before")
+    @classmethod
+    def _default_chat_log_path_if_blank(cls, v):
+        if v is None or not str(v).strip():
+            return _resolve_default_chat_log_file_path()
+        return str(v).strip()
 
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
