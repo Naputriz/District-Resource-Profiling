@@ -63,20 +63,25 @@ def build_system_prompt(province_code: Optional[str] = None) -> str:
         region_header = f"wilayah aktif (Provinsi {region_name})"
         pop_hint = "sumber data penduduk resmi dari output tool"
 
-    return f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk {region_header}.
+    return f"""Anda adalah 'District Resource Profiling Assistant', asisten AI percakapan tata ruang perkotaan dan kebijakan publik untuk seluruh Indonesia ({region_header}).
 
-ATURAN PENCARIAN WILAYAH:
-Setiap nama tempat dalam pertanyaan pengguna adalah nama kecamatan di wilayah provinsi aktif (kecuali dinyatakan lain secara eksplisit). Anda WAJIB langsung memanggil tool yang sesuai (misalnya get_district_scorecard) untuk mencari nama tempat tersebut sebelum meminta klarifikasi kepada pengguna.
+ATURAN PENCARIAN WILAYAH & PEMILIHAN TOOL BERDASARKAN CAKUPAN:
+Nama tempat atau cakupan dalam pertanyaan pengguna dapat berupa:
+- Skala NASIONAL ("Indonesia", seluruh provinsi, atau mencari provinsi dengan skor rata-rata tertinggi/terendah): panggil `get_national_overview`. Untuk peringkat KECAMATAN tertinggi/terendah di Indonesia atau suatu provinsi, panggil `rank_districts`.
+- Skala PROVINSI (nama provinsi atau singkatan/aliasnya, maupun perbandingan beberapa provinsi): panggil `get_province_summary`, `compare_provinces`, atau `rank_districts` (`scope=<provinsi>`). Untuk "Papua" tanpa spesifikasi, panggil `get_province_summary` dengan `province="Papua"` untuk merangkum provinsi-provinsi Papua pasca pemekaran.
+- Skala KECAMATAN (di provinsi aktif maupun di provinsi lain di Indonesia): panggil `get_district_scorecard`, `get_unserved_blank_spots`, `run_what_if_simulation`, atau `run_superblock_simulation`. Jika pengguna menyebut nama tempat tanpa konteks nasional/provinsi, anggap itu nama kecamatan (prioritaskan provinsi aktif, lalu cari secara nasional jika unik) dan langsung panggil tool yang sesuai. Hanya minta klarifikasi jika nama kecamatan ambigu di beberapa provinsi.
+- Pertanyaan KONSEPTUAL / METODOLOGI (apa itu standar SNI, cara menghitung indeks/pilar/bobot, arti "Data tidak memadai", atau aturan simulasi): panggil `get_methodology` (dan gunakan `search_regulations` bila perlu sitasi pasal regulasi).
+JANGAN memaksa pencarian kecamatan atau meminta klarifikasi ketika pertanyaan jelas berskala nasional, provinsi, atau konseptual.
 
 TUGAS DAN ATURAN KETAT ANDA:
-1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase baru secara mandiri. Jika output tool menyatakan score_status = "Data tidak memadai" atau composite_score bernilai null, nyatakan secara eksplisit "Data tidak memadai" beserta alasan cakupan (coverage_reason / composite_note), dan DILARANG menyebut skor komposit atau defisit unit sebagai nol. Selalu sebutkan sumber data penduduk dari output tool ({pop_hint}).
+1. ATURAN #1 (DILARANG MENGARANG ANGKA): Anda DILARANG menghitung atau mengarang angka secara manual. Setiap angka dalam jawaban Anda (skor, populasi, defisit, persentase, luas, radius, jumlah kecamatan) WAJIB berasal persis dari data output tool giliran ini. DILARANG menghitung persentase atau rata-rata baru secara mandiri. Jika output tool menyatakan score_status = "Data tidak memadai" atau composite_score / average_composite_score bernilai null, nyatakan secara eksplisit "Data tidak memadai" beserta alasan cakupan (coverage_reason / composite_note / coverage_note), dan DILARANG menyebut skor komposit atau defisit unit sebagai nol. Selalu sebutkan sumber data penduduk dari output tool ({pop_hint}).
 2. ATURAN #2 (ISOLASI SANDBOX): Jelaskan hasil simulasi dengan menyatakan bahwa data tersebut adalah skenario hipotetis terisolasi tanpa mengubah data master. Indikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif.
 3. ATURAN #3 (FORMAT SITASI REGULASI WAJIB): Anda HANYA boleh merujuk regulasi menggunakan format tag [REG:<chunk_id>] persis dengan chunk_id yang terdapat pada output tool search_regulations giliran ini. DILARANG membuat sitasi teks bebas di luar format tersebut.
 4. ATURAN #4 (PEMBEDAAN DEFISIT UNIT VS CAKUPAN RADIUS):
    - "defisit unit" = kebutuhan - jumlah fasilitas (dari scorecard tool get_district_scorecard pada metrics_payload). Ini adalah defisit fisik unit fasilitas (misal: "kebutuhan <N> unit, eksisting <M> unit, defisit <N-M> unit (semua angka dari output tool)").
    - "cakupan %" = luas terlayani radius (dari blank spot tool get_unserved_blank_spots). Ini BUKAN defisit unit fasilitas.
    DILARANG menukar defisit unit dengan persentase cakupan radius.
-5. Gaya Bahasa: Profesional, solutif, berbasis data spasial konkret, dan objektif sebagai analis tata ruang / perencana kota senior."""
+5. Gaya Bahasa: Profesional, ringkas dan langsung pada inti pertanyaan (hindari menyalin daftar panjang seluruh provinsi kecuali diminta), berbasis data spasial konkret, dan objektif sebagai analis tata ruang / perencana kota senior."""
 
 
 SYSTEM_PROMPT = build_system_prompt()
@@ -87,13 +92,13 @@ SYSTEM_PROMPT = build_system_prompt()
 OUT_OF_SCOPE_PATTERNS = [
     r"boleh(?:kah)?\s+(?:di)?setujui",
     r"izin(?:nya)?\s+(?:sah|legal|berlaku|keluar|terbit|lolos)",
-    r"apakah\s+.*(?:izin|perizinan)\s+.*(?:bisa|dapat|boleh)?\s*(?:di)?(?:setujui|terbit|diterbitkan|keluar|dikeluarkan|disahkan|lolos)",
-    r"apakah\s+.*(?:izin|perizinan)\s+.*(?:sah|legal|resmi|valid)",
+    r"apakah\s+(?!.*\bdata\s+(?:izin|perizinan)\b).*\b(?:izin|perizinan)\b.*(?:bisa|dapat|boleh)?\s*(?:di)?(?:setujui|terbit|diterbitkan|dikeluarkan|disahkan|lolos)",
+    r"apakah\s+.*\b(?:izin|perizinan)\b.*(?:sah|legal|resmi|valid)",
     r"apakah\s+.*(?:boleh|layak|bisa|dapat)\s+(?:di)?(?:setujui|izinkan|diberi(?:kan)?\s+izin)",
     r"boleh(?:kah)?\s+(?:di)?(?:beri|berikan|terbitkan|keluarkan|miliki|kantongi)?\s*izin",
-    r"(?:beri|berikan|memberikan)\s+izin",
+    r"(?:tolong\s+|mohon\s+|bisakah\s+.*|dapatkah\s+.*)?(?:beri|berikan|memberikan|keluarkan|terbitkan)\s+izin\s+(?:untuk|pembangunan|proyek|apartemen|gedung|superblok|mal|ini)",
     r"rekomendasi\s+(?:keputusan\s+)?perizin(?:an)?",
-    r"rekomendasi\s+izin",
+    r"rekomendasi\s+(?:persetujuan\s+)?izin",
     r"keputusan\s+perizin(?:an)?",
     r"nasihat\s+hukum",
     r"fatwa\s+hukum",
@@ -245,6 +250,7 @@ class CognitiveSpatialAgentOrchestrator:
             "keep_alive": "24h",
             "options": {
                 "num_ctx": 8192,
+                "num_predict": 1024,
                 "temperature": 0.1
             }
         }
@@ -252,7 +258,8 @@ class CognitiveSpatialAgentOrchestrator:
             payload["tools"] = tools
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=90) as resp:
+        llm_timeout = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "300"))
+        with urllib.request.urlopen(req, timeout=llm_timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
     def process_chat(self, req: AgentChatRequest) -> AgentChatResponse:
@@ -591,7 +598,7 @@ class CognitiveSpatialAgentOrchestrator:
 
                     messages.append({
                         "role": "tool",
-                        "content": json.dumps(tool_output, default=str)
+                        "content": self._format_tool_output_for_llm(fn_name, tool_output),
                     })
 
                 # Check max rounds condition per §5A.2
@@ -629,6 +636,160 @@ class CognitiveSpatialAgentOrchestrator:
             raw_llm_reply=raw_llm_reply,
             answer_mode=answer_mode
         )
+
+    @staticmethod
+    def _format_tool_output_for_llm(tool_name: Optional[str], tool_output: Any) -> str:
+        """
+        Formats tool outputs concisely for the LLM prompt while keeping full structured
+        payloads in `all_tool_outputs` and `executed_tools` for guardrails and API clients.
+        """
+        if not isinstance(tool_output, dict) or tool_output.get("error"):
+            return json.dumps(tool_output, default=str, ensure_ascii=False)
+
+        if tool_name == "get_national_overview":
+            provs = tool_output.get("provinces") or []
+            compact = {
+                "active_provinces_count": tool_output.get("active_provinces_count"),
+                "provinces_with_composite_score_count": tool_output.get("provinces_with_composite_score_count"),
+                "provinces_without_composite_score_count": tool_output.get("provinces_without_composite_score_count"),
+                "total_kecamatan": tool_output.get("total_kecamatan"),
+                "scored_kecamatan_count": tool_output.get("scored_kecamatan_count"),
+                "insufficient_data_kecamatan_count": tool_output.get("insufficient_data_kecamatan_count"),
+                "locally_adequate_osm_count": tool_output.get("locally_adequate_osm_count"),
+                "locally_gated_osm_count": tool_output.get("locally_gated_osm_count"),
+                "national_average_composite_score": tool_output.get("national_average_composite_score"),
+                "averaging_rule": tool_output.get("averaging_rule"),
+                "total_population": tool_output.get("total_population"),
+                "population_sources_summary": tool_output.get("population_sources_summary"),
+                "lowest_average_province": tool_output.get("lowest_average_province"),
+                "highest_average_province": tool_output.get("highest_average_province"),
+                "scored_provinces": [
+                    f"{p.get('code')} {p.get('name')} ({p.get('island')}): avg={p.get('avg_score')}, scored={p.get('scored')}/{p.get('kecamatan')}, pop={p.get('population')}"
+                    for p in provs
+                    if isinstance(p, dict) and p.get("avg_score") is not None
+                ],
+                "unscored_provinces": [
+                    f"{p.get('code')} {p.get('name')}: 0/{p.get('kecamatan')} terukur"
+                    for p in provs
+                    if isinstance(p, dict) and p.get("avg_score") is None
+                ],
+            }
+            return json.dumps(compact, default=str, ensure_ascii=False)
+
+        if tool_name == "get_methodology":
+            stds = tool_output.get("standards_table") or []
+            compact = {
+                "standard_reference": tool_output.get("standard_reference"),
+                "total_standards_catalog": tool_output.get("total_standards_catalog"),
+                "scored_standards_count": tool_output.get("scored_standards_count"),
+                "informational_standards_count": tool_output.get("informational_standards_count"),
+                "pillars": [
+                    f"{p.get('label')} (bobot {p.get('base_weight_pct')}%): {', '.join(p.get('scored_facility_types') or []) or 'informasi saja'}"
+                    for p in (tool_output.get("pillars") or [])
+                    if isinstance(p, dict)
+                ],
+                "scoring_rules": tool_output.get("scoring_rules"),
+                "data_tidak_memadai_rule": tool_output.get("data_tidak_memadai_rule"),
+                "scored_standards": [
+                    f"{s.get('facility_type')}: ambang={s.get('population_threshold')} jiwa, radius={s.get('service_radius_meters')}m, lahan={s.get('min_land_area_m2')}m2"
+                    for s in stds
+                    if isinstance(s, dict) and s.get("scored")
+                ],
+            }
+            return json.dumps(compact, default=str, ensure_ascii=False)
+
+        if tool_name == "get_district_scorecard":
+            scored_metrics = []
+            info_counts = []
+            for m in (tool_output.get("metrics_payload") or []):
+                if not isinstance(m, dict):
+                    continue
+                if not m.get("scored"):
+                    info_counts.append(f"{m.get('facility_type')}: {m.get('existing')}")
+                    continue
+                entry = {
+                    "facility_type": m.get("facility_type"),
+                    "pillar": m.get("pillar"),
+                    "existing": m.get("existing"),
+                    "data_availability": m.get("data_availability"),
+                }
+                if m.get("required") is not None:
+                    entry["required"] = m.get("required")
+                if m.get("compliance_pct") is not None:
+                    entry["compliance_pct"] = m.get("compliance_pct")
+                if m.get("deficit") is not None:
+                    entry["deficit"] = m.get("deficit")
+                scored_metrics.append(entry)
+            compact_sc = {
+                "kemendagri_code": tool_output.get("kemendagri_code"),
+                "district_name": tool_output.get("district_name"),
+                "city_name": tool_output.get("city_name"),
+                "province_code": tool_output.get("province_code"),
+                "province_name": tool_output.get("province_name"),
+                "population": tool_output.get("population"),
+                "population_source": tool_output.get("population_source"),
+                "area_km2": tool_output.get("area_km2"),
+                "density_per_km2": tool_output.get("density_per_km2"),
+                "composite_score": tool_output.get("composite_score"),
+                "score_status": tool_output.get("score_status"),
+                "composite_note": tool_output.get("composite_note"),
+                "pillar_scores": {
+                    pk: {
+                        "label": pv.get("label"),
+                        "score": pv.get("score"),
+                        "status": pv.get("status"),
+                    }
+                    for pk, pv in (tool_output.get("pillar_scores") or {}).items()
+                    if isinstance(pv, dict)
+                },
+                "scored_metrics": scored_metrics,
+                "informational_facilities_existing": info_counts,
+            }
+            if tool_output.get("coverage_reason"):
+                compact_sc["coverage_reason"] = tool_output["coverage_reason"]
+            return json.dumps(compact_sc, default=str, ensure_ascii=False)
+
+        if tool_name in ("run_what_if_simulation", "run_superblock_simulation"):
+            delta = tool_output.get("simulation_delta") if isinstance(tool_output.get("simulation_delta"), dict) else tool_output
+            metrics_cmp = delta.get("metrics_comparison") or []
+            affected_types = [
+                m.get("facility_type")
+                for m in metrics_cmp
+                if isinstance(m, dict) and ((m.get("new_deficit_units") or 0) > 0 or (m.get("deficit_delta") or 0) < 0)
+            ]
+            compact_sim = {
+                "district_code": tool_output.get("district_code") or delta.get("district_code"),
+                "district_name": tool_output.get("district_name") or delta.get("district_name"),
+                "impact_level": tool_output.get("impact_level") or delta.get("impact_level"),
+                "affected_facility_types": affected_types,
+                "is_sandbox_isolated": True,
+                "instruction": "Tabel angka simulasi sudah dirender secara deterministik oleh sistem. Tuliskan HANYA analisis kualitatif implikasi tata ruang tanpa angka/digit.",
+            }
+            return json.dumps(compact_sim, default=str, ensure_ascii=False)
+
+        if tool_name == "search_regulations":
+            compact_cits = [
+                {
+                    "chunk_id": c.get("chunk_id"),
+                    "regulation_code": c.get("regulation_code"),
+                    "article_number": c.get("article_number"),
+                    "chapter": c.get("chapter"),
+                    "content": (c.get("content") or "")[:450],
+                }
+                for c in (tool_output.get("citations") or [])
+                if isinstance(c, dict)
+            ]
+            return json.dumps(
+                {
+                    "query": tool_output.get("query"),
+                    "total_found": tool_output.get("total_found"),
+                    "citations": compact_cits,
+                },
+                default=str,
+                ensure_ascii=False,
+            )
+
+        return json.dumps(tool_output, default=str, ensure_ascii=False)
 
     def _resolve_bare_place_in_province(
         self,
@@ -741,6 +902,16 @@ class CognitiveSpatialAgentOrchestrator:
         Map actions are NEVER generated from LLM text (§5C).
         Resolves canonical Kemendagri code deterministically; emits no action if unresolvable.
         """
+        if tool_name in (
+            "search_regulations",
+            "get_national_overview",
+            "get_province_summary",
+            "rank_districts",
+            "compare_provinces",
+            "get_methodology",
+        ):
+            return
+
         raw_code = args.get("district_code")
         d_code = self._resolve_district_code(raw_code, output, province_code=province_code)
         if not d_code:

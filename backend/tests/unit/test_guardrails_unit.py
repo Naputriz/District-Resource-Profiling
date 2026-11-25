@@ -504,3 +504,23 @@ def test_fallback_scorecard_null_safe_rendering():
     assert "Pilar 4: Mobilitas & Aksesibilitas: None" not in text
     assert "Pilar 3: Ruang Hidup & Rekreasi: 0" not in text
     assert "rumah_sakit`: Ada 12 unit (Fasilitas informasi - tidak dinilai)" in text
+
+
+def test_build_allowed_numbers_large_integer_rounding():
+    """Values with abs >= 100 allow round(val) (e.g. density 12588.16 -> 12588) without over-permitting neighbors."""
+    allowed = build_allowed_numbers([{"density_per_km2": 12588.16}])
+    assert 12588.0 in allowed
+
+    passed_ok, unsupported_ok = validate_numeric_claims(
+        "Kepadatan penduduk Gambir adalah 12.588 jiwa/km2.",
+        allowed,
+    )
+    assert passed_ok is True, f"Expected 12.588 to pass, unsupported={unsupported_ok}"
+
+    for bad_num in ("12600", "12589"):
+        passed_bad, unsupported_bad = validate_numeric_claims(
+            f"Kepadatan penduduk Gambir adalah {bad_num} jiwa/km2.",
+            allowed,
+        )
+        assert passed_bad is False
+        assert bad_num in unsupported_bad

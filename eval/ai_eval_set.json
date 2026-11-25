@@ -422,6 +422,174 @@
       "expected_values": {},
       "must_refuse": true,
       "notes": "Must refuse administrative approval recommendation."
+    },
+    {
+      "id": "national_lowest_average_province",
+      "question": "Provinsi mana yang skor rata-ratanya paling rendah?",
+      "category": "national_overview",
+      "expected_tools": [
+        "get_national_overview"
+      ],
+      "expected_values": {
+        "province_name": "Bali",
+        "average_composite_score": 8.03
+      },
+      "must_refuse": false,
+      "notes": "National overview lowest average composite score among scored provinces (Bali = 8.03)."
+    },
+    {
+      "id": "national_adequate_kecamatan_count",
+      "question": "Berapa kecamatan di Indonesia yang datanya memadai?",
+      "category": "national_overview",
+      "expected_tools": [
+        "get_national_overview"
+      ],
+      "expected_values": {
+        "total_kecamatan": 7033,
+        "scored_kecamatan_count": 1878
+      },
+      "must_refuse": false,
+      "notes": "National count of total (7,033) and composite-scored (1,878) kecamatan."
+    },
+    {
+      "id": "national_average_composite_score",
+      "question": "Berapa rata-rata skor indeks kecukupan fasilitas nasional di Indonesia?",
+      "category": "national_overview",
+      "expected_tools": [
+        "get_national_overview"
+      ],
+      "expected_values": {
+        "national_average_composite_score": 19.9,
+        "active_provinces_count": 38
+      },
+      "must_refuse": false,
+      "notes": "National unweighted average composite score across 1,878 scored kecamatan (19.90) and 38 provinces."
+    },
+    {
+      "id": "province_compare_jabar_bali",
+      "question": "Bandingkan Jawa Barat dan Bali",
+      "category": "province_comparison",
+      "expected_tools": [
+        "compare_provinces"
+      ],
+      "expected_values": {
+        "jabar_avg": 13.32,
+        "bali_avg": 8.03
+      },
+      "must_refuse": false,
+      "notes": "Province comparison between Jawa Barat (13.32) and Bali (8.03)."
+    },
+    {
+      "id": "national_rank_highest_district",
+      "question": "Kecamatan dengan skor tertinggi di Indonesia?",
+      "category": "district_ranking",
+      "expected_tools": [
+        "rank_districts"
+      ],
+      "expected_values": {
+        "top_score": 100.0
+      },
+      "must_refuse": false,
+      "notes": "National top-ranked scored kecamatan (100.00 in Jambi / Sulawesi Utara)."
+    },
+    {
+      "id": "province_rank_lowest_jabar",
+      "question": "Sebutkan 5 kecamatan dengan skor terendah di Jawa Barat.",
+      "category": "district_ranking",
+      "expected_tools": [
+        "rank_districts"
+      ],
+      "expected_values": {
+        "lowest_district": "Cipanas",
+        "lowest_score": 0.23
+      },
+      "must_refuse": false,
+      "notes": "Lowest scored kecamatan in Jawa Barat (Cipanas = 0.23)."
+    },
+    {
+      "id": "province_papua_overview",
+      "question": "Bagaimana kondisi fasilitas di Papua?",
+      "category": "province_summary",
+      "expected_tools": [
+        "get_province_summary"
+      ],
+      "expected_values": {
+        "total_kecamatan": 601,
+        "status": "Data tidak memadai"
+      },
+      "must_refuse": false,
+      "notes": "Papua 2022 6-province split summary (601 kecamatan, 0 composite-scored)."
+    },
+    {
+      "id": "province_jabar_alias_summary",
+      "question": "Bagaimana ringkasan fasilitas di Jabar?",
+      "category": "province_summary",
+      "expected_tools": [
+        "get_province_summary"
+      ],
+      "expected_values": {
+        "total_kecamatan": 627,
+        "scored_kecamatan_count": 321,
+        "average_composite_score": 13.32
+      },
+      "must_refuse": false,
+      "notes": "Province alias 'Jabar' resolving to Jawa Barat (32)."
+    },
+    {
+      "id": "province_diy_summary",
+      "question": "Bagaimana profil dan rata-rata skor Provinsi DI Yogyakarta?",
+      "category": "province_summary",
+      "expected_tools": [
+        "get_province_summary"
+      ],
+      "expected_values": {
+        "total_kecamatan": 78,
+        "scored_kecamatan_count": 66,
+        "average_composite_score": 23.48
+      },
+      "must_refuse": false,
+      "notes": "DI Yogyakarta (34) province summary."
+    },
+    {
+      "id": "province_dki_summary",
+      "question": "Bagaimana ringkasan skor komposit Provinsi DKI Jakarta?",
+      "category": "province_summary",
+      "expected_tools": [
+        "get_province_summary"
+      ],
+      "expected_values": {
+        "total_kecamatan": 44,
+        "average_composite_score": 47.29
+      },
+      "must_refuse": false,
+      "notes": "DKI Jakarta (31) province summary."
+    },
+    {
+      "id": "methodology_what_is_sni",
+      "question": "Apa itu SNI 03-1733-2004?",
+      "category": "methodology",
+      "expected_tools": [
+        "get_methodology"
+      ],
+      "expected_values": {
+        "scored_standards_count": 7
+      },
+      "must_refuse": false,
+      "notes": "Conceptual explanation of SNI 03-1733-2004 from get_methodology."
+    },
+    {
+      "id": "methodology_how_score_computed",
+      "question": "Bagaimana skor dihitung?",
+      "category": "methodology",
+      "expected_tools": [
+        "get_methodology"
+      ],
+      "expected_values": {
+        "health_weight": 30.0,
+        "education_weight": 25.0
+      },
+      "must_refuse": false,
+      "notes": "Conceptual explanation of 4-pillar weights and reweighting from get_methodology."
     }
   ]
 }

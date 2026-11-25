@@ -1,0 +1,1076 @@
+{
+  "evaluation_date": "20261125",
+  "model": "qwen2.5:14b",
+  "num_runs": 1,
+  "items_per_run": 32,
+  "total_evaluations": 32,
+  "metrics": {
+    "tool_selection_accuracy": {
+      "target": ">= 90%",
+      "mean": "100.0%",
+      "min": "100.0%",
+      "max": "100.0%",
+      "status": "PASS"
+    },
+    "error_rate": {
+      "target": "0%",
+      "mean": "0.0%",
+      "min": "0.0%",
+      "max": "0.0%",
+      "status": "PASS"
+    },
+    "final_answer_number_leaks": {
+      "target": "0",
+      "mean": 0.0,
+      "status": "PASS"
+    },
+    "final_answer_invalid_citations": {
+      "target": "0",
+      "mean": 0.0,
+      "status": "PASS"
+    },
+    "refusal_accuracy": {
+      "target": "100%",
+      "mean": "100.0%",
+      "status": "PASS"
+    },
+    "expected_values_present_rate": {
+      "target": "Tracked",
+      "mean": "84.4%",
+      "min": "84.4%",
+      "max": "84.4%",
+      "status": "Reported"
+    },
+    "raw_unsupported_numbers_caught": {
+      "target": "Tracked",
+      "mean": 1.0,
+      "status": "Reported"
+    },
+    "raw_citation_hallucination_rate": {
+      "target": "Tracked",
+      "mean": "9.4%",
+      "status": "Reported"
+    },
+    "fallback_rate": {
+      "target": "Tracked",
+      "mean": "3.1%",
+      "min": "3.1%",
+      "max": "3.1%",
+      "status": "Reported"
+    },
+    "retry_rate": {
+      "target": "Tracked",
+      "mean": "3.1%",
+      "status": "Reported"
+    },
+    "p50_latency_seconds": {
+      "target": "Dilaporkan apa adanya",
+      "result": 104.28,
+      "status": "Reported"
+    },
+    "p95_latency_seconds": {
+      "target": "Dilaporkan apa adanya",
+      "result": 297.31,
+      "status": "Reported"
+    }
+  },
+  "per_run_breakdown": [
+    {
+      "run": 1,
+      "tool_selection_accuracy": 100.0,
+      "refusal_accuracy": 100.0,
+      "error_rate": 0.0,
+      "expected_values_present_rate": 84.375,
+      "final_answer_number_leaks": 0,
+      "final_answer_invalid_citations": 0,
+      "raw_unsupported_numbers_caught": 1,
+      "raw_citation_hallucination_rate": 9.375,
+      "fallback_rate": 3.125,
+      "retry_rate": 3.125,
+      "p50_latency": 104.28,
+      "p95_latency": 297.31
+    }
+  ],
+  "worst_5_items": [
+    {
+      "id": "scorecard_gambir_education",
+      "penalty_score": 5.0,
+      "category": "pillar",
+      "tool_selection_correct": true,
+      "guardrail": "numeric_fallback",
+      "unsupported_numbers": [
+        "12,588"
+      ],
+      "mislabeled_numbers": [],
+      "raw_llm_reply": "Skor pilar pendidikan di Kecamatan Gambir (31.73.08) adalah **23.43**.\n\nPopulasi kecamatan ini berdasarkan data BPS 2024 sebesar 95,670 jiwa dengan luas wilayah 7.6 km² dan padat penduduknya mencapai 12,588 jiwa per km².\n\nBeberapa indikator defisit unit fasilitas pendidikan di Kecamatan Gambir:\n- Sekolah Dasar: eksisting 11 unit, kebutuhan 60 unit, defisit -49 unit\n- Sekolah Menengah Atas: eksisting 8 unit, kebutuhan 20 unit, defisit -12 unit\n- Sekolah Menengah Pertama: eksisting 5 unit, kebutuhan 20 unit, defisit -15 unit\n- Taman Kanak-Kanak: eksisting 8 unit, kebutuhan 77 unit, defisit -69 unit\n\nPilar ruang hidup dan pilar mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).",
+      "reply": "### 📊 Ringkasan Analisis Spasial Deterministik (Fallback)\n> *Catatan: Respons ini disintesis langsung dari kalkulasi deterministik PostGIS dan SimEngine demi menjamin keandalan data tanpa halusinasi angka.*\n\n**Profil Wilayah Gambir (31.73.08):**\n- **Jumlah Penduduk:** 95,670 jiwa (BPS 2024)\n- **Indeks Kecukupan Fasilitas Dasar:** **65.20**\n\n**Skor per Pilar Layanan:**\n- Pilar 1: Kesehatan & Keselamatan: 100.00%\n- Pilar 2: Pendidikan: 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi: tidak dinilai (Fasilitas informasi saja (§6.3) - tidak dinilai)\n- Pilar 4: Mobilitas & Aksesibilitas: tidak dinilai (Fasilitas informasi saja (§6.3) - tidak dinilai)\n\n**Status Defisit Fasilitas Utama:**\n- `sekolah_dasar`: Ada 11 unit / Standar 60 unit (Kepatuhan: 18.3%, Defisit: -49 unit)\n- `sekolah_menengah_atas`: Ada 8 unit / Standar 20 unit (Kepatuhan: 40.0%, Defisit: -12 unit)\n- `sekolah_menengah_pertama`: Ada 5 unit / Standar 20 unit (Kepatuhan: 25.0%, Defisit: -15 unit)\n- `taman_kanak_kanak`: Ada 8 unit / Standar 77 unit (Kepatuhan: 10.4%, Defisit: -69 unit)\n- `pos_damkar`: Ada 2 unit / Standar 1 unit (Kepatuhan: 100.0%, Defisit: 1 unit)\n- `posyandu`: Ada 9 unit (Fasilitas informasi - tidak dinilai)\n- `puskesmas_kecamatan`: Ada 1 unit / Standar 1 unit (Kepatuhan: 100.0%, Defisit: 0 unit)\n- `puskesmas_kelurahan`: Ada 5 unit / Standar 4 unit (Kepatuhan: 100.0%, Defisit: 1 unit)"
+    },
+    {
+      "id": "scorecard_tebet_composite",
+      "penalty_score": 0.0,
+      "category": "scorecard",
+      "tool_selection_correct": true,
+      "guardrail": "passed",
+      "unsupported_numbers": [],
+      "mislabeled_numbers": [],
+      "raw_llm_reply": "Skor indeks kecukupan fasilitas di Kecamatan Tebet (31.71.09) adalah **54.61** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\n\nBerikut adalah rincian skor untuk masing-masing pilar:\n- **Pilar Kesehatan & Keselamatan (Lifeline Health)**: 79.17\n- **Pilar Pendidikan**: 25.14\n\nUntuk pilar ruang hidup dan mobilitas, skor tidak dapat dihitung karena data yang rendah.\n\nSumber data penduduk untuk Kecamatan Tebet adalah BPS 2024 dengan populasi sebesar **228,450** jiwa.",
+      "reply": "Skor indeks kecukupan fasilitas di Kecamatan Tebet (31.71.09) adalah **54.61** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\nBerikut adalah rincian skor untuk masing-masing pilar:\n- **Pilar Kesehatan & Keselamatan (Lifeline Health)**: 79.17\n- **Pilar Pendidikan**: 25.14\nUntuk pilar ruang hidup dan mobilitas, skor tidak dapat dihitung karena data yang rendah.\nSumber data penduduk untuk Kecamatan Tebet adalah BPS 2024 dengan populasi sebesar **228,450** jiwa."
+    },
+    {
+      "id": "scorecard_tebet_health",
+      "penalty_score": 0.0,
+      "category": "pillar",
+      "tool_selection_correct": true,
+      "guardrail": "passed",
+      "unsupported_numbers": [],
+      "mislabeled_numbers": [],
+      "raw_llm_reply": "Skor pilar kesehatan (Pilar 1) di Kecamatan Tebet adalah **79.17** dengan status \"tersedia\". Pilar ini mencakup fasilitas seperti pos damkar dan puskesmas yang memenuhi standar kebutuhan dasar masyarakat.\n\nBeberapa detail tambahan:\n- Ada dua unit pos damkar (fasilitas darurat) yang sesuai dengan kebutuhan.\n- Terdapat satu puskesmas kecamatan dan tujuh puskesmas kelurahan, namun masih kurang satu puskesmas kecamatan dibandingkan dengan standar.\n\nSecara keseluruhan, pilar kesehatan di Tebet memenuhi sebagian besar standar yang diperlukan.",
+      "reply": "Skor pilar kesehatan (Pilar 1) di Kecamatan Tebet adalah **79.17** dengan status \"tersedia\". Pilar ini mencakup fasilitas seperti pos damkar dan puskesmas yang memenuhi standar kebutuhan dasar masyarakat.\nBeberapa detail tambahan:\n- Ada dua unit pos damkar (fasilitas darurat) yang sesuai dengan kebutuhan.\n- Terdapat satu puskesmas kecamatan dan tujuh puskesmas kelurahan, namun masih kurang satu puskesmas kecamatan dibandingkan dengan standar.\nSecara keseluruhan, pilar kesehatan di Tebet memenuhi sebagian besar standar yang diperlukan."
+    },
+    {
+      "id": "scorecard_gambir_composite",
+      "penalty_score": 0.0,
+      "category": "scorecard",
+      "tool_selection_correct": true,
+      "guardrail": "passed",
+      "unsupported_numbers": [],
+      "mislabeled_numbers": [],
+      "raw_llm_reply": "Skor indeks kecukupan fasilitas untuk Kecamatan Gambir (31.73.08) adalah **65.2**.\n\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - 100%\n- Pilar 2: Pendidikan - 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi - Data tidak memadai\n- Pilar 4: Mobilitas & Aksesibilitas - Data tidak memadai\n\nPilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\n\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\n\nUntuk informasi lebih lanjut, silakan lihat README §6.3 atau hubungi penyedia data untuk memperbaiki cakupan data.",
+      "reply": "Skor indeks kecukupan fasilitas untuk Kecamatan Gambir (31.73.08) adalah **65.2**.\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - 100%\n- Pilar 2: Pendidikan - 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi - Data tidak memadai\n- Pilar 4: Mobilitas & Aksesibilitas - Data tidak memadai\nPilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\nUntuk informasi lebih lanjut, silakan lihat README §6.3 atau hubungi penyedia data untuk memperbaiki cakupan data."
+    },
+    {
+      "id": "scorecard_cilandak_composite",
+      "penalty_score": 0.0,
+      "category": "scorecard",
+      "tool_selection_correct": true,
+      "guardrail": "passed",
+      "unsupported_numbers": [],
+      "mislabeled_numbers": [],
+      "raw_llm_reply": "Skor indeks kecukupan fasilitas Kecamatan Cilandak (31.71.03) adalah **44.41**.\n\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - **54.17**\n- Pilar 2: Pendidikan - **32.69**\n- Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat diskalakan secara proporsional (total bobot dasar aktif = 0.55).\n\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\n\nCatatan tambahan:\n- Defisit unit fasilitas pendidikan dan kesehatan tercatat, misalnya sekolah dasar membutuhkan **132** unit tetapi hanya ada **42** unit yang tersedia, defisit sebanyak -90 unit.",
+      "reply": "Skor indeks kecukupan fasilitas Kecamatan Cilandak (31.71.03) adalah **44.41**.\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - **54.17**\n- Pilar 2: Pendidikan - **32.69**\n- Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat diskalakan secara proporsional (total bobot dasar aktif = 0.55).\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\nCatatan tambahan:\n- Defisit unit fasilitas pendidikan dan kesehatan tercatat, misalnya sekolah dasar membutuhkan **132** unit tetapi hanya ada **42** unit yang tersedia, defisit sebanyak -90 unit."
+    }
+  ],
+  "raw_runs": [
+    [
+      {
+        "id": "scorecard_tebet_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 104.28,
+        "reply": "Skor indeks kecukupan fasilitas di Kecamatan Tebet (31.71.09) adalah **54.61** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\nBerikut adalah rincian skor untuk masing-masing pilar:\n- **Pilar Kesehatan & Keselamatan (Lifeline Health)**: 79.17\n- **Pilar Pendidikan**: 25.14\nUntuk pilar ruang hidup dan mobilitas, skor tidak dapat dihitung karena data yang rendah.\nSumber data penduduk untuk Kecamatan Tebet adalah BPS 2024 dengan populasi sebesar **228,450** jiwa.",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas di Kecamatan Tebet (31.71.09) adalah **54.61** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\n\nBerikut adalah rincian skor untuk masing-masing pilar:\n- **Pilar Kesehatan & Keselamatan (Lifeline Health)**: 79.17\n- **Pilar Pendidikan**: 25.14\n\nUntuk pilar ruang hidup dan mobilitas, skor tidak dapat dihitung karena data yang rendah.\n\nSumber data penduduk untuk Kecamatan Tebet adalah BPS 2024 dengan populasi sebesar **228,450** jiwa."
+      },
+      {
+        "id": "scorecard_tebet_health",
+        "category": "pillar",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "health_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 82.3,
+        "reply": "Skor pilar kesehatan (Pilar 1) di Kecamatan Tebet adalah **79.17** dengan status \"tersedia\". Pilar ini mencakup fasilitas seperti pos damkar dan puskesmas yang memenuhi standar kebutuhan dasar masyarakat.\nBeberapa detail tambahan:\n- Ada dua unit pos damkar (fasilitas darurat) yang sesuai dengan kebutuhan.\n- Terdapat satu puskesmas kecamatan dan tujuh puskesmas kelurahan, namun masih kurang satu puskesmas kecamatan dibandingkan dengan standar.\nSecara keseluruhan, pilar kesehatan di Tebet memenuhi sebagian besar standar yang diperlukan.",
+        "raw_llm_reply": "Skor pilar kesehatan (Pilar 1) di Kecamatan Tebet adalah **79.17** dengan status \"tersedia\". Pilar ini mencakup fasilitas seperti pos damkar dan puskesmas yang memenuhi standar kebutuhan dasar masyarakat.\n\nBeberapa detail tambahan:\n- Ada dua unit pos damkar (fasilitas darurat) yang sesuai dengan kebutuhan.\n- Terdapat satu puskesmas kecamatan dan tujuh puskesmas kelurahan, namun masih kurang satu puskesmas kecamatan dibandingkan dengan standar.\n\nSecara keseluruhan, pilar kesehatan di Tebet memenuhi sebagian besar standar yang diperlukan."
+      },
+      {
+        "id": "scorecard_gambir_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 103.43,
+        "reply": "Skor indeks kecukupan fasilitas untuk Kecamatan Gambir (31.73.08) adalah **65.2**.\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - 100%\n- Pilar 2: Pendidikan - 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi - Data tidak memadai\n- Pilar 4: Mobilitas & Aksesibilitas - Data tidak memadai\nPilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\nUntuk informasi lebih lanjut, silakan lihat README §6.3 atau hubungi penyedia data untuk memperbaiki cakupan data.",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas untuk Kecamatan Gambir (31.73.08) adalah **65.2**.\n\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - 100%\n- Pilar 2: Pendidikan - 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi - Data tidak memadai\n- Pilar 4: Mobilitas & Aksesibilitas - Data tidak memadai\n\nPilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\n\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\n\nUntuk informasi lebih lanjut, silakan lihat README §6.3 atau hubungi penyedia data untuk memperbaiki cakupan data."
+      },
+      {
+        "id": "scorecard_gambir_education",
+        "category": "pillar",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "education_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "numeric_fallback",
+        "unsupported_numbers": [
+          "12,588"
+        ],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 221.2,
+        "reply": "### 📊 Ringkasan Analisis Spasial Deterministik (Fallback)\n> *Catatan: Respons ini disintesis langsung dari kalkulasi deterministik PostGIS dan SimEngine demi menjamin keandalan data tanpa halusinasi angka.*\n\n**Profil Wilayah Gambir (31.73.08):**\n- **Jumlah Penduduk:** 95,670 jiwa (BPS 2024)\n- **Indeks Kecukupan Fasilitas Dasar:** **65.20**\n\n**Skor per Pilar Layanan:**\n- Pilar 1: Kesehatan & Keselamatan: 100.00%\n- Pilar 2: Pendidikan: 23.43%\n- Pilar 3: Ruang Hidup & Rekreasi: tidak dinilai (Fasilitas informasi saja (§6.3) - tidak dinilai)\n- Pilar 4: Mobilitas & Aksesibilitas: tidak dinilai (Fasilitas informasi saja (§6.3) - tidak dinilai)\n\n**Status Defisit Fasilitas Utama:**\n- `sekolah_dasar`: Ada 11 unit / Standar 60 unit (Kepatuhan: 18.3%, Defisit: -49 unit)\n- `sekolah_menengah_atas`: Ada 8 unit / Standar 20 unit (Kepatuhan: 40.0%, Defisit: -12 unit)\n- `sekolah_menengah_pertama`: Ada 5 unit / Standar 20 unit (Kepatuhan: 25.0%, Defisit: -15 unit)\n- `taman_kanak_kanak`: Ada 8 unit / Standar 77 unit (Kepatuhan: 10.4%, Defisit: -69 unit)\n- `pos_damkar`: Ada 2 unit / Standar 1 unit (Kepatuhan: 100.0%, Defisit: 1 unit)\n- `posyandu`: Ada 9 unit (Fasilitas informasi - tidak dinilai)\n- `puskesmas_kecamatan`: Ada 1 unit / Standar 1 unit (Kepatuhan: 100.0%, Defisit: 0 unit)\n- `puskesmas_kelurahan`: Ada 5 unit / Standar 4 unit (Kepatuhan: 100.0%, Defisit: 1 unit)",
+        "raw_llm_reply": "Skor pilar pendidikan di Kecamatan Gambir (31.73.08) adalah **23.43**.\n\nPopulasi kecamatan ini berdasarkan data BPS 2024 sebesar 95,670 jiwa dengan luas wilayah 7.6 km² dan padat penduduknya mencapai 12,588 jiwa per km².\n\nBeberapa indikator defisit unit fasilitas pendidikan di Kecamatan Gambir:\n- Sekolah Dasar: eksisting 11 unit, kebutuhan 60 unit, defisit -49 unit\n- Sekolah Menengah Atas: eksisting 8 unit, kebutuhan 20 unit, defisit -12 unit\n- Sekolah Menengah Pertama: eksisting 5 unit, kebutuhan 20 unit, defisit -15 unit\n- Taman Kanak-Kanak: eksisting 8 unit, kebutuhan 77 unit, defisit -69 unit\n\nPilar ruang hidup dan pilar mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai. Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55)."
+      },
+      {
+        "id": "scorecard_cilandak_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 107.82,
+        "reply": "Skor indeks kecukupan fasilitas Kecamatan Cilandak (31.71.03) adalah **44.41**.\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - **54.17**\n- Pilar 2: Pendidikan - **32.69**\n- Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat diskalakan secara proporsional (total bobot dasar aktif = 0.55).\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\nCatatan tambahan:\n- Defisit unit fasilitas pendidikan dan kesehatan tercatat, misalnya sekolah dasar membutuhkan **132** unit tetapi hanya ada **42** unit yang tersedia, defisit sebanyak -90 unit.",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas Kecamatan Cilandak (31.71.03) adalah **44.41**.\n\nBerikut rincian skor pilar:\n- Pilar 1: Kesehatan & Keselamatan - **54.17**\n- Pilar 2: Pendidikan - **32.69**\n- Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai (lihat README §6.3). Bobot pilar yang memenuhi syarat diskalakan secara proporsional (total bobot dasar aktif = 0.55).\n\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.\n\nCatatan tambahan:\n- Defisit unit fasilitas pendidikan dan kesehatan tercatat, misalnya sekolah dasar membutuhkan **132** unit tetapi hanya ada **42** unit yang tersedia, defisit sebanyak -90 unit."
+      },
+      {
+        "id": "scorecard_cilandak_education",
+        "category": "pillar",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "education_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 94.6,
+        "reply": "Skor pilar pendidikan di Kecamatan Cilandak adalah **32.69** dengan status \"tersedia\". Berikut detail defisit unit fasilitas pendidikan:\n- Sekolah Dasar (SD): eksisting 42, kebutuhan 132, defisit -90 unit.\n- Sekolah Menengah Atas (SMA): eksisting 10, kebutuhan 44, defisit -34 unit.\n- Sekolah Menengah Pertama (SMP): eksisting 14, kebutuhan 44, defisit -30 unit.\n- Taman Kanak-Kanak (TK): eksisting 75, kebutuhan 169, defisit -94 unit.\nPopulasi Kecamatan Cilandak berdasarkan data BPS 2024 adalah **210.870** jiwa.",
+        "raw_llm_reply": "Skor pilar pendidikan di Kecamatan Cilandak adalah **32.69** dengan status \"tersedia\". Berikut detail defisit unit fasilitas pendidikan:\n\n- Sekolah Dasar (SD): eksisting 42, kebutuhan 132, defisit -90 unit.\n- Sekolah Menengah Atas (SMA): eksisting 10, kebutuhan 44, defisit -34 unit.\n- Sekolah Menengah Pertama (SMP): eksisting 14, kebutuhan 44, defisit -30 unit.\n- Taman Kanak-Kanak (TK): eksisting 75, kebutuhan 169, defisit -94 unit.\n\nPopulasi Kecamatan Cilandak berdasarkan data BPS 2024 adalah **210.870** jiwa."
+      },
+      {
+        "id": "scorecard_seribu_selatan_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 161.87,
+        "reply": "Skor indeks kecukupan fasilitas Kecamatan Kepulauan Seribu Selatan (31.01.01) adalah **5.41** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa skor ini tidak mencakup Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas karena tidak ada jenis fasilitas yang dinilai untuk kedua pilar tersebut. Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional (total bobot dasar aktif = 0.55).\nPopulasi Kecamatan Kepulauan Seribu Selatan berdasarkan data BPS 2024 adalah **10,450** jiwa dengan kepadatan penduduk sebesar **9,247.79** jiwa per km².\nBerikut ini beberapa defisit unit fasilitas yang teridentifikasi:\n- Sekolah Dasar: Kebutuhan 7 unit, eksisting 1 unit, defisit -6 unit.\n- Sekolah Menengah Atas: Kebutuhan 3 unit, eksisting 0 unit, defisit -3 unit.\n- Sekolah Menengah Pertama: Kebutuhan 3 unit, eksisting 0 unit, defisit -3 unit.\n- Taman Kanak-Kanak: Kebutuhan 9 unit, eksisting 3 unit, defisit -6 unit.\n- Pos Damkar: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\n- Puskesmas Kecamatan: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\n- Puskesmas Kelurahan: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\nUntuk informasi tambahan:\n- Posyandu: 1\n- Rumah Sakit: 0\n- Halte Transjakarta: 0\n- Pasar Tradisional: 0\n- Stasiun Transit: 0\n- Taman Kecamatan: 0\n- Taman Kelurahan: 0\n- Taman RPTRA: 0\n- Taman RT: 0",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas Kecamatan Kepulauan Seribu Selatan (31.01.01) adalah **5.41** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa skor ini tidak mencakup Pilar 3: Ruang Hidup & Rekreasi dan Pilar 4: Mobilitas & Aksesibilitas karena tidak ada jenis fasilitas yang dinilai untuk kedua pilar tersebut. Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional (total bobot dasar aktif = 0.55).\n\nPopulasi Kecamatan Kepulauan Seribu Selatan berdasarkan data BPS 2024 adalah **10,450** jiwa dengan kepadatan penduduk sebesar **9,247.79** jiwa per km².\n\nBerikut ini beberapa defisit unit fasilitas yang teridentifikasi:\n- Sekolah Dasar: Kebutuhan 7 unit, eksisting 1 unit, defisit -6 unit.\n- Sekolah Menengah Atas: Kebutuhan 3 unit, eksisting 0 unit, defisit -3 unit.\n- Sekolah Menengah Pertama: Kebutuhan 3 unit, eksisting 0 unit, defisit -3 unit.\n- Taman Kanak-Kanak: Kebutuhan 9 unit, eksisting 3 unit, defisit -6 unit.\n- Pos Damkar: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\n- Puskesmas Kecamatan: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\n- Puskesmas Kelurahan: Kebutuhan 1 unit, eksisting 0 unit, defisit -1 unit.\n\nUntuk informasi tambahan:\n- Posyandu: 1\n- Rumah Sakit: 0\n- Halte Transjakarta: 0\n- Pasar Tradisional: 0\n- Stasiun Transit: 0\n- Taman Kecamatan: 0\n- Taman Kelurahan: 0\n- Taman RPTRA: 0\n- Taman RT: 0"
+      },
+      {
+        "id": "scorecard_seribu_selatan_health",
+        "category": "pillar",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "health_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 73.58,
+        "reply": "Skor pilar kesehatan di Kepulauan Seribu Selatan adalah **0.0**.\nData untuk fasilitas kesehatan tersedia, namun tidak ada pusat layanan kesehatan yang tercatat saat ini (pos_damkar, puskesmas_kecamatan, dan puskesmas_kelurahan). Kecamatan membutuhkan satu unit dari setiap tipe fasilitas tersebut tetapi belum memiliki satupun.",
+        "raw_llm_reply": "Skor pilar kesehatan di Kepulauan Seribu Selatan adalah **0.0**.\n\nData untuk fasilitas kesehatan tersedia, namun tidak ada pusat layanan kesehatan yang tercatat saat ini (pos_damkar, puskesmas_kecamatan, dan puskesmas_kelurahan). Kecamatan membutuhkan satu unit dari setiap tipe fasilitas tersebut tetapi belum memiliki satupun."
+      },
+      {
+        "id": "scorecard_setiabudi_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 102.55,
+        "reply": "Skor indeks kecukupan fasilitas (skor komposit) untuk Kecamatan Setiabudi adalah **65.39**.\nBeberapa poin penting:\n- Pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai.\n- Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\n- Pilar kesehatan dan keselamatan mendapat skor sempurna **100**.\n- Pilar pendidikan memiliki skor **23.85**, dengan defisit unit fasilitas yang signifikan, terutama untuk taman kanak-kanak (defisit -82).\nSumber data populasi: Badan Pusat Statistik 2024.\nUntuk informasi lebih lanjut tentang metodologi dan definisi skor komposit, Anda dapat merujuk ke [METODOLOGI SKOR KOMPOSIT](get_methodology).",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas (skor komposit) untuk Kecamatan Setiabudi adalah **65.39**.\n\nBeberapa poin penting:\n- Pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai.\n- Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\n- Pilar kesehatan dan keselamatan mendapat skor sempurna **100**.\n- Pilar pendidikan memiliki skor **23.85**, dengan defisit unit fasilitas yang signifikan, terutama untuk taman kanak-kanak (defisit -82).\n\nSumber data populasi: Badan Pusat Statistik 2024.\n\nUntuk informasi lebih lanjut tentang metodologi dan definisi skor komposit, Anda dapat merujuk ke [METODOLOGI SKOR KOMPOSIT](get_methodology)."
+      },
+      {
+        "id": "scorecard_kebon_jeruk_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 141.83,
+        "reply": "Skor indeks kecukupan fasilitas di Kecamatan Kebon Jeruk (31.74.02) adalah **28.23** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai untuk kedua pilar tersebut (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\nPopulasi Kecamatan Kebon Jeruk berdasarkan data BPS 2024 adalah **385,490** jiwa dan luas wilayahnya adalah **17.98 km²**, dengan kepadatan penduduk sebesar **21,439.93 jiwa per km²**.\nBerikut ini skor pilar yang tersedia:\n- Pilar 1: Kesehatan & Keselamatan (Skor: 40.38)\n- Pilar 2: Pendidikan (Skor: 13.64)\nPilar ruang hidup dan mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena data yang rendah atau tidak ada.\nUntuk informasi lebih lanjut, berikut adalah beberapa fasilitas yang tersedia:\n- **Posyandu**: 4\n- **Rumah Sakit**: 12\n- **Halte Transjakarta**: 113\n- **Pasar Tradisional**: 3\n- **Stasiun Transit**: 0\n- **Taman Kecamatan**: 0\n- **Taman Kelurahan**: 0\n- **Taman RPTRA**: 1\n- **Taman RT**: 0",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas di Kecamatan Kebon Jeruk (31.74.02) adalah **28.23** dengan status \"Tersedia\". Namun, perlu diperhatikan bahwa pilar ruang hidup dan mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai untuk kedua pilar tersebut (lihat README §6.3). Bobot pilar yang memenuhi syarat telah diskalakan secara proporsional dengan total bobot dasar aktif sebesar 0.55.\n\nPopulasi Kecamatan Kebon Jeruk berdasarkan data BPS 2024 adalah **385,490** jiwa dan luas wilayahnya adalah **17.98 km²**, dengan kepadatan penduduk sebesar **21,439.93 jiwa per km²**.\n\nBerikut ini skor pilar yang tersedia:\n- Pilar 1: Kesehatan & Keselamatan (Skor: 40.38)\n- Pilar 2: Pendidikan (Skor: 13.64)\n\nPilar ruang hidup dan mobilitas serta aksesibilitas tidak dihitung dalam skor komposit karena data yang rendah atau tidak ada.\n\nUntuk informasi lebih lanjut, berikut adalah beberapa fasilitas yang tersedia:\n- **Posyandu**: 4\n- **Rumah Sakit**: 12\n- **Halte Transjakarta**: 113\n- **Pasar Tradisional**: 3\n- **Stasiun Transit**: 0\n- **Taman Kecamatan**: 0\n- **Taman Kelurahan**: 0\n- **Taman RPTRA**: 1\n- **Taman RT**: 0"
+      },
+      {
+        "id": "scorecard_penjaringan_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 97.14,
+        "reply": "Skor indeks kecukupan fasilitas di Kecamatan Penjaringan, Kota Administrasi Jakarta Utara adalah **39.66** dengan status \"Tersedia\". Skor ini mencerminkan ketersediaan dan kualitas fasilitas dalam tiga pilar yang dinilai (kesehatan & keselamatan, pendidikan), karena dua pilar lainnya (ruang hidup & rekreasi serta mobilitas & aksesibilitas) tidak memiliki data yang cukup untuk dihitung.\nBerikut adalah skor detail per pilar:\n- **Pilar 1: Kesehatan & Keselamatan** - Skor: 59.59\n- **Pilar 2: Pendidikan** - Skor: 15.75\nUntuk informasi lebih lanjut, silakan lihat metodologi penilaian dan bobot pilar [disini](get_methodology).",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas di Kecamatan Penjaringan, Kota Administrasi Jakarta Utara adalah **39.66** dengan status \"Tersedia\". Skor ini mencerminkan ketersediaan dan kualitas fasilitas dalam tiga pilar yang dinilai (kesehatan & keselamatan, pendidikan), karena dua pilar lainnya (ruang hidup & rekreasi serta mobilitas & aksesibilitas) tidak memiliki data yang cukup untuk dihitung.\n\nBerikut adalah skor detail per pilar:\n- **Pilar 1: Kesehatan & Keselamatan** - Skor: 59.59\n- **Pilar 2: Pendidikan** - Skor: 15.75\n\nUntuk informasi lebih lanjut, silakan lihat metodologi penilaian dan bobot pilar [disini](get_methodology)."
+      },
+      {
+        "id": "scorecard_senen_composite",
+        "category": "scorecard",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_district_scorecard"
+        ],
+        "expected_tools": [
+          "get_district_scorecard"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 96.63,
+        "reply": "Skor indeks kecukupan fasilitas di Kecamatan Senen (31.73.03) adalah **42.2**.\nBeberapa poin penting:\n- Pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai.\n- Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\nPilar dengan status tersedia:\n- **Kesehatan & Keselamatan** (Lifeline Health): Skor 60.0\n- **Pendidikan**: Skor 20.85\nPilar yang tidak dihitung karena cakupan data rendah:\n- **Ruang Hidup & RekreasiMobilitas & Aksesibilitas**\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024.",
+        "raw_llm_reply": "Skor indeks kecukupan fasilitas di Kecamatan Senen (31.73.03) adalah **42.2**.\n\nBeberapa poin penting:\n- Pilar ruang hidup dan mobilitas tidak dihitung dalam skor komposit karena tidak ada jenis fasilitas yang dinilai.\n- Bobot pilar yang memenuhi syarat telah diskalakan proporsional (total bobot dasar aktif = 0.55).\n\nPilar dengan status tersedia:\n- **Kesehatan & Keselamatan** (Lifeline Health): Skor 60.0\n- **Pendidikan**: Skor 20.85\n\nPilar yang tidak dihitung karena cakupan data rendah:\n- **Ruang Hidup & Rekreasi**\n- **Mobilitas & Aksesibilitas**\n\nSumber data penduduk: Badan Pusat Statistik (BPS) 2024."
+      },
+      {
+        "id": "blank_spot_tebet_puskesmas",
+        "category": "blank_spot",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "expected_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "coverage_percentage": true,
+          "unserved_area_km2": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 64.38,
+        "reply": "Di Kecamatan Tebet (31.71.09), DKI Jakarta, cakupan jangkauan puskesmas kelurahan mencapai **100%** dari total luas wilayah kecamatan sebesar 9.37 km². Tidak ada area yang terabaikan dalam radius layanan fasilitas kesehatan ini.\n- Total Luas Wilayah: **9.37 km²**\n- Luas Area Terlayani: **9.3653 km²** (100%)\n- Luas Area Tidak Terlayani: **0.0 km²**\nTerdapat 7 puskesmas kelurahan yang berada di dalam wilayah Tebet, dan tidak ada area terabaikan dari fasilitas-fasilitas tersebut.\nData ini menunjukkan bahwa seluruh wilayah Kecamatan Tebet telah mencapai cakupan radius jangkauan layanan puskesmas kelurahan dengan baik.",
+        "raw_llm_reply": "Di Kecamatan Tebet (31.71.09), DKI Jakarta, cakupan jangkauan puskesmas kelurahan mencapai **100%** dari total luas wilayah kecamatan sebesar 9.37 km². Tidak ada area yang terabaikan dalam radius layanan fasilitas kesehatan ini.\n\n- Total Luas Wilayah: **9.37 km²**\n- Luas Area Terlayani: **9.3653 km²** (100%)\n- Luas Area Tidak Terlayani: **0.0 km²**\n\nTerdapat 7 puskesmas kelurahan yang berada di dalam wilayah Tebet, dan tidak ada area terabaikan dari fasilitas-fasilitas tersebut.\n\nData ini menunjukkan bahwa seluruh wilayah Kecamatan Tebet telah mencapai cakupan radius jangkauan layanan puskesmas kelurahan dengan baik."
+      },
+      {
+        "id": "blank_spot_gambir_puskesmas",
+        "category": "blank_spot",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "expected_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "coverage_percentage": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 40.39,
+        "reply": "Persentase cakupan layanan puskesmas kelurahan di Kecamatan Gambir adalah **100%**. Artinya, seluruh wilayah kecamatan telah terlayani oleh radius jangkauan fasilitas puskesmas atau kelurahan yang ada.\nPerlu dicatat bahwa persentase ini mengukur cakupan geografis dalam radius jangkauan fasilitas dan bukan defisit unit fisik dari fasilitas tersebut.",
+        "raw_llm_reply": "Persentase cakupan layanan puskesmas kelurahan di Kecamatan Gambir adalah **100%**. Artinya, seluruh wilayah kecamatan telah terlayani oleh radius jangkauan fasilitas puskesmas atau kelurahan yang ada.\n\nPerlu dicatat bahwa persentase ini mengukur cakupan geografis dalam radius jangkauan fasilitas dan bukan defisit unit fisik dari fasilitas tersebut."
+      },
+      {
+        "id": "blank_spot_cilandak_puskesmas",
+        "category": "blank_spot",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "expected_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "refusal_correct": true,
+        "all_values_present": false,
+        "values_breakdown": {
+          "unserved_area_km2": false
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 59.45,
+        "reply": "Luas zona blank spot (area tidak terlayani) puskesmas kelurahan di Kecamatan Cilandak adalah **1.4978 km²** atau sekitar **8.48%** dari total luas wilayah kecamatan tersebut.\nInformasi tambahan:\n- Total luas wilayah kecamatan: 17.67 km²\n- Luas area terlayani (served): 16.1699 km² atau sekitar **91.52%** dari total luas wilayah.\n- Terdapat 5 puskesmas kelurahan yang berada di dalam kecamatan Cilandak dan 8 fasilitas dari kecamatan tetangga.\nData ini menunjukkan bahwa sebagian besar wilayah Kecamatan Cilandak telah terlayani oleh puskesmas kelurahan, namun masih ada area tertentu yang belum mendapatkan layanan tersebut.",
+        "raw_llm_reply": "Luas zona blank spot (area tidak terlayani) puskesmas kelurahan di Kecamatan Cilandak adalah **1.4978 km²** atau sekitar **8.48%** dari total luas wilayah kecamatan tersebut.\n\nInformasi tambahan:\n- Total luas wilayah kecamatan: 17.67 km²\n- Luas area terlayani (served): 16.1699 km² atau sekitar **91.52%** dari total luas wilayah.\n- Terdapat 5 puskesmas kelurahan yang berada di dalam kecamatan Cilandak dan 8 fasilitas dari kecamatan tetangga.\n\nData ini menunjukkan bahwa sebagian besar wilayah Kecamatan Cilandak telah terlayani oleh puskesmas kelurahan, namun masih ada area tertentu yang belum mendapatkan layanan tersebut."
+      },
+      {
+        "id": "blank_spot_seribu_selatan",
+        "category": "blank_spot",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "expected_tools": [
+          "get_unserved_blank_spots"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "coverage_percentage": true,
+          "unserved_area_km2": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 62.85,
+        "reply": "Cakupan fasilitas puskesmas kelurahan di Kepulauan Seribu Selatan adalah **0%** dari total luas wilayah kecamatan tersebut (42.48 km²). Luas area yang belum terlayani fasilitas puskesmas kelurahan mencapai 100%, yaitu sebesar 42.48 km².\nTidak ada pusat layanan kesehatan puskesmas kelurahan yang berada di dalam wilayah Kepulauan Seribu Selatan, dan juga tidak ada fasilitas dari kecamatan tetangga yang dapat menjangkau wilayah ini. Cakupan radius jangkauan 1500 meter untuk setiap puskesmas kelurahan belum mencapai seluruh area Kepulauan Seribu Selatan.\nData tersebut berdasarkan analisis spasial terisolasi dan hipotetis, bukan keputusan izin definitif.",
+        "raw_llm_reply": "Cakupan fasilitas puskesmas kelurahan di Kepulauan Seribu Selatan adalah **0%** dari total luas wilayah kecamatan tersebut (42.48 km²). Luas area yang belum terlayani fasilitas puskesmas kelurahan mencapai 100%, yaitu sebesar 42.48 km².\n\nTidak ada pusat layanan kesehatan puskesmas kelurahan yang berada di dalam wilayah Kepulauan Seribu Selatan, dan juga tidak ada fasilitas dari kecamatan tetangga yang dapat menjangkau wilayah ini. Cakupan radius jangkauan 1500 meter untuk setiap puskesmas kelurahan belum mencapai seluruh area Kepulauan Seribu Selatan.\n\nData tersebut berdasarkan analisis spasial terisolasi dan hipotetis, bukan keputusan izin definitif."
+      },
+      {
+        "id": "what_if_tebet_pop_shock",
+        "category": "what_if",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "run_what_if_simulation"
+        ],
+        "expected_tools": [
+          "run_what_if_simulation"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "score_delta": true,
+          "simulated_composite_score": true,
+          "impact_level": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 133.43,
+        "reply": "### 📈 Hasil Simulasi Perubahan Populasi (Tebet)\n- **Populasi:** 228,450 jiwa ➔ 238,450 jiwa (+10,000 jiwa) *(BPS 2024)*\n- **Skor Komposit:** 54.61 ➔ 54.13 (-0.48 poin)\n- **Perubahan per Pilar:**\n* lifeline_health: 79.17 ➔ 79.17 (+0.00)\n* education: 25.14 ➔ 24.08 (-1.06)\n- **Defisit Fasilitas Baru:**\n* sekolah_dasar: +7 unit (total defisit: 118 unit)\n* sekolah_menengah_atas: +2 unit (total defisit: 37 unit)\n* sekolah_menengah_pertama: +2 unit (total defisit: 42 unit)\n* taman_kanak_kanak: +8 unit (total defisit: 128 unit)\n- **Indikasi Dampak:** Tinggi (Rendah: delta > -1.0 dan 0 unit defisit baru; Tinggi: delta <= -5.0 atau >= 3 unit defisit baru; Sedang: lainnya.)\n> *Bukan keputusan perizinan. Untuk bahan diskusi perencanaan.*\n### 📝 Analisis Kualitatif\nSimulasi pertambahan penduduk di Kecamatan Tebet menunjukkan dampak yang signifikan terhadap fasilitas pendidikan, seperti sekolah dasar, sekolah menengah atas, sekolah menengah pertama, dan taman kanak-kanak. Potensi peningkatan beban ini dapat mempengaruhi kualitas layanan pendidikan yang tersedia.\nPerlu dilakukan rencana perencanaan untuk mengatasi tantangan tersebut, mungkin dengan pembangunan fasilitas baru atau penambahan kapasitas pada fasilitas yang sudah ada. Selain itu, evaluasi terhadap aksesibilitas dan mobilitas antara tempat tinggal penduduk dan fasilitas pendidikan juga penting untuk memastikan kualitas hidup masyarakat tetap baik.\nData simulasi ini bersifat hipotetis dan terisolasi, tanpa perubahan pada data master. Implikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif.",
+        "raw_llm_reply": "Simulasi pertambahan 10.000 penduduk di Kecamatan Tebet menunjukkan dampak yang tinggi terhadap beberapa jenis fasilitas, termasuk sekolah dasar, sekolah menengah atas, sekolah menengah pertama, dan taman kanak-kanak. Dampak ini berarti ada potensi peningkatan beban pada fasilitas pendidikan yang sudah ada di wilayah tersebut.\n\nPerlu dipertimbangkan rencana perencanaan untuk memastikan bahwa fasilitas-fasilitas tersebut dapat menangani pertambahan populasi dengan baik, mungkin melalui pembangunan fasilitas baru atau peningkatan kapasitas dari yang sudah ada. Selain itu, evaluasi terhadap aksesibilitas dan mobilitas antara tempat tinggal penduduk dan fasilitas pendidikan juga penting untuk memastikan bahwa pertambahan populasi tidak mengganggu kualitas hidup masyarakat.\n\nPerlu diingat bahwa data simulasi ini bersifat hipotetis dan terisolasi, tanpa perubahan pada data master. Implikasi dampak adalah bahan pertimbangan perencanaan (Rendah / Sedang / Tinggi), bukan keputusan izin definitif."
+      },
+      {
+        "id": "what_if_gambir_pop_shock",
+        "category": "what_if",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "run_what_if_simulation"
+        ],
+        "expected_tools": [
+          "run_what_if_simulation"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "score_delta": true,
+          "simulated_composite_score": true,
+          "impact_level": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 156.29,
+        "reply": "### 📈 Hasil Simulasi Perubahan Populasi (Gambir)\n- **Populasi:** 95,670 jiwa ➔ 100,670 jiwa (+5,000 jiwa) *(BPS 2024)*\n- **Skor Komposit:** 65.20 ➔ 64.69 (-0.51 poin)\n- **Perubahan per Pilar:**\n* lifeline_health: 100.00 ➔ 100.00 (+0.00)\n* education: 23.43 ➔ 22.31 (-1.12)\n- **Defisit Fasilitas Baru:**\n* sekolah_dasar: +3 unit (total defisit: 52 unit)\n* sekolah_menengah_atas: +1 unit (total defisit: 13 unit)\n* sekolah_menengah_pertama: +1 unit (total defisit: 16 unit)\n* taman_kanak_kanak: +4 unit (total defisit: 73 unit)\n- **Indikasi Dampak:** Tinggi (Rendah: delta > -1.0 dan 0 unit defisit baru; Tinggi: delta <= -5.0 atau >= 3 unit defisit baru; Sedang: lainnya.)\n> *Bukan keputusan perizinan. Untuk bahan diskusi perencanaan.*\n### 📝 Analisis Kualitatif\nSimulasi penambahan beban penduduk di Kecamatan Gambir menunjukkan dampak yang signifikan terhadap fasilitas pendidikan, seperti sekolah dasar, sekolah menengah pertama, sekolah menengah atas, dan taman kanak-kanak. Dampak ini mengindikasikan tekanan besar pada kapasitas fasilitas pendidikan yang ada.\nPerlu diingat bahwa data simulasi ini bersifat hipotetis dan tidak mempengaruhi data master. Analisis dampak ini merupakan bahan pertimbangan perencanaan, bukan keputusan izin definitif. Implikasinya menunjukkan potensi penurunan kualitas layanan pendidikan di Kecamatan Gambir yang memerlukan evaluasi lebih lanjut untuk merancang solusi tepat guna.",
+        "raw_llm_reply": "Simulasi penambahan beban penduduk sebanyak 5.000 orang di Kecamatan Gambir menunjukkan dampak yang tinggi terhadap fasilitas pendidikan, termasuk sekolah dasar, sekolah menengah pertama, sekolah menengah atas, dan taman kanak-kanak. Dampak ini berarti bahwa penambahan populasi tersebut akan memberi tekanan signifikan pada kapasitas fasilitas pendidikan yang ada.\n\nPerlu diperhatikan bahwa data simulasi ini adalah skenario hipotetis terisolasi dan tidak mempengaruhi data master. Analisis dampak ini merupakan bahan pertimbangan perencanaan, bukan keputusan izin definitif. Dampak penambahan beban penduduk tersebut dapat berdampak pada kualitas layanan pendidikan di Kecamatan Gambir dan memerlukan evaluasi lebih lanjut untuk merancang solusi yang tepat guna."
+      },
+      {
+        "id": "superblock_tebet_3000",
+        "category": "superblock",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "run_superblock_simulation"
+        ],
+        "expected_tools": [
+          "run_superblock_simulation"
+        ],
+        "refusal_correct": true,
+        "all_values_present": false,
+        "values_breakdown": {
+          "estimated_new_occupants": true,
+          "mandated_public_rth_m2": false,
+          "impact_level": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 192.17,
+        "reply": "### 🏗️ Hasil Simulasi Superblok: Superblok Tebet (Tebet)\n- **Kapasitas Hunian:** 3,000 unit (9,000 jiwa)\n- **Estimasi Alokasi RTH (Asumsi 20%):** 3,000.0 m²\n- **Estimasi Kolam Retensi (Asumsi 150 mm/hari):** 1,125.0 m³\n- **Catatan Parameter:** Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%\n- **Populasi:** 228,450 jiwa ➔ 237,450 jiwa (+9,000 jiwa) *(BPS 2024)*\n- **Skor Komposit:** 54.61 ➔ 54.17 (-0.44 poin)\n- **Perubahan per Pilar:**\n* lifeline_health: 79.17 ➔ 79.17 (+0.00)\n* education: 25.14 ➔ 24.16 (-0.98)\n- **Defisit Fasilitas Baru:**\n* sekolah_dasar: +6 unit (total defisit: 117 unit)\n* sekolah_menengah_atas: +2 unit (total defisit: 37 unit)\n* sekolah_menengah_pertama: +2 unit (total defisit: 42 unit)\n* taman_kanak_kanak: +7 unit (total defisit: 127 unit)\n- **Indikasi Dampak:** Tinggi (Rendah: delta > -1.0 dan 0 unit defisit baru; Tinggi: delta <= -5.0 atau >= 3 unit defisit baru; Sedang: lainnya.)\n> *Bukan keputusan perizinan. Untuk bahan diskusi perencanaan.*\n### 📝 Analisis Kualitatif\nSimulasi pembangunan superblok di Kecamatan Tebet menunjukkan dampak yang signifikan terhadap fasilitas pendidikan, seperti sekolah dasar, sekolah menengah pertama, sekolah menengah atas, dan taman kanak-kanak. Dampak ini merupakan skenario hipotetis dalam sandbox terisolasi tanpa mempengaruhi data master.\nAnalisis kualitatif implikasi tata ruang:\nPembangunan superblok dengan jumlah unit hunian yang besar di Tebet akan menambah beban pada fasilitas pendidikan yang sudah ada. Hal ini dapat menyebabkan peningkatan kepadatan siswa per sekolah, memperburuk kondisi infrastruktur dan layanan pendidikan. Selain itu, potensi pertambahan populasi juga bisa meningkatkan permintaan terhadap fasilitas lain seperti puskesmas dan transportasi publik.\nPerlu dilakukan peninjauan mendalam untuk menentukan langkah-langkah mitigasi yang tepat guna memastikan bahwa pembangunan superblok tidak mengganggu kualitas layanan pendidikan di wilayah tersebut. Implikasinya, kebijakan perkotaan perlu mempertimbangkan penambahan fasilitas pendidikan dan transportasi publik untuk menunjang pertumbuhan populasi akibat pembangunan superblok ini.",
+        "raw_llm_reply": "Simulasi pembangunan superblok dengan 3.000 unit apartemen di Kecamatan Tebet menunjukkan dampak yang tinggi terhadap fasilitas pendidikan, termasuk sekolah dasar, sekolah menengah pertama, sekolah menengah atas, dan taman kanak-kanak. Dampak ini merupakan skenario hipotetis dalam sandbox terisolasi tanpa mempengaruhi data master.\n\nAnalisis kualitatif implikasi tata ruang:\nPembangunan superblok dengan jumlah unit hunian yang signifikan di Tebet akan menambah beban pada fasilitas pendidikan yang sudah ada. Hal ini dapat menyebabkan peningkatan kepadatan siswa per sekolah, memperburuk kondisi infrastruktur dan layanan pendidikan. Selain itu, potensi pertambahan populasi juga bisa meningkatkan permintaan terhadap fasilitas lain seperti puskesmas dan transportasi publik.\n\nPerlu dilakukan peninjauan mendalam untuk menentukan langkah-langkah mitigasi yang tepat guna memastikan bahwa pembangunan superblok tidak mengganggu kualitas layanan pendidikan di wilayah tersebut."
+      },
+      {
+        "id": "superblock_setiabudi_2000",
+        "category": "superblock",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "run_superblock_simulation"
+        ],
+        "expected_tools": [
+          "run_superblock_simulation"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "estimated_new_occupants": true,
+          "mandated_public_rth_m2": true,
+          "impact_level": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 186.94,
+        "reply": "### 🏗️ Hasil Simulasi Superblok: Superblok Setiabudi 2.0 (Setiabudi)\n- **Kapasitas Hunian:** 2,000 unit (6,000 jiwa)\n- **Estimasi Alokasi RTH (Asumsi 20%):** 3,000.0 m²\n- **Estimasi Kolam Retensi (Asumsi 150 mm/hari):** 1,125.0 m³\n- **Catatan Parameter:** Parameter asumsi tim (belum diverifikasi terhadap peraturan daerah): RTH 20%, retensi 150 mm/hari, KDB 50%\n- **Populasi:** 112,430 jiwa ➔ 118,430 jiwa (+6,000 jiwa) *(BPS 2024)*\n- **Skor Komposit:** 65.39 ➔ 64.90 (-0.49 poin)\n- **Perubahan per Pilar:**\n* lifeline_health: 100.00 ➔ 100.00 (+0.00)\n* education: 23.85 ➔ 22.77 (-1.08)\n- **Defisit Fasilitas Baru:**\n* sekolah_dasar: +4 unit (total defisit: 55 unit)\n* sekolah_menengah_atas: +1 unit (total defisit: 18 unit)\n* sekolah_menengah_pertama: +1 unit (total defisit: 18 unit)\n* taman_kanak_kanak: +5 unit (total defisit: 87 unit)\n- **Indikasi Dampak:** Tinggi (Rendah: delta > -1.0 dan 0 unit defisit baru; Tinggi: delta <= -5.0 atau >= 3 unit defisit baru; Sedang: lainnya.)\n> *Bukan keputusan perizinan. Untuk bahan diskusi perencanaan.*\n### 📝 Analisis Kualitatif\nSimulasi proyek superblok di Setiabudi menunjukkan dampak yang signifikan terhadap fasilitas pendidikan, seperti sekolah dasar, taman kanak-kanak, sekolah menengah pertama, dan sekolah menengah atas. Dampak ini berarti bahwa pembangunan proyek tersebut akan memberikan tekanan besar pada kapasitas fasilitas pendidikan yang ada di wilayah tersebut.\nAnalisis kualitatif dampak tata ruang menunjukkan potensi peningkatan permintaan terhadap fasilitas pendidikan, yang dapat mempengaruhi ketersediaan tempat dan layanan pendidikan bagi masyarakat lokal. Oleh karena itu, perencanaan dan pengembangan infrastruktur pendukung seperti sekolah harus dipertimbangkan untuk mengurangi beban tambahan ini.\nPerlu dicatat bahwa data simulasi ini adalah skenario hipotetis yang terisolasi dalam sandbox tanpa mempengaruhi data master. Indikasi dampak tinggi ini merupakan bahan pertimbangan perencanaan, bukan keputusan izin definitif.",
+        "raw_llm_reply": "Simulasi proyek superblok dengan 2.000 unit hunian di Setiabudi, Jakarta Selatan, dengan luas lahan 15.000 m² menunjukkan dampak yang tinggi terhadap fasilitas pendidikan seperti sekolah dasar, sekolah menengah pertama, sekolah menengah atas, dan taman kanak-kanak. Dampak ini berarti bahwa pembangunan proyek tersebut akan memberikan tekanan signifikan pada kapasitas fasilitas pendidikan yang ada di wilayah tersebut.\n\nAnalisis kualitatif dampak tata ruang menunjukkan potensi peningkatan permintaan terhadap fasilitas pendidikan, yang dapat mempengaruhi ketersediaan tempat dan layanan pendidikan bagi masyarakat lokal. Oleh karena itu, perencanaan dan pengembangan infrastruktur pendukung seperti sekolah harus dipertimbangkan untuk mengurangi beban tambahan ini.\n\nPerlu dicatat bahwa data simulasi ini adalah skenario hipotetis yang terisolasi dalam sandbox tanpa mempengaruhi data master. Indikasi dampak tinggi ini merupakan bahan pertimbangan perencanaan, bukan keputusan izin definitif."
+      },
+      {
+        "id": "national_lowest_average_province",
+        "category": "national_overview",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_national_overview"
+        ],
+        "expected_tools": [
+          "get_national_overview"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "province_name": true,
+          "average_composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 136.53,
+        "reply": "Provinsi dengan skor rata-rata paling rendah adalah Bali, dengan skor komposit rata-rata sebesar 8.03. Ini berdasarkan data yang tersedia dari kecamatan-kecamatan yang telah diukur dan memiliki skor komposit numerik.",
+        "raw_llm_reply": "Provinsi dengan skor rata-rata paling rendah adalah Bali, dengan skor komposit rata-rata sebesar 8.03. Ini berdasarkan data yang tersedia dari kecamatan-kecamatan yang telah diukur dan memiliki skor komposit numerik."
+      },
+      {
+        "id": "national_adequate_kecamatan_count",
+        "category": "national_overview",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_national_overview"
+        ],
+        "expected_tools": [
+          "get_national_overview"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "total_kecamatan": true,
+          "scored_kecamatan_count": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 90.77,
+        "reply": "Dari total 7.033 kecamatan di Indonesia, sebanyak 1.878 kecamatan memiliki data yang memadai untuk menghitung skor komposit (composite score). Sementara itu, 5.155 kecamatan lainnya berstatus \"Data tidak memadai\".",
+        "raw_llm_reply": "Dari total 7.033 kecamatan di Indonesia, sebanyak 1.878 kecamatan memiliki data yang memadai untuk menghitung skor komposit (composite score). Sementara itu, 5.155 kecamatan lainnya berstatus \"Data tidak memadai\"."
+      },
+      {
+        "id": "national_average_composite_score",
+        "category": "national_overview",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_national_overview"
+        ],
+        "expected_tools": [
+          "get_national_overview"
+        ],
+        "refusal_correct": true,
+        "all_values_present": false,
+        "values_breakdown": {
+          "national_average_composite_score": true,
+          "active_provinces_count": false
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 99.11,
+        "reply": "Rata-rata skor indeks kecukupan fasilitas nasional di Indonesia adalah **19.9**. Ini merupakan rata-rata aritmetika tidak tertimbang dari seluruh 1878 kecamatan yang memiliki skor komposit numerik di 15 provinsi; 5155 kecamatan berstatus 'Data tidak memadai' (NULL) dikecualikan dari perhitungan rata-rata ini.",
+        "raw_llm_reply": "Rata-rata skor indeks kecukupan fasilitas nasional di Indonesia adalah **19.9**. Ini merupakan rata-rata aritmetika tidak tertimbang dari seluruh 1878 kecamatan yang memiliki skor komposit numerik di 15 provinsi; 5155 kecamatan berstatus 'Data tidak memadai' (NULL) dikecualikan dari perhitungan rata-rata ini."
+      },
+      {
+        "id": "province_compare_jabar_bali",
+        "category": "province_comparison",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "compare_provinces"
+        ],
+        "expected_tools": [
+          "compare_provinces"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "jabar_avg": true,
+          "bali_avg": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 84.21,
+        "reply": "Perbandingan antara Jawa Barat dan Bali menunjukkan perbedaan dalam beberapa aspek penting:\n- **Jumlah Kecamatan**: \n- Jawa Barat memiliki total 627 kecamatan, dengan 321 kecamatan yang terukur (skor komposit tersedia) dan 306 kecamatan 'Data tidak memadai'.\n- Bali memiliki total 57 kecamatan, dengan 37 kecamatan yang terukur dan 20 kecamatan 'Data tidak memadai'.\n- **Rata-rata Skor Komposit**:\n- Jawa Barat: 13.32\n- Bali: 8.03\nJawa Barat memiliki rata-rata skor komposit yang lebih tinggi dibandingkan dengan Bali.\n- **Populasi Total**:\n- Jawa Barat: 50,352,580 penduduk (sumber data: Estimasi model WorldPop R2025A 2024)\n- Bali: 4,517,203 penduduk (sumber data: Estimasi model WorldPop R2025A 2024)\nSecara keseluruhan, Jawa Barat menunjukkan performa yang lebih baik dalam hal rata-rata skor komposit dibandingkan dengan Bali.",
+        "raw_llm_reply": "Perbandingan antara Jawa Barat dan Bali menunjukkan perbedaan dalam beberapa aspek penting:\n\n- **Jumlah Kecamatan**: \n  - Jawa Barat memiliki total 627 kecamatan, dengan 321 kecamatan yang terukur (skor komposit tersedia) dan 306 kecamatan 'Data tidak memadai'.\n  - Bali memiliki total 57 kecamatan, dengan 37 kecamatan yang terukur dan 20 kecamatan 'Data tidak memadai'.\n\n- **Rata-rata Skor Komposit**:\n  - Jawa Barat: 13.32\n  - Bali: 8.03\n\nJawa Barat memiliki rata-rata skor komposit yang lebih tinggi dibandingkan dengan Bali.\n\n- **Populasi Total**:\n  - Jawa Barat: 50,352,580 penduduk (sumber data: Estimasi model WorldPop R2025A 2024)\n  - Bali: 4,517,203 penduduk (sumber data: Estimasi model WorldPop R2025A 2024)\n\nSecara keseluruhan, Jawa Barat menunjukkan performa yang lebih baik dalam hal rata-rata skor komposit dibandingkan dengan Bali."
+      },
+      {
+        "id": "national_rank_highest_district",
+        "category": "district_ranking",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "rank_districts"
+        ],
+        "expected_tools": [
+          "rank_districts"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "top_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 61.38,
+        "reply": "Berikut adalah lima kecamatan dengan skor tertinggi di Indonesia berdasarkan Indeks Kecukupan Fasilitas Dasar (Komposit):\n1. **Batang Merangin** - Kota Kerinci, Provinsi Jambi\n2. **Maro Sebo Ilir** - Kota Batang Hari, Provinsi Jambi\n3. **Kawangkoan Utara** - Kabupaten Minahasa, Sulawesi Utara\n4. **Eris** - Kabupaten Minahasa, Sulawesi Utara\n5. **Kepulauan Marore** - Kota Kepulauan Sangihe, Sulawesi Utara\nSemua kecamatan ini mencapai skor maksimal 100 pada indeks komposit tersebut.",
+        "raw_llm_reply": "Berikut adalah lima kecamatan dengan skor tertinggi di Indonesia berdasarkan Indeks Kecukupan Fasilitas Dasar (Komposit):\n\n1. **Batang Merangin** - Kota Kerinci, Provinsi Jambi\n2. **Maro Sebo Ilir** - Kota Batang Hari, Provinsi Jambi\n3. **Kawangkoan Utara** - Kabupaten Minahasa, Sulawesi Utara\n4. **Eris** - Kabupaten Minahasa, Sulawesi Utara\n5. **Kepulauan Marore** - Kota Kepulauan Sangihe, Sulawesi Utara\n\nSemua kecamatan ini mencapai skor maksimal 100 pada indeks komposit tersebut."
+      },
+      {
+        "id": "province_rank_lowest_jabar",
+        "category": "district_ranking",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "rank_districts"
+        ],
+        "expected_tools": [
+          "rank_districts"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "lowest_district": true,
+          "lowest_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 71.83,
+        "reply": "Berikut adalah lima kecamatan dengan skor terendah (Indeks Kecukupan Fasilitas Dasar) di Jawa Barat:\n1. **Cipanas, Cianjur** - Skor: 0.23\n2. **Soreang, Bandung** - Skor: 0.29\n3. **Cugenang, Cianjur** - Skor: 0.33\n4. **Kutawaringin, Bandung** - Skor: 0.36\n5. **Kadungora, Garut** - Skor: 0.4\nSkor ini menunjukkan tingkat kecukupan fasilitas dasar di setiap kecamatan berdasarkan empat pilar yang dinilai (kesehatan, pendidikan, kenyamanan lingkungan, dan mobilitas). Skor lebih rendah menandakan adanya defisit fasilitas yang lebih besar.",
+        "raw_llm_reply": "Berikut adalah lima kecamatan dengan skor terendah (Indeks Kecukupan Fasilitas Dasar) di Jawa Barat:\n\n1. **Cipanas, Cianjur** - Skor: 0.23\n2. **Soreang, Bandung** - Skor: 0.29\n3. **Cugenang, Cianjur** - Skor: 0.33\n4. **Kutawaringin, Bandung** - Skor: 0.36\n5. **Kadungora, Garut** - Skor: 0.4\n\nSkor ini menunjukkan tingkat kecukupan fasilitas dasar di setiap kecamatan berdasarkan empat pilar yang dinilai (kesehatan, pendidikan, kenyamanan lingkungan, dan mobilitas). Skor lebih rendah menandakan adanya defisit fasilitas yang lebih besar."
+      },
+      {
+        "id": "province_papua_overview",
+        "category": "province_summary",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_province_summary"
+        ],
+        "expected_tools": [
+          "get_province_summary"
+        ],
+        "refusal_correct": true,
+        "all_values_present": false,
+        "values_breakdown": {
+          "total_kecamatan": true,
+          "status": false
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 231.24,
+        "reply": "Kondisi fasilitas di wilayah Papua saat ini mencakup enam provinsi yang dipisahkan dari Provinsi Papua induk pada tahun 2022: Papua (91), Papua Barat (92), Papua Selatan (93), Papua Tengah (94), Papua Pegunungan (95), dan Papua Barat Daya (96). \nSecara keseluruhan, dari total 601 kecamatan di wilayah Papua tersebut:\n- **241** kecamatan memenuhi gerbang lokal SD >= 1 (memadai).\n- **356** kecamatan berstatus tidak_memadai.\n- Tidak ada kecamatan yang memiliki skor komposit numerik karena cakupan fasilitas terpetakan di OpenStreetMap belum memenuhi ambang minimal dua jenis fasilitas per provinsi.\nPopulasi total wilayah Papua adalah **5.607.092** jiwa berdasarkan estimasi model WorldPop R2025A 2024.\nUntuk informasi lebih rinci, berikut ringkasan kondisi di setiap provinsi:\n- **Provinsi Papua (Kode: 91)**\n- Total kecamatan: 97\n- Kecamatan memenuhi gerbang lokal SD >= 1: 31\n- Kecamatan tidak_memadai: 66\n- **Provinsi Papua Barat (Kode: 92)**\n- Total kecamatan: 78\n- Kecamatan memenuhi gerbang lokal SD >= 1: 40\n- Kecamatan tidak_memadai: 38\n- **Provinsi Papua Selatan (Kode: 93)**\n- Total kecamatan: 69\n- Kecamatan memenuhi gerbang lokal SD >= 1: 22\n- Kecamatan tidak_memadai: 47\n- **Provinsi Papua Tengah (Kode: 94)**\n- Total kecamatan: 73\n- Kecamatan memenuhi gerbang lokal SD >= 1: 19\n- Kecamatan tidak_memadai: 54\n- **Provinsi Papua Pegunungan (Kode: 95)**\n- Total kecamatan: 185\n- Kecamatan memenuhi gerbang lokal SD >= 1: 69\n- Kecamatan tidak_memadai: 112\n- **Provinsi Papua Barat Daya (Kode: 96)**\n- Total kecamatan: 99\n- Kecamatan memenuhi gerbang lokal SD >= 1: 60\n- Kecamatan tidak_memadai: 39\nData ini berdasarkan estimasi model WorldPop R2025A 2024 dan cakupan fasilitas terpetakan di OpenStreetMap.",
+        "raw_llm_reply": "Kondisi fasilitas di wilayah Papua saat ini mencakup enam provinsi yang dipisahkan dari Provinsi Papua induk pada tahun 2022: Papua (91), Papua Barat (92), Papua Selatan (93), Papua Tengah (94), Papua Pegunungan (95), dan Papua Barat Daya (96). \n\nSecara keseluruhan, dari total 601 kecamatan di wilayah Papua tersebut:\n- **241** kecamatan memenuhi gerbang lokal SD >= 1 (memadai).\n- **356** kecamatan berstatus tidak_memadai.\n- Tidak ada kecamatan yang memiliki skor komposit numerik karena cakupan fasilitas terpetakan di OpenStreetMap belum memenuhi ambang minimal dua jenis fasilitas per provinsi.\n\nPopulasi total wilayah Papua adalah **5.607.092** jiwa berdasarkan estimasi model WorldPop R2025A 2024.\n\nUntuk informasi lebih rinci, berikut ringkasan kondisi di setiap provinsi:\n\n- **Provinsi Papua (Kode: 91)**\n  - Total kecamatan: 97\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 31\n  - Kecamatan tidak_memadai: 66\n\n- **Provinsi Papua Barat (Kode: 92)**\n  - Total kecamatan: 78\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 40\n  - Kecamatan tidak_memadai: 38\n\n- **Provinsi Papua Selatan (Kode: 93)**\n  - Total kecamatan: 69\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 22\n  - Kecamatan tidak_memadai: 47\n\n- **Provinsi Papua Tengah (Kode: 94)**\n  - Total kecamatan: 73\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 19\n  - Kecamatan tidak_memadai: 54\n\n- **Provinsi Papua Pegunungan (Kode: 95)**\n  - Total kecamatan: 185\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 69\n  - Kecamatan tidak_memadai: 112\n\n- **Provinsi Papua Barat Daya (Kode: 96)**\n  - Total kecamatan: 99\n  - Kecamatan memenuhi gerbang lokal SD >= 1: 60\n  - Kecamatan tidak_memadai: 39\n\nData ini berdasarkan estimasi model WorldPop R2025A 2024 dan cakupan fasilitas terpetakan di OpenStreetMap."
+      },
+      {
+        "id": "province_jabar_alias_summary",
+        "category": "province_summary",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_province_summary"
+        ],
+        "expected_tools": [
+          "get_province_summary"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "total_kecamatan": true,
+          "scored_kecamatan_count": true,
+          "average_composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "retried",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 317.94,
+        "reply": "Ringkasan fasilitas di Jawa Barat adalah sebagai berikut:\n- Total kecamatan: 627\n- Kecamatan dengan skor komposit numerik: 321\n- Kecamatan 'Data tidak memadai': 306\nRata-rata skor empat pilar:\n- Pendidikan: 13.32 (skor rata-rata dari kecamatan yang memiliki data)\n- Kesehatan & Keselamatan, Ruang Hidup & Rekreasi, serta Mobilitas & Aksesibilitas tidak memadai data untuk perhitungan rata-rata.\nKecamatan terbaik berdasarkan skor komposit:\n1. Bogor Tengah (Bogor) - 84.86\n2. Ranca Bungur (Bogor) - 76.19\n3. Leuwiliang (Bogor) - 73.61\n4. Leuwisadeng (Bogor) - 72.94\n5. Tenjolaya (Bogor) - 67.69\nKecamatan terburuk berdasarkan skor komposit:\n1. Cipanas (Cianjur) - 0.23\n2. Soreang (Bandung) - 0.29\n3. Cugenang (Cianjur) - 0.33\n4. Kutawaringin (Bandung) - 0.36\n5. Kadungora (Garut) - 0.4\nPopulasi total Jawa Barat: 50,352,580 (estimasi model WorldPop R2025A 2024)\nSumber data:\n- Batas administratif: HDX COD-AB Indonesia (BPS/BIG)\n- Demografi: WorldPop R2025A 2024\n- Fasilitas: OpenStreetMap contributors via Geofabrik Java PBF\nCatatan cakupan: Dari total 627 kecamatan, hanya 321 memiliki skor komposit numerik dan dikecualikan dari perhitungan rata-rata.",
+        "raw_llm_reply": "Ringkasan fasilitas di Jawa Barat adalah sebagai berikut:\n\n- Total kecamatan: 627\n- Kecamatan dengan skor komposit numerik: 321 (51.1%)\n- Kecamatan 'Data tidak memadai': 306 (48.9%)\n\nRata-rata skor empat pilar:\n- Pendidikan: 13.32\n- Kesehatan & Keselamatan, Ruang Hidup & Rekreasi, serta Mobilitas & Aksesibilitas tidak memadai data untuk perhitungan rata-rata.\n\nKecamatan terbaik berdasarkan skor komposit:\n1. Bogor Tengah (Bogor) - 84.86\n2. Ranca Bungur (Bogor) - 76.19\n3. Leuwiliang (Bogor) - 73.61\n4. Leuwisadeng (Bogor) - 72.94\n5. Tenjolaya (Bogor) - 67.69\n\nKecamatan terburuk berdasarkan skor komposit:\n1. Cipanas (Cianjur) - 0.23\n2. Soreang (Bandung) - 0.29\n3. Cugenang (Cianjur) - 0.33\n4. Kutawaringin (Bandung) - 0.36\n5. Kadungora (Garut) - 0.4\n\nPopulasi total Jawa Barat: 50,352,580 (estimasi model WorldPop R2025A 2024)\n\nSumber data:\n- Batas administratif: HDX COD-AB Indonesia (BPS/BIG)\n- Demografi: WorldPop R2025A 2024\n- Fasilitas: OpenStreetMap contributors via Geofabrik Java PBF\n\nCatatan cakupan: Dari total 627 kecamatan, hanya 321 memiliki skor komposit numerik dan dikecualikan dari perhitungan rata-rata."
+      },
+      {
+        "id": "province_diy_summary",
+        "category": "province_summary",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_province_summary"
+        ],
+        "expected_tools": [
+          "get_province_summary"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "total_kecamatan": true,
+          "scored_kecamatan_count": true,
+          "average_composite_score": true
+        },
+        "raw_citation_valid": false,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [
+          "SNI yang digunakan dalam analisis ini"
+        ],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 189.4,
+        "reply": "Berikut adalah ringkasan profil dan rata-rata skor Provinsi DI Yogyakarta:\n- **Total Kecamatan:** 78\n- **Kecamatan dengan Skor Komposit Numerik (Tersedia):** 66\n- **Kecamatan dengan Data Tidak Memadai:** 12\n- **Populasi Total:** 3.850.140 penduduk (sumber: Estimasi model WorldPop R2025A 2024)\n- **Rata-rata Skor Komposit:** 23.48\nPilar-pilar yang memiliki data memadai dan rata-rata skornya:\n- Pilar 2: Pendidikan - 23.48 (Tersedia)\nPilar-pilar lainnya belum memiliki data memadai untuk perhitungan rata-rata skor.\n**Kecamatan dengan Skor Komposit Tertinggi di Provinsi DI Yogyakarta:**\n1. **Prambanan, Sleman:** 64.56\n2. **Cangkringan, Sleman:** 63.09\n3. **Gondokusuman, Kota Yogyakarta:** 54.54\n4. **Wirobrajan, Kota Yogyakarta:** 53.89\n5. **Gedong Tengen, Kota Yogyakarta:** 53.33\n**Kecamatan dengan Skor Komposit Terendah di Provinsi DI Yogyakarta:**\n1. **Semanu, Gunung Kidul:** 0.54\n2. **Piyungan, Bantul:** 3.66\n3. **Ponjong, Gunung Kidul:** 3.66\n4. **Tepus, Gunung Kidul:** 4.76\n5. **Nglipar, Gunung Kidul:** 4.82\nSumber data:\n- Batas Wilayah: HDX COD-AB Indonesia (BPS/BIG)\n- Demografi Penduduk: WorldPop R2025A 2024 (model estimate)\n- Fasilitas: OpenStreetMap contributors via Geofabrik Java PBF (ODbL)\nCatatan: Dari total 78 kecamatan, hanya 66 yang memiliki skor komposit numerik dan dapat dihitung rata-ratanya. Sementara itu, 12 kecamatan lainnya berstatus 'Data tidak memadai' dan dikecualikan dari perhitungan rata-rata skor komposit.\nUntuk informasi lebih lanjut tentang metodologi penilaian atau standar, Anda dapat mengakses dokumentasi resmi.",
+        "raw_llm_reply": "Berikut adalah ringkasan profil dan rata-rata skor Provinsi DI Yogyakarta:\n\n- **Total Kecamatan:** 78\n- **Kecamatan dengan Skor Komposit Numerik (Tersedia):** 66\n- **Kecamatan dengan Data Tidak Memadai:** 12\n- **Populasi Total:** 3.850.140 penduduk (sumber: Estimasi model WorldPop R2025A 2024)\n- **Rata-rata Skor Komposit:** 23.48\n\nPilar-pilar yang memiliki data memadai dan rata-rata skornya:\n- Pilar 2: Pendidikan - 23.48 (Tersedia)\n\nPilar-pilar lainnya belum memiliki data memadai untuk perhitungan rata-rata skor.\n\n**Kecamatan dengan Skor Komposit Tertinggi di Provinsi DI Yogyakarta:**\n1. **Prambanan, Sleman:** 64.56\n2. **Cangkringan, Sleman:** 63.09\n3. **Gondokusuman, Kota Yogyakarta:** 54.54\n4. **Wirobrajan, Kota Yogyakarta:** 53.89\n5. **Gedong Tengen, Kota Yogyakarta:** 53.33\n\n**Kecamatan dengan Skor Komposit Terendah di Provinsi DI Yogyakarta:**\n1. **Semanu, Gunung Kidul:** 0.54\n2. **Piyungan, Bantul:** 3.66\n3. **Ponjong, Gunung Kidul:** 3.66\n4. **Tepus, Gunung Kidul:** 4.76\n5. **Nglipar, Gunung Kidul:** 4.82\n\nSumber data:\n- Batas Wilayah: HDX COD-AB Indonesia (BPS/BIG)\n- Demografi Penduduk: WorldPop R2025A 2024 (model estimate)\n- Fasilitas: OpenStreetMap contributors via Geofabrik Java PBF (ODbL)\n\nCatatan: Dari total 78 kecamatan, hanya 66 yang memiliki skor komposit numerik dan dapat dihitung rata-ratanya. Sementara itu, 12 kecamatan lainnya berstatus 'Data tidak memadai' dan dikecualikan dari perhitungan rata-rata skor komposit.\n\nUntuk informasi lebih lanjut tentang metodologi penilaian atau standar SNI yang digunakan dalam analisis ini, Anda dapat mengakses dokumentasi resmi."
+      },
+      {
+        "id": "province_dki_summary",
+        "category": "province_summary",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_province_summary"
+        ],
+        "expected_tools": [
+          "get_province_summary"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "total_kecamatan": true,
+          "average_composite_score": true
+        },
+        "raw_citation_valid": true,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 175.65,
+        "reply": "Ringkasan skor komposit Provinsi DKI Jakarta adalah sebagai berikut:\n- **Total Kecamatan:** 44\n- **Jumlah Kecamatan yang Dikalkulasikan Skornya (scored):** 44\n- **Rata-rata Skor Komposit:** 47.29\nPilar-pilarnya:\n1. **Kesehatan & Keselamatan (Lifeline Health)**: Rata-rata skor pilar adalah 65.82.\n2. **Pendidikan**: Rata-rata skor pilar adalah 25.05.\n3. **Ruang Hidup & Rekreasi (Urban Livability)**: Data tidak memadai untuk menghitung rata-rata skor.\n4. **Mobilitas & Aksesibilitas (Mobility Connectivity)**: Data tidak memadai untuk menghitung rata-rata skor.\nKecamatan dengan lima skor komposit tertinggi:\n1. Setiabudi, Jakarta Selatan - 65.39\n2. Gambir, Jakarta Pusat - 65.20\n3. Taman Sari, Jakarta Barat - 64.69\n4. Palmerah, Jakarta Barat - 60.83\n5. Kepulauan Seribu Utara, Kepulauan Seribu - 59.69\nKecamatan dengan lima skor komposit terendah:\n1. Kepulauan Seribu Selatan, Kepulauan Seribu - 5.41\n2. Kebon Jeruk, Jakarta Barat - 28.23\n3. Koja, Jakarta Utara - 30.16\n4. Tanjung Priok, Jakarta Utara - 31.45\n5. Cakung, Jakarta Timur - 33.79\nSumber data:\n- Batas administratif: BPS / Kemendagri GeoJSON (SakifAbdillah/jakartaKecamatanGeoJSON)\n- Demografi penduduk: Badan Pusat Statistik Provinsi DKI Jakarta 2024\n- Fasilitas: Kontributor OpenStreetMap (ODbL)\nData demografis terakhir diperbarui pada tahun 2024, sementara data fasilitas OSM terbaru adalah hingga 14 Oktober 2026.",
+        "raw_llm_reply": "Ringkasan skor komposit Provinsi DKI Jakarta adalah sebagai berikut:\n\n- **Total Kecamatan:** 44\n- **Jumlah Kecamatan yang Dikalkulasikan Skornya (scored):** 44\n- **Rata-rata Skor Komposit:** 47.29\n\nPilar-pilarnya:\n1. **Kesehatan & Keselamatan (Lifeline Health)**: Rata-rata skor pilar adalah 65.82.\n2. **Pendidikan**: Rata-rata skor pilar adalah 25.05.\n3. **Ruang Hidup & Rekreasi (Urban Livability)**: Data tidak memadai untuk menghitung rata-rata skor.\n4. **Mobilitas & Aksesibilitas (Mobility Connectivity)**: Data tidak memadai untuk menghitung rata-rata skor.\n\nKecamatan dengan lima skor komposit tertinggi:\n1. Setiabudi, Jakarta Selatan - 65.39\n2. Gambir, Jakarta Pusat - 65.20\n3. Taman Sari, Jakarta Barat - 64.69\n4. Palmerah, Jakarta Barat - 60.83\n5. Kepulauan Seribu Utara, Kepulauan Seribu - 59.69\n\nKecamatan dengan lima skor komposit terendah:\n1. Kepulauan Seribu Selatan, Kepulauan Seribu - 5.41\n2. Kebon Jeruk, Jakarta Barat - 28.23\n3. Koja, Jakarta Utara - 30.16\n4. Tanjung Priok, Jakarta Utara - 31.45\n5. Cakung, Jakarta Timur - 33.79\n\nSumber data:\n- Batas administratif: BPS / Kemendagri GeoJSON (SakifAbdillah/jakartaKecamatanGeoJSON)\n- Demografi penduduk: Badan Pusat Statistik Provinsi DKI Jakarta 2024\n- Fasilitas: Kontributor OpenStreetMap (ODbL)\n\nData demografis terakhir diperbarui pada tahun 2024, sementara data fasilitas OSM terbaru adalah hingga 14 Oktober 2026."
+      },
+      {
+        "id": "methodology_what_is_sni",
+        "category": "methodology",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_methodology"
+        ],
+        "expected_tools": [
+          "get_methodology"
+        ],
+        "refusal_correct": true,
+        "all_values_present": false,
+        "values_breakdown": {
+          "scored_standards_count": false
+        },
+        "raw_citation_valid": false,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [
+          "SNI 03-1733-2004 adalah Standar Nasional Indonesia yang mengatur tentang Tata Kota dan Perkotaan. Standar ini mencakup berbagai aspek seperti perencanaan",
+          "SNI 03-1733-2004",
+          "SNI ini"
+        ],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 297.31,
+        "reply": "pembangunan, pengelolaan, serta penataan kawasan perkotaan untuk memastikan keberlanjutan dan kualitas hidup masyarakat.\nBerikut adalah beberapa poin penting dari :\n### Pilar-Pilar Tata Kota\n1. **Pilar 1: Kesehatan & Keselamatan (bobot 30%)**\n- Fasilitas yang termasuk: pos_damkar, puskesmas_kecamatan, puskesmas_kelurahan\n2. **Pilar 2: Pendidikan (bobot 25%)**\n- Fasilitas yang termasuk: sekolah_dasar, sekolah_menengah_atas, sekolah_menengah_pertama, taman_kanak_kanak\n3. **Pilar 3: Ruang Hidup & Rekreasi (bobot 25%)**\n- Informasi tentang pilar ini belum tersedia secara rinci.\n4. **Pilar 4: Mobilitas & Aksesibilitas (bobot 20%)**\n- Informasi tentang pilar ini belum tersedia secara rinci.\n### Aturan Scoring\n- **Kepatuhan Fasilitas**: Kebutuhan unit = ceil(populasi / ambang_penduduk_SNI), minimal 1. Persentase kepatuhan = min(100, (eksisting / kebutuhan) * 100). Defisit unit = eksisting - kebutuhan.\n- **Skor Pilar**: Skor pilar dihitung sebagai rata-rata aritmetika persentase kepatuhan (%) dari jenis fasilitas yang tersedia pada pilar tersebut. Jenis dengan data 'insufficient' atau 'not_available' tidak diberi nilai 0.\n### Aturan Data Tidak Memadai\n- **Treshold Provinsi**: Setiap jenis fasilitas harus memiliki minimal N rekaman OSM terklasifikasi di provinsi (N = jumlah kecamatan provinsi).\n- **Gate Lokal SD**: Kecamatan berpenduduk >= 1.600 jiwa dengan 0 sekolah_dasar terpetakan di OSM ditandai tidak_memadai.\n### Standar yang Dinilai\nBerikut adalah beberapa standar yang dinilai:\n- Sekolah Dasar: ambang = 1.600 jiwa, radius = 1.000m, lahan = 2.000m²\n- Sekolah Menengah Atas: ambang = 4.800 jiwa, radius = 3.000m, lahan = 12.500m²\n- Sekolah Menengah Pertama: ambang = 4.800 jiwa, radius = 1.000m, lahan = 9.000m²\n- Taman Kanak-Kanak: ambang = 1.250 jiwa, radius = 500m, lahan = 500m²\n- Pos Damkar: ambang = 120.000 jiwa, radius = tidak ada (Nonem), lahan = tidak ada (Nonem)\n- Puskesmas Kecamatan: ambang = 120.000 jiwa, radius = 3.000m, lahan = 1.000m²\n- Puskesmas Kelurahan: ambang = 30.000 jiwa, radius = 1.500m, lahan = 300m²\nApakah Anda ingin mengetahui lebih lanjut tentang aspek tertentu dari ?",
+        "raw_llm_reply": "SNI 03-1733-2004 adalah Standar Nasional Indonesia yang mengatur tentang Tata Kota dan Perkotaan. Standar ini mencakup berbagai aspek seperti perencanaan, pembangunan, pengelolaan, serta penataan kawasan perkotaan untuk memastikan keberlanjutan dan kualitas hidup masyarakat.\n\nBerikut adalah beberapa poin penting dari SNI 03-1733-2004:\n\n### Pilar-Pilar Tata Kota\n1. **Pilar 1: Kesehatan & Keselamatan (bobot 30%)**\n   - Fasilitas yang termasuk: pos_damkar, puskesmas_kecamatan, puskesmas_kelurahan\n\n2. **Pilar 2: Pendidikan (bobot 25%)**\n   - Fasilitas yang termasuk: sekolah_dasar, sekolah_menengah_atas, sekolah_menengah_pertama, taman_kanak_kanak\n\n3. **Pilar 3: Ruang Hidup & Rekreasi (bobot 25%)**\n   - Informasi tentang pilar ini belum tersedia secara rinci.\n\n4. **Pilar 4: Mobilitas & Aksesibilitas (bobot 20%)**\n   - Informasi tentang pilar ini belum tersedia secara rinci.\n\n### Aturan Scoring\n- **Kepatuhan Fasilitas**: Kebutuhan unit = ceil(populasi / ambang_penduduk_SNI), minimal 1. Persentase kepatuhan = min(100, (eksisting / kebutuhan) * 100). Defisit unit = eksisting - kebutuhan.\n- **Skor Pilar**: Skor pilar dihitung sebagai rata-rata aritmetika persentase kepatuhan (%) dari jenis fasilitas yang tersedia pada pilar tersebut. Jenis dengan data 'insufficient' atau 'not_available' tidak diberi nilai 0.\n\n### Aturan Data Tidak Memadai\n- **Treshold Provinsi**: Setiap jenis fasilitas harus memiliki minimal N rekaman OSM terklasifikasi di provinsi (N = jumlah kecamatan provinsi).\n- **Gate Lokal SD**: Kecamatan berpenduduk >= 1.600 jiwa dengan 0 sekolah_dasar terpetakan di OSM ditandai tidak_memadai.\n\n### Standar yang Dinilai\nBerikut adalah beberapa standar yang dinilai:\n- Sekolah Dasar: ambang = 1.600 jiwa, radius = 1.000m, lahan = 2.000m²\n- Sekolah Menengah Atas: ambang = 4.800 jiwa, radius = 3.000m, lahan = 12.500m²\n- Sekolah Menengah Pertama: ambang = 4.800 jiwa, radius = 1.000m, lahan = 9.000m²\n- Taman Kanak-Kanak: ambang = 1.250 jiwa, radius = 500m, lahan = 500m²\n- Pos Damkar: ambang = 120.000 jiwa, radius = tidak ada (Nonem), lahan = tidak ada (Nonem)\n- Puskesmas Kecamatan: ambang = 120.000 jiwa, radius = 3.000m, lahan = 1.000m²\n- Puskesmas Kelurahan: ambang = 30.000 jiwa, radius = 1.500m, lahan = 300m²\n\nApakah Anda ingin mengetahui lebih lanjut tentang aspek tertentu dari SNI ini?"
+      },
+      {
+        "id": "methodology_how_score_computed",
+        "category": "methodology",
+        "tool_selection_correct": true,
+        "executed_tools": [
+          "get_methodology"
+        ],
+        "expected_tools": [
+          "get_methodology"
+        ],
+        "refusal_correct": true,
+        "all_values_present": true,
+        "values_breakdown": {
+          "health_weight": true,
+          "education_weight": true
+        },
+        "raw_citation_valid": false,
+        "final_invalid_citations": 0,
+        "valid_citations": [],
+        "removed_citations": [
+          "[REG:province_threshold_rule]",
+          "[REG:null_handling]",
+          "SNI 03-1733-2004",
+          "SNI"
+        ],
+        "guardrail": "passed",
+        "unsupported_numbers": [],
+        "mislabeled_numbers": [],
+        "final_number_leaks": 0,
+        "latency_seconds": 174.26,
+        "reply": "Skor dihitung berdasarkan metodologi yang ditetapkan dalam (Tata Cara Perencanaan Lingkungan Perumahan di Perkotaan, Badan Standardisasi Nasional). Metodologi ini melibatkan empat pilar utama dengan bobot masing-masing:\n- **Pilar 1: Kesehatan & Keselamatan (bobot 30.0%)** mencakup fasilitas seperti pos_damkar, puskesmas_kecamatan, dan puskesmas_kelurahan.\n- **Pilar 2: Pendidikan (bobot 25.0%)** meliputi sekolah_dasar, sekolah_menengah_atas, sekolah_menengah_pertama, dan taman_kanak_kanak.\n- **Pilar 3: Ruang Hidup & Rekreasi (bobot 25.0%)** serta\n- **Pilar 4: Mobilitas & Aksesibilitas (bobot 20.0%)**\nUntuk setiap jenis fasilitas, kepatuhan dihitung dengan membandingkan jumlah unit yang ada dengan jumlah unit yang dibutuhkan berdasarkan ambang penduduk. Persentase kepatuhan adalah minimum antara 100% dan (jumlah eksisting / jumlah kebutuhan) * 100%. Defisit unit dihitung sebagai perbedaan antara jumlah unit yang ada dan yang dibutuhkan.\nSkor pilar didapatkan dengan mengambil rata-rata aritmetika dari persentase kepatuhan semua jenis fasilitas pada pilar tersebut. Jika kurang dari dua jenis fasilitas dalam satu pilar memiliki data lengkap, skor pilar tidak dihitung dan ditandai sebagai 'Data tidak memadai'.\nSkor komposit adalah rata-rata proporsional bobot pilar yang telah dinilai (minimal 2 jenis fasilitas tersedia). Jika kurang dari dua pilar memiliki data lengkap, skor komposit kecamatan tersebut akan ditampilkan sebagai 'Data tidak memadai' dan tidak dihitung dalam peringkat atau rata-rata.\nUntuk lebih jelasnya tentang aturan pengambilan sampel dan penanganan data yang tidak memadai, silakan.",
+        "raw_llm_reply": "Skor dihitung berdasarkan metodologi yang ditetapkan dalam SNI 03-1733-2004 (Tata Cara Perencanaan Lingkungan Perumahan di Perkotaan, Badan Standardisasi Nasional). Metodologi ini melibatkan empat pilar utama dengan bobot masing-masing:\n\n- **Pilar 1: Kesehatan & Keselamatan (bobot 30.0%)** mencakup fasilitas seperti pos_damkar, puskesmas_kecamatan, dan puskesmas_kelurahan.\n- **Pilar 2: Pendidikan (bobot 25.0%)** meliputi sekolah_dasar, sekolah_menengah_atas, sekolah_menengah_pertama, dan taman_kanak_kanak.\n- **Pilar 3: Ruang Hidup & Rekreasi (bobot 25.0%)** serta\n- **Pilar 4: Mobilitas & Aksesibilitas (bobot 20.0%)**\n\nUntuk setiap jenis fasilitas, kepatuhan dihitung dengan membandingkan jumlah unit yang ada dengan jumlah unit yang dibutuhkan berdasarkan ambang penduduk SNI. Persentase kepatuhan adalah minimum antara 100% dan (jumlah eksisting / jumlah kebutuhan) * 100%. Defisit unit dihitung sebagai perbedaan antara jumlah unit yang ada dan yang dibutuhkan.\n\nSkor pilar didapatkan dengan mengambil rata-rata aritmetika dari persentase kepatuhan semua jenis fasilitas pada pilar tersebut. Jika kurang dari dua jenis fasilitas dalam satu pilar memiliki data lengkap, skor pilar tidak dihitung dan ditandai sebagai 'Data tidak memadai'.\n\nSkor komposit adalah rata-rata proporsional bobot pilar yang telah dinilai (minimal 2 jenis fasilitas tersedia). Jika kurang dari dua pilar memiliki data lengkap, skor komposit kecamatan tersebut akan ditampilkan sebagai 'Data tidak memadai' dan tidak dihitung dalam peringkat atau rata-rata.\n\nUntuk lebih jelasnya tentang aturan pengambilan sampel dan penanganan data yang tidak memadai, silakan merujuk pada [REG:province_threshold_rule] dan [REG:null_handling]."
+      }
+    ]
+  ],
+  "u2_subset_breakdown": {
+    "kecamatan_20": {
+      "total": 20,
+      "tool_selection_correct": 20,
+      "expected_values_present": 18,
+      "guardrail_passed_or_retried": 19,
+      "guardrail_fallback": 1,
+      "final_number_leaks": 0,
+      "final_invalid_citations": 0
+    },
+    "national_province_12": {
+      "total": 12,
+      "tool_selection_correct": 12,
+      "expected_values_present": 9,
+      "guardrail_passed_or_retried": 12,
+      "guardrail_fallback": 0,
+      "final_number_leaks": 0,
+      "final_invalid_citations": 0
+    }
+  }
+}

@@ -27,6 +27,14 @@ from backend.app.engine.standards_availability import (
     get_province_standards_availability,
 )
 from backend.app.rag.hybrid_search import HybridRegulationRetriever
+from backend.app.agent.national import (
+    compare_provinces,
+    get_methodology,
+    get_national_overview,
+    get_province_summary,
+    rank_districts,
+    resolve_province_target,
+)
 
 # -----------------------------------------------------------------------------
 # Tool Schemas for Qwen 2.5 14B Function Calling (OpenAI Specification)
@@ -36,16 +44,119 @@ SPATIAL_AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_district_scorecard",
-            "description": "Ambil profil kependudukan, batas wilayah, dan scorecard indeks kepatuhan fasilitas empat pilar untuk kecamatan di provinsi aktif. Jika pengguna menyebut nama tempat tanpa kata 'kecamatan', anggap itu nama kecamatan di provinsi aktif dan langsung panggil tool ini sebelum meminta klarifikasi. Tool ini menyediakan data defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload).",
+            "description": "Ambil profil, skor empat pilar, dan defisit unit fasilitas (defisit unit = kebutuhan - jumlah fasilitas eksisting pada metrics_payload) untuk satu kecamatan. Jangan gunakan untuk nama provinsi atau Indonesia.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "district_code": {
                         "type": "string",
-                        "description": "Kode Kemendagri kecamatan atau nama tempat/kecamatan di provinsi aktif (misal 'Tebet', 'Coblong', 'Gondokusuman', 'Wenang', 'Ujung Pandang')"
+                        "description": "Kode Kemendagri atau nama kecamatan (misal 'Tebet', 'Coblong', 'Gondokusuman')"
+                    },
+                    "province": {
+                        "type": "string",
+                        "description": "Opsional: nama atau kode provinsi jika nama kecamatan ambigu"
                     }
                 },
                 "required": ["district_code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_national_overview",
+            "description": "Ambil ringkasan nasional seluruh provinsi aktif Indonesia: total/terukur/'Data tidak memadai' kecamatan, rata-rata skor nasional & aturan perhitungannya, provinsi dengan rata-rata skor tertinggi/terendah, dan daftar per provinsi. Gunakan tool ini untuk pertanyaan tentang Indonesia atau mencari provinsi mana yang tertinggi/terendah.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_province_summary",
+            "description": "Ambil ringkasan satu provinsi atau kelompok Papua (pemekaran) berdasarkan kode/nama/singkatan (misal 'Jabar', 'Jawa Barat', 'DIY', 'Bali', 'Papua'): jumlah kecamatan, rata-rata pilar, lima kecamatan terbaik & terbawah, populasi, dan sumber data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "province": {
+                        "type": "string",
+                        "description": "Nama, singkatan, atau kode provinsi"
+                    }
+                },
+                "required": ["province"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rank_districts",
+            "description": "Ambil peringkat KECAMATAN terukur tertinggi atau terendah secara nasional ('national') atau per provinsi berdasarkan skor komposit atau satu pilar. Hanya untuk peringkat kecamatan, bukan peringkat provinsi.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "description": "'national' untuk Indonesia atau nama/kode provinsi",
+                        "default": "national"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": ["highest", "lowest"],
+                        "description": "'highest' (tertinggi) atau 'lowest' (terendah)",
+                        "default": "highest"
+                    },
+                    "metric": {
+                        "type": "string",
+                        "enum": ["composite", "lifeline_health", "education", "urban_livability", "mobility_connectivity"],
+                        "description": "'composite' atau nama pilar",
+                        "default": "composite"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Jumlah hasil (maksimal sepuluh)",
+                        "default": 5
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_provinces",
+            "description": "Bandingkan dua hingga empat provinsi berdampingan (kecamatan, skor rata-rata, pilar, populasi, sumber data).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provinces": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Daftar dua hingga empat nama/kode provinsi"
+                    }
+                },
+                "required": ["provinces"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_methodology",
+            "description": "Ambil metodologi resmi, definisi SNI 03-1733-2004, bobot empat pilar, rumus skor komposit, dan aturan 'Data tidak memadai'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "Opsional: topik ('sni', 'scoring', 'data_tidak_memadai')"
+                    }
+                },
+                "required": []
             }
         }
     },
@@ -179,9 +290,37 @@ def execute_tool_call(
 ) -> Dict[str, Any]:
     """Executes spatial tools deterministically without letting LLM hallucinate numbers."""
     try:
-        if tool_name == "get_district_scorecard":
+        if tool_name == "get_national_overview":
+            return get_national_overview()
+
+        elif tool_name == "get_province_summary":
+            return get_province_summary(arguments.get("province", ""))
+
+        elif tool_name == "rank_districts":
+            return rank_districts(
+                scope=arguments.get("scope", "national"),
+                order=arguments.get("order", "highest"),
+                metric=arguments.get("metric", "composite"),
+                limit=arguments.get("limit", 5),
+            )
+
+        elif tool_name == "compare_provinces":
+            return compare_provinces(arguments.get("provinces", []))
+
+        elif tool_name == "get_methodology":
+            return get_methodology(topic=arguments.get("topic"))
+
+        elif tool_name == "get_district_scorecard":
             code = arguments["district_code"]
-            record, err_msg = _resolve_tool_district(code, province_code=province_code)
+            req_prov = arguments.get("province")
+            eff_prov_arg = province_code
+            if req_prov:
+                resolved_p = resolve_province_target(req_prov)
+                if resolved_p.get("error"):
+                    return {"error": resolved_p["error"]}
+                if not resolved_p.get("is_group") and resolved_p.get("codes"):
+                    eff_prov_arg = resolved_p["codes"][0]
+            record, err_msg = _resolve_tool_district(code, province_code=eff_prov_arg)
             if not record:
                 return {"error": err_msg}
 
