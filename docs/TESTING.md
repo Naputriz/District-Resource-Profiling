@@ -12,25 +12,25 @@ Platform mengadopsi prinsip piramida pengujian terstruktur untuk memastikan kean
 ```mermaid
 flowchart TD
     subgraph Pyramid ["Piramida Pengujian Platform"]
-        SYS["Lapis 3: System Tests (30 Kasus Uji)
-        - E2E Playwright UI (0 console errors, input search, region switcher, UI login, legend, splitter & Riwayat)
-        - Live HTTP Uvicorn Server (API, Auth, 401, Refusal)
-        - Live Cognitive Spatial Agent (Ollama Qwen 2.5 14B)
-        Waktu non-LLM 23 uji: ~57.47 detik / ~80 detik (LLM)"]
+        SYS["Lapis 3: System Tests (40 Kasus Uji)
+        - E2E Playwright UI (0 console errors, input search, region switcher, UI login, legend, splitter, base layers, session cache & Riwayat)
+        - Live HTTP Uvicorn Server (API, Auth, 401, Cache-Control, Refusal)
+        - Live Cognitive Spatial Agent (Ollama Qwen 2.5 14B: 7 DKI + 1 J1b + 7 Nasional/Provinsi)
+        Waktu non-LLM 25 uji: ~45.97 detik"]
         
-        INT["Lapis 2: Integration Tests (52 Kasus Uji)
+        INT["Lapis 2: Integration Tests (57 Kasus Uji)
         - PostgreSQL 16 + PostGIS 3.4 Spatial Queries
-        - Redis 7 Cache Invalidation & TTL
+        - Redis 7 Cache Invalidation, Warmup & TTL
         - Multi-region DB Schema (38 Provinsi) & Dynamic UTM SRID
-        - OSM Data Integrity Verification (14.496 fasilitas aktif DKI)
-        Waktu (staging 38 provinsi): ~4.49 detik"]
+        - National/Province Aggregation Tools & OSM Integrity
+        Waktu (staging 38 provinsi): ~4.60 detik"]
         
-        UNIT["Lapis 1: Unit Tests (143 Kasus Uji)
+        UNIT["Lapis 1: Unit Tests (155 Kasus Uji)
         - Pure Logic, Formula Matematis SNI 03-1733-2004
-        - Label-Aware Numeric Guardrails & Citation Sanitizer
+        - Label-Aware Numeric Guardrails, National/Province Aliases & Citation Sanitizer
         - Isolated Sandbox Simulation Engine & Reweighting
-        - Multi-Region UTM Projection, Coverage Gate & Catalog (38 Provinsi)
-        Waktu: ~1.30 detik (100% Offline, In-Memory Auth Fallback)"]
+        - Multi-Region UTM Projection, Coverage Gate, Cache Keys & Static Headers (+3 Worker Node tests)
+        Waktu: ~1.67 detik (100% Offline, In-Memory Auth Fallback)"]
     end
 
     SYS --> INT
@@ -41,8 +41,8 @@ flowchart TD
 
 | Parameter | Lapis 1: Unit Tests | Lapis 2: Integration Tests | Lapis 3: System Tests |
 |---|---|---|---|
-| **Jumlah Tes** | 143 tes | 52 tes | 30 tes (9 API + 10 UI + 7 Chat + 3 J1b + 1 R1) |
-| **Durasi Riil** | ~1.30 detik | ~4.49 detik (staging 38 provinsi) | 23 non-LLM system: ~57.47s; baseline LLM 7 uji: ~80.30s |
+| **Jumlah Tes** | 155 tes (+ 3 Worker Node tests) | 57 tes | 40 tes (10 API + 12 UI + 7 Chat + 4 J1b/R1 + 7 National Chat) |
+| **Durasi Riil** | ~1.67 detik | ~4.60 detik (staging 38 provinsi) | 25 non-LLM system: 45.97s; baseline LLM 7 uji: ~80.30s |
 | **Isolasi** | 100% terisolasi (in-memory mock, no DB/Redis) | Membutuhkan PostgreSQL & Redis | Server uvicorn, Chromium headless, Ollama |
 | **Determinisme** | Deterministik mutlak (bit-level) | Deterministik state database | E2E deterministik (guardrail pass) |
 | **Tujuan Utama** | Verifikasi rumus, guardrail, & logika | Verifikasi query PostGIS & relasi DB | Verifikasi alur pengguna & kepatuhan E2E |
@@ -105,17 +105,17 @@ pytest -m llm -v
 > [!NOTE]
 > **Karakteristik Lingkungan CI vs Lokal & Penanganan Data Dependency:**  
 > - **Workflow CI GitHub Actions (`.github/workflows/tests.yml`):** Terdiri dari 3 job terpisah:
->   1. `unit`: Menjalankan seluruh 133 unit tests secara offline tanpa koneksi DB/Redis (`pytest backend/tests/unit -m unit`).
+>   1. `unit`: Menjalankan seluruh 155 unit tests secara offline tanpa koneksi DB/Redis (`pytest backend/tests/unit -m unit`).
 >   2. `integration`: Menjalankan database integration tests (`pytest backend/tests/integration -m "db and not llm"`). Menyiapkan PostgreSQL kustom (`drp-postgres:ci`), Redis 7, menunggu kesiapan TCP `pg_isready`, lalu melakukan seeding penuh basis data menggunakan `PYTHONPATH: . python pipeline/boundary_loader.py` dan `python pipeline/migrate_multiregion.py` yang memuat data repo-tracked (GeoJSON 44 batas kecamatan, 16.288 rekaman OSM mentah `osm_facilities_20261014.min.json` / 14.496 fasilitas aktif DKI, dan korpus SNI `sni_03_1733_2004_full.json`). Fixture `requires_seed` dipertahankan sebagai guard agar pengujian yang bergantung data dapat melewatinya secara graceful jika basis data belum terisi.
 >   3. `system-api`: Menjalankan 9 pengujian endpoint sistem real HTTP melalui ephemeral live uvicorn server (`pytest backend/tests/system/test_system_api.py`), dengan konfigurasi container dan seeding basis data yang sama.
 > - **Pengujian Lokal Saja (Local-Only):**
->   - Pengujian live LLM chat (`backend/tests/system/test_system_chat.py`, 7 skenario, ditambah 1 skenario LLM di `test_region_j1b_system.py`) memerlukan model lokal Ollama (`qwen2.5:14b`) dan dilindungi oleh fixture `require_ollama_and_db` / skip check Ollama.
->   - Pengujian antarmuka Playwright UI (`backend/tests/system/test_system_ui.py` 6 skenario, `test_region_j1b_system.py` 2 skenario UI, `test_region_r1_system.py` 1 skenario UI) mengendalikan browser headless interaktif secara end-to-end.
+>   - Pengujian live LLM chat (`backend/tests/system/test_system_chat.py`, 7 skenario, ditambah 1 skenario LLM di `test_region_j1b_system.py` dan 7 skenario LLM di `test_national_chat_system.py`) memerlukan model lokal Ollama (`qwen2.5:14b`) dan dilindungi oleh fixture `require_ollama_and_db` / skip check Ollama.
+>   - Pengujian antarmuka Playwright UI (`backend/tests/system/test_system_ui.py` 11 skenario, `test_caching_system.py` 1 skenario UI, `test_region_j1b_system.py` 2 skenario UI, `test_region_r1_system.py` 1 skenario UI) mengendalikan browser headless interaktif secara end-to-end.
 >   - Kedua suite pengujian ini berjalan secara lokal dan tidak dipanggil dalam workflow CI.
 
-### 2.3 Hasil Pengukuran Waktu Eksekusi Riil (Measured Execution Durations)
+### 2.3 Baseline Pengukuran Waktu Eksekusi (`bfbc514` / `todo-2`)
 
-Pengukuran terbaru pada HEAD `bfbc514` (unit + integration) serta baseline `todo-2` (system API/UI/Chat):
+Tabel historis berikut mencatat baseline pengukuran pada HEAD `bfbc514` (unit + integration) serta baseline `todo-2` (system API/UI/Chat); untuk angka terbaru pada cabang `rebuild` (252 tes terkoleksi), lihat bagian **5.1 Status Eksekusi per Level**:
 
 | Perintah Eksekusi | Jumlah Tes | Durasi Riil | Status |
 |---|---|---|---|
@@ -130,7 +130,7 @@ Pengukuran terbaru pada HEAD `bfbc514` (unit + integration) serta baseline `todo
 
 ## 3. Kasus Uji Sistem (System Test Cases)
 
-Tabel berikut mencatat 22 skenario uji level sistem yang mencakup API real HTTP over live uvicorn, antarmuka pengguna Playwright, dan penalaran live model AI:
+Tabel berikut mencatat 22 skenario baseline uji level sistem (dari total 40 uji sistem saat ini; ditambah skenario U1/U2/U3/J1b/R1 pada modul `test_system_ui.py`, `test_caching_system.py`, `test_region_*.py`, dan `test_national_chat_system.py`) yang mencakup API real HTTP over live uvicorn, antarmuka pengguna Playwright, dan penalaran live model AI:
 
 | ID Skenario | Skenario Uji | Langkah Pengujian | Hasil yang Diharapkan | Hasil Aktual | Status |
 |---|---|---|---|---|---|
@@ -185,13 +185,15 @@ Hasil eksekusi riil dari runner suite terpadu (unit + integration diukur pada HE
 
 | Tingkat Pengujian | Lokasi Direktori | Jumlah Tes | Berhasil | Gagal | Dilewati | Durasi Riil | Perintah Pengujian |
 |---|---|---|---|---|---|---|---|
-| **Unit Tests** | `backend/tests/unit/` | 143 | 143 | 0 | 0 | 1.30s | `pytest backend/tests/unit -m unit -q` |
-| **Integration Tests** | `backend/tests/integration/` | 52 | 52 | 0 | 0 | 4.49s | `pytest backend/tests/integration -m "not llm" -q` |
-| **System API Tests** | `backend/tests/system/test_system_api.py` | 9 | 9 | 0 | 0 | 1.22s *(baseline)* | `pytest backend/tests/system/test_system_api.py -q` |
-| **System UI Tests** | `backend/tests/system/test_system_ui.py` | 10 | 10 | 0 | 0 | 57.47s *(gabungan 23 non-LLM system)* | `pytest backend/tests/system/test_system_ui.py -q` |
+| **Unit Tests** | `backend/tests/unit/` | 155 | 155 | 0 | 0 | 1.67s *(U3 fix staging)* | `pytest backend/tests/unit -m unit -q` |
+| **Worker Edge Tests** | `deploy/cloudflare/worker.test.mjs` | 3 | 3 | 0 | 0 | 0.02s *(U3 fix)* | `node deploy/cloudflare/worker.test.mjs` |
+| **Integration Tests** | `backend/tests/integration/` | 57 | 57 | 0 | 0 | 4.60s *(U3 fix staging)* | `pytest backend/tests/integration -m "not llm" -q` |
+| **System API Tests** | `backend/tests/system/test_system_api.py` + `test_caching_system.py` | 10 | 10 | 0 | 0 | — *(included in 45.97s non-LLM)* | `pytest backend/tests/system/test_system_api.py backend/tests/system/test_caching_system.py -q` |
+| **System UI Tests** | `backend/tests/system/test_system_ui.py` + `test_caching_system.py` | 12 | 12 | 0 | 0 | — *(included in 45.97s non-LLM)* | `pytest backend/tests/system/test_system_ui.py backend/tests/system/test_caching_system.py -q` |
 | **System Chat Tests** | `backend/tests/system/test_system_chat.py` | 7 | 7 *(baseline)* | 0 | 0 | 80.30s *(baseline)* | `pytest backend/tests/system/test_system_chat.py -q` |
-| **System Multi-Region (J1b + R1)** | `backend/tests/system/test_region_*.py` | 4 | 3 *(non-LLM)* | 0 | 1 *(llm)* | 9.86s *(J1b)* | `pytest backend/tests/system/test_region_*.py -q` |
-| **TOTAL TERKOLEKSI** | — | **225** | — | — | — | — | `pytest --collect-only -q` |
+| **System National Chat (U2)** | `backend/tests/system/test_national_chat_system.py` | 7 | 7 | 0 | 0 | — *(llm, staging)* | `pytest backend/tests/system/test_national_chat_system.py -m llm -q` |
+| **System Multi-Region (J1b + R1)** | `backend/tests/system/test_region_*.py` | 4 | 3 *(non-LLM)* + 1 *(llm)* | 0 | 0 | — *(non-LLM in 45.97s)* | `pytest backend/tests/system/test_region_*.py -m "not llm" -q` |
+| **TOTAL TERKOLEKSI** | — | **252** *(+3 Node)* | — | — | — | — | `pytest --collect-only -q` |
 
 ### 5.2 Cakupan Kode (Code Coverage Summary)
 
@@ -235,6 +237,8 @@ Hasil benchmark kualitas asisten cerdas spasial yang diukur dan dilaporkan pada 
 | **Latensi Respons p95** | Dilaporkan apa adanya | 16.06s | - | Reported |
 
 *Catatan rilis nasional (measured 18 Nov 2026 (phase-p1)):* evaluasi 3x30 ulang setelah penambahan lookup nama kecamatan di provinsi aktif (`e0196a2`) mencatat **Tool Selection 100%**, **Refusal 100%**, **0** kebocoran angka/sitasi, serta latensi **p50 5.11s / p95 21.55s**.
+
+*Catatan pembaruan skala Indonesia (Task U2, measured 25 Nov 2026 on staging 38 provinces, Ollama CPU):* evaluasi 32 pertanyaan (20 kecamatan lama + 12 nasional/provinsi/peringkat/metodologi baru di [`eval/results_20261125_u2.json`](../eval/results_20261125_u2.json)) mencatat **Tool Selection 100.0% (32/32)**, **0** kebocoran angka atau sitasi ilegal; 20 pertanyaan kecamatan meningkat dari 16/20 (`80%`) menjadi **19/20 (`95%`)** lolos guardrail tanpa fallback (tanpa regresi), dan 12 pertanyaan nasional/provinsi mencatat **12/12 (`100%`)** pemilihan tool serta **12/12 (`100%`)** lolos guardrail (`0` fallback). Suite unit/integrasi/sistem U2 juga menambahkan `backend/tests/unit/test_national_guardrail_unit.py` (6 uji), `backend/tests/integration/test_national_tools_db.py` (3 uji), dan `backend/tests/system/test_national_chat_system.py` (7 uji `llm`).
 
 ---
 
@@ -322,3 +326,35 @@ Latest verified run after J1b fixes (local staging environment):
   - **Combined `--cov` (`unit or (db and not llm)`):** `183 passed` (11.39s), 86% coverage (3,210 stmts)
 - **Live public smoke test (17 Nov 2026, commit `9ee346d`, `https://drp.digilabui.cloud`):** all 6 Java provinces Active; Coblong `29.23` (WorldPop estimate); Ciemas `"Data tidak memadai"`; Tebet unchanged `54.61`; chat `"Bagaimana skor Gondokusuman?"` (`province_code="34"`) answered `54.54` in `5.0 s`; Jawa Barat (`32`) district list `3.4 MB` (`0.9 s`); `35_kecamatan.geojson` `2.5 MB` (`2.8 s` over the internet).
 - **Live national release check (19 Nov 2026, `https://drp.digilabui.workers.dev/api/v1/regions`):** all 38 provinces Active, `7,033` kecamatan total, `1,878` composite-scored across 15 provinces, `5,155` `"Data tidak memadai"`.
+
+---
+
+## 8. Caching (Task U3)
+
+Measured locally against staging uvicorn (`POSTGRES_DB=district_profiling_stage`, `REDIS_DB=1`, all 38 `ACTIVE_PROVINCES`, `1366x768` Playwright viewport; external Esri tiles/fonts remain subject to internet latency):
+
+### 8.1 Playwright `loadtime.py` Before vs After
+
+| Province | Cold Before | Cold After | Warm Before | Warm After |
+|---|---|---|---|---|
+| **DKI Jakarta (`31`)** | 1.233 s (102 reqs) | 1.278 s (108 reqs) | 0.845 s (117 reqs) | 0.824 s (112 reqs, JS/CSS/API from browser cache) |
+| **Jawa Barat (`32`)** | 1.427 s (111 reqs) | 1.150 s (90 reqs) | 0.988 s (148 reqs, `districts` 121 ms / 3,328 KB) | 0.866 s (119 reqs, `districts` 0 ms cached) |
+| **Papua Tengah (`94`)** | 0.883 s (66 reqs) | 0.997 s (60 reqs) | 0.628 s (79 reqs) | 0.570 s (60 reqs) |
+| **Papua Pegunungan (`95`)** | 1.099 s (68 reqs) | 0.831 s (60 reqs) | 0.646 s (79 reqs, `districts` 50 ms / 989 KB) | 0.581 s (60 reqs, `districts` 0 ms cached) |
+
+### 8.2 `eval/response_time.py` Before vs After (`n=20` per endpoint, localhost staging)
+
+| Endpoint | Before median / p95 (ms) | After median / p95 (ms) |
+|---|---|---|
+| `Health` (`/health`) | 1 / 1 | 1 / 1 |
+| `Regions catalogue (38 provinces)` | 1 / 1 | 1 / 1 |
+| `District list DKI (44)` (`/api/v1/districts?province_code=31`) | 26 / 28 | **7 / 8** |
+| `Scorecard Tebet 31.71.09` | 1 / 1 | 1 / 1 |
+| `Scorecard Denpasar Selatan 51.71.010` | 6 / 6 | 5 / 6 |
+| `Blank spots Tebet puskesmas` | 5 / 5 | 5 / 5 |
+
+### 8.3 Caching Verification Suites
+- `node deploy/cloudflare/worker.test.mjs`: `3 passed` (mocked `caches.default`, `ASSETS`, origin `fetch`; verifies TTL 3600s/600s, `DATA_VERSION` key, `X-DRP-Cache: HIT|MISS|BYPASS`, auth/cookie/non-200 bypass, and header stripping).
+- `backend/tests/unit/test_caching_unit.py`: `5 passed` (cache key/TTL helpers, Redis-down warmer safety, `Cache-Control` headers, `frontend/_headers`, `.assetsignore`, `modulepreload` graph coverage, and fake-Redis pipeline cache invalidation without writes).
+- `backend/tests/integration/test_caching_db.py`: `2 passed` (second `/api/v1/districts` and `/api/v1/districts/{code}` calls hit Redis without DB query; startup warmer populates lists + scored scorecards).
+- `backend/tests/system/test_caching_system.py`: `2 passed` (public `Cache-Control` vs private/live routes; Playwright `31 -> 32 -> 31` switch-back triggers 0 GeoJSON/districts refetches).

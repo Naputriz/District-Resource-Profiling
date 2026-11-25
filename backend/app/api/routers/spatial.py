@@ -3,7 +3,8 @@ Deterministic PostGIS spatial calculations: facility buffers and blank spots.
 """
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Response
+from backend.app.core.cache import PUBLIC_CACHE_CONTROL
 from backend.app.core.config import settings
 from backend.app.api.deps import get_current_user
 from backend.app.engine.spatial import (
@@ -18,6 +19,7 @@ router = APIRouter()
 
 @router.get(f"{settings.API_V1_STR}/spatial/buffers", tags=["Spatial Calculations"])
 def get_district_facility_buffers(
+    response: Response,
     district_code: str = Query(
         ..., description="kemendagri_code, e.g. 31.71.09 (Tebet) or 35.78.180 (Tegalsari)"
     ),
@@ -40,6 +42,7 @@ def get_district_facility_buffers(
             pillar=pillar,
             province_code=province_code,
         )
+        response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
         return buffers
     except ValueError as ve:
         err_msg = str(ve)
@@ -56,6 +59,7 @@ def get_district_facility_buffers(
     tags=["Spatial Calculations"],
 )
 def get_district_blank_spots(
+    response: Response,
     district_code: str = Query(
         ..., description="kemendagri_code, e.g. 31.71.09 (Tebet) or 35.78.180 (Tegalsari)"
     ),
@@ -74,6 +78,7 @@ def get_district_blank_spots(
         result = PostGISSpatialEngine.calculate_blank_spots(
             district_code, facility_type, province_code=province_code
         )
+        response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
         return result
     except ValueError as ve:
         err_msg = str(ve)

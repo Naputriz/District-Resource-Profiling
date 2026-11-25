@@ -14,6 +14,7 @@ export const state = {
   selectedDistrict: null,
   activePillar: null,
   map: null,
+  activeBaseLayer: "Peta Jalan",
   choroplethRenderer: null,
   geojsonLayer: null,
   facilityMarkersLayer: null,

@@ -4,8 +4,16 @@ Districts compliance scorecards and public amenities endpoints.
 
 import json
 import re
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, Query, Response
+from backend.app.core.cache import (
+    DISTRICTS_CACHE_KEY_PREFIX,
+    PUBLIC_CACHE_CONTROL,
+    cache_get_json,
+    cache_set_json,
+    districts_cache_key,
+    scorecard_cache_key,
+)
 from backend.app.core.config import settings
 from backend.app.api.deps import get_db_cursor, get_redis_client
 from backend.app.api.routers.regions import (
@@ -31,6 +39,87 @@ def _parse_json_field(val):
         except Exception:
             return val
     return val
+
+
+def fetch_province_districts_rows(province_code: str) -> List[Dict[str, Any]]:
+    """Queries raw kecamatan + compliance rows for a province from PostgreSQL."""
+    with get_db_cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                k.kemendagri_code, k.bps_code, k.name, c.name as city_name,
+                p.kemendagri_code as province_code, p.name as province_name,
+                k.population, k.area_km2, k.density_per_km2,
+                k.population_source, k.population_verification_status,
+                s.health_score, s.education_score, s.livability_score,
+                s.mobility_score, s.composite_livability_score, s.composite_note,
+                s.metrics_payload, s.coverage
+            FROM kecamatan k
+            JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
+            JOIN provinces p ON p.id = c.province_id
+            LEFT JOIN district_compliance_scores s ON s.district_id = k.id
+            WHERE p.kemendagri_code = %s
+            ORDER BY k.kemendagri_code;
+            """,
+            (province_code,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def build_district_detail_payload(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Shapes a single kecamatan DB row into the API scorecard response payload."""
+    data = dict(row)
+    eff_prov = str(data.get("province_code") or settings.DEFAULT_PROVINCE_CODE)
+    pop_note, pop_src, pop_verif = get_province_population_meta(
+        eff_prov,
+        data.get("population_source"),
+        data.get("population_verification_status"),
+    )
+    data["province_code"] = eff_prov
+    data["population_note"] = pop_note
+    data["population_source"] = pop_src
+    data["population_verification_status"] = pop_verif
+
+    from backend.app.engine.standards_availability import (
+        get_current_availability_source,
+    )
+
+    data["availability_source"] = get_current_availability_source()
+
+    cov = _parse_json_field(data.get("coverage"))
+    if cov is not None:
+        data["coverage"] = cov
+    else:
+        data.pop("coverage", None)
+
+    data["score_status"] = (
+        "Data tidak memadai"
+        if data.get("composite_livability_score") is None
+        else "Tersedia"
+    )
+
+    data["metrics_payload"] = _parse_json_field(data.get("metrics_payload"))
+
+    if isinstance(data.get("metrics_payload"), list):
+        from backend.app.engine.standards_availability import (
+            calculate_pillar_and_composite_scores,
+        )
+
+        scores_breakdown = calculate_pillar_and_composite_scores(
+            data["metrics_payload"]
+        )
+        data["pillar_scores"] = scores_breakdown["pillar_scores"]
+        data["composite_note"] = (
+            data.get("composite_note") or scores_breakdown["composite_note"]
+        )
+        data["availability_source"] = scores_breakdown.get(
+            "availability_source", data["availability_source"]
+        )
+
+    if data.get("composite_livability_score") is None and not data.get("composite_note"):
+        data["composite_note"] = "Data tidak memadai"
+
+    return data
 
 
 def _finalize_districts_response(
@@ -102,9 +191,10 @@ def _finalize_districts_response(
 
 @router.get(f"{settings.API_V1_STR}/districts", tags=["Districts & Compliance"])
 def list_districts(
+    response: Response,
     province_code: Optional[str] = Query(
         None, description="Kode provinsi Kemendagri, default 31 (DKI Jakarta)"
-    )
+    ),
 ):
     """Lists all Kecamatan in the specified province with demographic stats and compliance scorecards."""
     target_province = str(province_code).strip() if province_code else settings.DEFAULT_PROVINCE_CODE
@@ -115,49 +205,35 @@ def list_districts(
     from backend.app.engine.standards_availability import get_current_availability_source
 
     avail_src = get_current_availability_source()
+    cache_key = districts_cache_key(target_province)
 
     # Check Redis cache first (province-scoped key; legacy fallback only for default province)
+    r_client = None
     try:
         r_client = get_redis_client()
         if r_client:
-            cached = r_client.get(f"cache:compliance:scores:{target_province}")
-            if not cached and target_province == settings.DEFAULT_PROVINCE_CODE:
-                cached = r_client.get("cache:compliance:scores")
-            if cached:
-                dist_list = json.loads(cached)
-                if dist_list:
-                    return _finalize_districts_response(
-                        dist_list, "cache", avail_src, province_code=target_province
-                    )
+            dist_list = cache_get_json(r_client, cache_key)
+            if not dist_list and target_province == settings.DEFAULT_PROVINCE_CODE:
+                dist_list = cache_get_json(r_client, DISTRICTS_CACHE_KEY_PREFIX)
+            if dist_list:
+                response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+                return _finalize_districts_response(
+                    dist_list, "cache", avail_src, province_code=target_province
+                )
     except Exception:
-        pass
+        r_client = None
 
-    with get_db_cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                k.kemendagri_code, k.bps_code, k.name, c.name as city_name,
-                p.kemendagri_code as province_code, p.name as province_name,
-                k.population, k.area_km2, k.density_per_km2,
-                k.population_source, k.population_verification_status,
-                s.health_score, s.education_score, s.livability_score,
-                s.mobility_score, s.composite_livability_score, s.composite_note,
-                s.metrics_payload, s.coverage
-            FROM kecamatan k
-            JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-            JOIN provinces p ON p.id = c.province_id
-            LEFT JOIN district_compliance_scores s ON s.district_id = k.id
-            WHERE p.kemendagri_code = %s
-            ORDER BY k.kemendagri_code;
-            """,
-            (target_province,),
-        )
-        results = [dict(r) for r in cur.fetchall()]
-        if not results:
-            raise HTTPException(status_code=404, detail=_UNAVAILABLE_PROVINCE_DETAIL)
-        return _finalize_districts_response(
-            results, "database", avail_src, province_code=target_province
-        )
+    results = fetch_province_districts_rows(target_province)
+    if not results:
+        raise HTTPException(status_code=404, detail=_UNAVAILABLE_PROVINCE_DETAIL)
+
+    if r_client:
+        cache_set_json(r_client, cache_key, results, ttl=settings.REDIS_CACHE_TTL)
+
+    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+    return _finalize_districts_response(
+        results, "database", avail_src, province_code=target_province
+    )
 
 
 @router.get(
@@ -166,6 +242,7 @@ def list_districts(
 )
 def get_district_detail(
     district_code: str,
+    response: Response,
     province_code: Optional[str] = Query(
         None, description="Opsional: kode provinsi untuk resolusi nama kecamatan"
     ),
@@ -189,6 +266,22 @@ def get_district_detail(
     rec_prov = record.get("province_code")
     if rec_prov and not is_province_served(rec_prov):
         raise HTTPException(status_code=404, detail=_UNAVAILABLE_PROVINCE_DETAIL)
+
+    r_client = None
+    cache_code = record.get("kemendagri_code")
+    try:
+        r_client = get_redis_client()
+        if r_client and cache_code:
+            cached = cache_get_json(r_client, scorecard_cache_key(str(cache_code)))
+            if cached and isinstance(cached, dict):
+                eff_cached_prov = str(
+                    cached.get("province_code") or rec_prov or settings.DEFAULT_PROVINCE_CODE
+                )
+                if is_province_served(eff_cached_prov):
+                    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+                    return cached
+    except Exception:
+        r_client = None
 
     with get_db_cursor() as cur:
         cur.execute(
@@ -217,67 +310,31 @@ def get_district_detail(
                 status_code=404, detail=f"Kecamatan '{district_code}' not found."
             )
 
-        data = dict(row)
+        raw_row = dict(row)
         eff_prov = str(
-            data.get("province_code") or rec_prov or settings.DEFAULT_PROVINCE_CODE
+            raw_row.get("province_code") or rec_prov or settings.DEFAULT_PROVINCE_CODE
         )
         if not is_province_served(eff_prov):
             raise HTTPException(status_code=404, detail=_UNAVAILABLE_PROVINCE_DETAIL)
+        raw_row["province_code"] = eff_prov
 
-        pop_note, pop_src, pop_verif = get_province_population_meta(
-            eff_prov,
-            data.get("population_source"),
-            data.get("population_verification_status"),
-        )
-        data["province_code"] = eff_prov
-        data["population_note"] = pop_note
-        data["population_source"] = pop_src
-        data["population_verification_status"] = pop_verif
-
-        from backend.app.engine.standards_availability import (
-            get_current_availability_source,
-        )
-
-        data["availability_source"] = get_current_availability_source()
-
-        cov = _parse_json_field(data.get("coverage"))
-        if cov is not None:
-            data["coverage"] = cov
-        else:
-            data.pop("coverage", None)
-
-        data["score_status"] = (
-            "Data tidak memadai"
-            if data.get("composite_livability_score") is None
-            else "Tersedia"
-        )
-
-        data["metrics_payload"] = _parse_json_field(data.get("metrics_payload"))
-
-        if isinstance(data.get("metrics_payload"), list):
-            from backend.app.engine.standards_availability import (
-                calculate_pillar_and_composite_scores,
+        data = build_district_detail_payload(raw_row)
+        target_cache_code = data.get("kemendagri_code") or cache_code
+        if r_client and target_cache_code:
+            cache_set_json(
+                r_client,
+                scorecard_cache_key(str(target_cache_code)),
+                data,
+                ttl=settings.REDIS_CACHE_TTL,
             )
 
-            scores_breakdown = calculate_pillar_and_composite_scores(
-                data["metrics_payload"]
-            )
-            data["pillar_scores"] = scores_breakdown["pillar_scores"]
-            data["composite_note"] = (
-                data.get("composite_note") or scores_breakdown["composite_note"]
-            )
-            data["availability_source"] = scores_breakdown.get(
-                "availability_source", data["availability_source"]
-            )
-
-        if data.get("composite_livability_score") is None and not data.get("composite_note"):
-            data["composite_note"] = "Data tidak memadai"
-
+        response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
         return data
 
 
 @router.get(f"{settings.API_V1_STR}/facilities", tags=["4 Pillars Public Amenities"])
 def list_facilities(
+    response: Response,
     pillar: Optional[str] = Query(
         None,
         description="lifeline_health, education, urban_livability, mobility_connectivity",
@@ -361,6 +418,7 @@ def list_facilities(
     with get_db_cursor() as cur:
         cur.execute(query, tuple(params))
         rows = cur.fetchall()
+        response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
         return {
             "total": len(rows),
             "province_code": eff_prov,

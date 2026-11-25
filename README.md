@@ -322,6 +322,8 @@ graph TD
 | **`ACTIVE_PROVINCES`** | Variabel lingkungan di backend yang menentukan provinsi mana saja yang aktif dilayani API (`Active` vs `Staging` / `Planned`) sehingga pemuatan data nasional di *staging* terpisah dari rilis publik. |
 | **Ollama** untuk serving LLM | Setup satu perintah, mendukung *tool calling*, berjalan lokal di server lab tanpa mengirim data ke penyedia cloud LLM. |
 | **Leaflet** untuk peta | Batas kecamatan dimuat per provinsi dari `frontend/data/boundaries/` (setiap file GeoJSON disederhanakan < 3 MB), sehingga tetap ringan di Leaflet tanpa perlu WebGL (MapLibre/Deck.gl). |
+| **Peta dasar jalan / satelit** | Default "Peta Jalan" (Esri World Street Map) dengan nama kota dan jalan di atas warna kecamatan, serta opsi "Satelit" (Esri World Imagery + label). Tidak memakai tile berbayar atau ber-API key. |
+| ***Caching* bertingkat** | Cloudflare Worker menyimpan GET publik di *edge* (kunci + `DATA_VERSION`, header `X-DRP-Cache`), Redis menyimpan daftar kecamatan/scorecard/region dan diisi saat *startup*, browser menyimpan data selama sesi. Login, chat, simulasi, dan riwayat tidak pernah di-*cache*. |
 | **Regulasi dikurasi manual** | Korpusnya kecil (11 pasal terverifikasi), dan kutipan hukum harus tepat. OCR otomatis menambah risiko salah pasal. |
 | **Tanpa fallback cloud LLM** | Konsisten dengan prinsip pemrosesan lokal (*on-premise*). Jika LLM mati, sistem memakai ringkasan deterministik. |
 | **Redis untuk cache scorecard & rate limit** | Menyimpan cache *scorecard* terlingkup per provinsi (`cache:compliance:scores:<province_code>`) serta penghitung *rate limit* login dan chat. Respons LLM tidak di-cache otomatis agar tidak salah konteks. |
@@ -404,6 +406,7 @@ Hasil evaluasi otomatis menggunakan set uji 30 pertanyaan ([eval/ai_eval_set.jso
 - **Kebocoran Angka (0.0 PASS):** Numeric guardrail secara konsisten memblokir seluruh angka tidak berdasar pada raw LLM dan mengalihkannya ke fallback deterministik sehingga tidak ada angka liar yang tembus ke pengguna.
 - **Sitasi Konsisten dengan Korpus Terverifikasi (0.0 PASS):** Validator sitasi secara ketat memvalidasi seluruh referensi pasal terhadap korpus dokumen terverifikasi (PDF-matched) dan membuang tag tidak valid atau tidak terverifikasi, mencapai target 0.0 kebocoran di jawaban final.
 - **Pembaruan rilis nasional (18 November 2026):** evaluasi ulang 3×30 setelah penambahan *lookup* nama kecamatan di provinsi aktif (`e0196a2`) mencatat ketepatan pemilihan tool **100%**, penolakan scope **100%**, **0** kebocoran angka maupun sitasi, serta latensi **p50 5,11s / p95 21,55s** (lihat [docs/TESTING.md](docs/TESTING.md)).
+- **Pembaruan 25 November 2026 (skala Indonesia):** asisten kini menjawab pertanyaan tingkat nasional, provinsi, peringkat, dan metodologi lewat tool baca-saja baru (`get_national_overview`, `get_province_summary`, `rank_districts`, `compare_provinces`, `get_methodology`). Pada 20 pertanyaan kecamatan lama tidak ada regresi (guardrail lolos naik dari 16/20 ke 19/20, 0 kebocoran angka); 12 pertanyaan nasional/provinsi baru: pemilihan tool 12/12, guardrail 12/12, 0 kebocoran (`eval/results_20261125_u2.json`). Penolakan keputusan izin dan nasihat hukum tetap berlaku.
 
 ---
 
@@ -550,6 +553,8 @@ Pengujian diotomatisasi menggunakan `pytest` dalam piramida tiga lapis (panduan 
 | **Integration** (`db`, `backend/tests/integration/`) | Query PostGIS 38 provinsi, `utm_srid` N/S dinamis, *blank spot* lintas zona, cache Redis, auth DB | **50 uji** (50/50 PASS) | **Ya** (PostGIS + Redis) | **Tidak** |
 | **System** (`system`, `backend/tests/system/`) | 9 uji API Uvicorn, 6 uji Playwright UI, 7 uji live chat Ollama (`llm`), dan 4 uji E2E multi-wilayah | **26 uji** (26/26 PASS) | **Ya** (PostGIS + Redis) | **Sebagian** (`llm`: Ollama) |
 | **Total** | Seluruh rangkaian uji pada rilis nasional (`bfbc514`) | **209 uji** (100% PASS) | — | — |
+
+**Pembaruan 25 November 2026:** setelah peta jalan/satelit, chat skala Indonesia, dan *caching*, rangkaian uji menjadi **155 unit**, **57 integration**, **40 system** (25 non-LLM + 15 `llm`), ditambah **3 uji Node** untuk Cloudflare Worker (`node deploy/cloudflare/worker.test.mjs`); semua non-LLM lolos di *staging*. Rinciannya di [docs/TESTING.md](docs/TESTING.md).
 
 **Cakupan Kode & Performa Terukur (`bfbc514`):**
 - **Cakupan pernyataan (*statement coverage*):** dijalankan pada uji `unit` + `db and not llm` (**183 lolos**, 26 *deselected* dalam 11,34 dtk) terhadap kode aplikasi inti (`backend/app` dan `watchdog`): **86%** dari **3.210 statements** (435 missed), melampaui target NFR $\ge 70\%$.

@@ -14,8 +14,25 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/regions.css">
+  <link rel="stylesheet" href="/css/style.css?v=20261125-u3">
+  <link rel="stylesheet" href="/css/regions.css?v=20261125-u3">
+
+  <!-- Preload ES module graph to eliminate sequential import waterfall -->
+  <link rel="modulepreload" href="/js/main.js?v=20261125-u3">
+  <link rel="modulepreload" href="/js/config.js">
+  <link rel="modulepreload" href="/js/state.js">
+  <link rel="modulepreload" href="/js/api.js">
+  <link rel="modulepreload" href="/js/utils/dom.js">
+  <link rel="modulepreload" href="/js/map/map.js">
+  <link rel="modulepreload" href="/js/map/layers.js">
+  <link rel="modulepreload" href="/js/map/actions.js">
+  <link rel="modulepreload" href="/js/panels/tabs.js">
+  <link rel="modulepreload" href="/js/panels/scorecard.js">
+  <link rel="modulepreload" href="/js/panels/blankspots.js">
+  <link rel="modulepreload" href="/js/panels/simulation.js">
+  <link rel="modulepreload" href="/js/panels/watchdog.js">
+  <link rel="modulepreload" href="/js/chat/chat.js">
+  <link rel="modulepreload" href="/js/auth/auth.js">
 </head>
 <body>
 
@@ -498,7 +515,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   
   <!-- Master Frontend Application Script (ES Module Entry) -->
-  <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/js/main.js?v=20261125-u3"></script>
 
 </body>
 </html>

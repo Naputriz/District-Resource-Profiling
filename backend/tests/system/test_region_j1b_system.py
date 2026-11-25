@@ -77,7 +77,7 @@ def test_j1b_ui_switch_jabar_coblong_gated_and_jatim_perf(j1b_browser_page):
     geojson_counts = {}
 
     def on_response(resp):
-        if "/data/boundaries/" in resp.url and resp.url.endswith(".geojson"):
+        if "/data/boundaries/" in resp.url and resp.url.split("?")[0].endswith(".geojson"):
             try:
                 body = resp.json()
                 geojson_counts[resp.url] = len(body.get("features", []))
@@ -156,6 +156,7 @@ def test_j1b_reload_with_prov_34_opens_diy(j1b_browser_page):
     assert len(errors) == 0, f"Expected 0 console errors, got: {errors}"
 
 
+@pytest.mark.llm
 def test_j1b_chat_gondokusuman_province_34(live_server_url):
     """Chat question 'Bagaimana skor Gondokusuman?' with province_code='34' answers with Gondokusuman (34.71.060)."""
     ollama_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
@@ -173,7 +174,7 @@ def test_j1b_chat_gondokusuman_province_34(live_server_url):
     user_id = None
 
     try:
-        with httpx.Client(base_url=live_server_url, timeout=90.0) as client:
+        with httpx.Client(base_url=live_server_url, timeout=300.0) as client:
             reg = client.post(
                 "/api/v1/auth/register",
                 json={"email": email, "password": password, "display_name": "J1b Chat Tester"},

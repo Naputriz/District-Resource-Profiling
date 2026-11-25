@@ -99,6 +99,14 @@ SYSTEM_ALLOW_LIST_CONSTANTS: Set[float] = {
     150.0,
     # 6. Standard 15-minute city radius concept proxy
     15.0,
+    # 7. National catalog count (38 provinces), standard/snapshot years, and SNI code digits (03-1733-2004 / 1733:2026)
+    38.0,
+    2004.0,
+    2022.0,
+    2024.0,
+    2026.0,
+    1733.0,
+    3.0,
 }
 
 
@@ -144,8 +152,22 @@ def is_list_marker(text: str, start_pos: int, end_pos: int) -> bool:
     if re.search(r"\bdari\s+\d+\b", suffix, re.IGNORECASE) or re.search(r"\b\d+\s+dari\s*$", prefix, re.IGNORECASE):
         return True
 
-    # 6. Category counts: e.g. "1 jenis", "7 jenis", "3 pilar", "2 fasilitas"
+    # 6. Category counts: e.g. "1 jenis", "7 jenis", "3 pilar"
     if re.match(r"^\s*(?:jenis|fasilitas|pilar)\b", suffix, re.IGNORECASE):
+        return True
+
+    # 7. Markdown table rank cell: "| 1 |" or "| **1** |"
+    if re.search(r"(?:^|\n)\s*\|\s*(?:\*{1,2}|_{1,2})?$", prefix) and re.match(r"^(?:\*{1,2}|_{1,2})?\s*\|", suffix):
+        return True
+
+    # 8. Explicit rank / position / ordinal labels (ranks 1-10 in ranked lists)
+    if re.search(r"(?:\b(?:peringkat(?:\s+ke)?|urutan|posisi|rank|no\.?|nomor)\s*-?\s*|#|(?:\bke-?))$", prefix, re.IGNORECASE):
+        return True
+
+    # 9. Top/bottom N markers: "top 5", "5 teratas", "5 terbawah", "5 tertinggi", "5 terendah"
+    if re.search(r"\b(?:top|teratas|terbawah)\s+$", prefix, re.IGNORECASE):
+        return True
+    if re.match(r"^\s*(?:teratas|terbawah|tertinggi|terendah|besar)\b", suffix, re.IGNORECASE):
         return True
 
     return False
@@ -164,6 +186,14 @@ def build_allowed_numbers(tool_outputs: List[Dict[str, Any]]) -> Set[float]:
             val = float(obj)
             allowed.add(round(val, 4))
             allowed.add(round(abs(val), 4))
+            if abs(val) >= 1.0:
+                allowed.add(round(val, 2))
+                allowed.add(round(abs(val), 2))
+                allowed.add(round(val, 1))
+                allowed.add(round(abs(val), 1))
+            if abs(val) >= 100.0:
+                allowed.add(float(round(val)))
+                allowed.add(float(round(abs(val))))
             # Also allow rounded integer if decimal is integer-like
             if val.is_integer():
                 allowed.add(float(int(val)))
@@ -239,6 +269,24 @@ def validate_numeric_claims(text: str, allowed_numbers: Set[float]) -> Tuple[boo
         # Check against allowed numbers
         matched = any(is_number_matched(c, allowed_numbers) for c in candidates)
         if not matched:
+            post_unit = text[end_pos:min(len(text), end_pos + 16)].lower()
+            if re.match(r"^\s*juta\b", post_unit):
+                matched = any(
+                    any(
+                        a >= 100_000.0 and abs(c - (a / 1_000_000.0)) <= 0.02
+                        for a in allowed_numbers
+                    )
+                    for c in candidates
+                )
+            elif re.match(r"^\s*ribu\b", post_unit):
+                matched = any(
+                    any(
+                        a >= 1_000.0 and abs(c - (a / 1_000.0)) <= 0.1
+                        for a in allowed_numbers
+                    )
+                    for c in candidates
+                )
+        if not matched:
             if raw_token not in unsupported:
                 unsupported.append(raw_token)
 
@@ -250,6 +298,7 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
     bindings: Dict[str, Any] = {
         "composite_score": None,
         "composite_scores": set(),
+        "average_composite_scores": set(),
         "pillar_scores": {},      # pillar_key -> set of valid numbers (baseline, simulated, delta)
         "facility_metrics": {},   # facility_type -> dict(deficits=set(), required=set(), existing=set())
         "population_numbers": set(),
@@ -262,8 +311,17 @@ def extract_ground_truth_bindings(tool_outputs: List[Dict[str, Any]]) -> Dict[st
         dicts_to_process = [out]
         if isinstance(out.get("simulation_delta"), dict):
             dicts_to_process.append(out["simulation_delta"])
+        if isinstance(out.get("provinces"), list):
+            dicts_to_process.extend(p for p in out["provinces"] if isinstance(p, dict))
 
         for d in dicts_to_process:
+            for ak in ("average_composite_score", "avg_score", "national_average_composite_score", "national_average_of_province_averages"):
+                if ak in d and d[ak] is not None:
+                    try:
+                        bindings["average_composite_scores"].add(float(d[ak]))
+                    except (ValueError, TypeError):
+                        pass
+
             # Extract composite score & score deltas
             for k in ("composite_score", "composite_livability_score", "simulated_composite_score",
                       "baseline_composite_score", "overall_compliance_score", "score_delta", "abs_score_delta"):
@@ -611,7 +669,13 @@ def validate_label_bindings(
 
                 if not is_pillar_preceded:
                     cands = parse_number_candidates(raw_comp)
-                    if cands and not any(math.isclose(cands[0], cs, abs_tol=tolerance) for cs in comp_scores):
+                    avg_scores = bindings.get("average_composite_scores", set())
+                    allowed_comp_set = (
+                        comp_scores | avg_scores
+                        if (avg_scores and any(kw in sent_lower for kw in ("rata-rata", "nasional", "provinsi")))
+                        else comp_scores
+                    )
+                    if cands and not any(math.isclose(cands[0], cs, abs_tol=tolerance) for cs in allowed_comp_set):
                         val = cands[0]
                         found_label = "unknown_metric"
                         for p_key, p_scores in pillar_scores.items():
@@ -1051,8 +1115,176 @@ def build_deterministic_fallback_summary(tool_outputs: List[Dict[str, Any]]) -> 
     ]
 
     for out in tool_outputs:
+        if not isinstance(out, dict):
+            continue
+
+        if out.get("error"):
+            lines.append(f"- **Catatan:** {out['error']}")
+            lines.append("")
+            continue
+
+        # National overview tool output
+        if out.get("tool") == "get_national_overview" or (
+            "national_average_composite_score" in out and "provinces" in out
+        ):
+            lines.append("**Ringkasan Nasional (Indonesia):**")
+            lines.append(f"- **Provinsi Aktif:** {out.get('active_provinces_count', 0)} provinsi ({out.get('provinces_with_composite_score_count', 0)} memiliki skor komposit, {out.get('provinces_without_composite_score_count', 0)} berstatus Data tidak memadai)")
+            lines.append(f"- **Total Kecamatan:** {out.get('total_kecamatan', 0):,} kecamatan ({out.get('scored_kecamatan_count', 0):,} terukur skor komposit, {out.get('insufficient_data_kecamatan_count', 0):,} Data tidak memadai)")
+            if out.get("locally_adequate_osm_count") is not None:
+                lines.append(f"- **Gerbang Lokal OSM (SD >= 1):** {out.get('locally_adequate_osm_count', 0):,} memadai, {out.get('locally_gated_osm_count', 0):,} tidak_memadai")
+            nat_avg = out.get("national_average_composite_score")
+            if nat_avg is not None:
+                lines.append(f"- **Rata-rata Skor Komposit Nasional:** {nat_avg:.2f}")
+            if out.get("averaging_rule"):
+                lines.append(f"- **Aturan Rata-rata:** {out['averaging_rule']}")
+            if out.get("total_population") is not None:
+                lines.append(f"- **Total Populasi:** {out.get('total_population', 0):,} jiwa ({out.get('population_sources_summary', '')})")
+            hi = out.get("highest_average_province")
+            lo = out.get("lowest_average_province")
+            if isinstance(hi, dict):
+                lines.append(f"- **Provinsi Rata-rata Tertinggi:** {hi.get('province_name')} ({hi.get('province_code')}) = {hi.get('average_composite_score'):.2f}")
+            if isinstance(lo, dict):
+                lines.append(f"- **Provinsi Rata-rata Terendah:** {lo.get('province_name')} ({lo.get('province_code')}) = {lo.get('average_composite_score'):.2f}")
+            provs = out.get("provinces") or []
+            scored_provs = [
+                p for p in provs
+                if isinstance(p, dict) and (p.get("average_composite_score") if p.get("average_composite_score") is not None else p.get("avg_score")) is not None
+            ]
+            if scored_provs:
+                lines.append("")
+                lines.append("**Provinsi dengan Skor Komposit Numerik:**")
+                for p in scored_provs:
+                    p_name = p.get("province_name") or p.get("name")
+                    p_code = p.get("province_code") or p.get("code")
+                    p_isl = p.get("island_group") or p.get("island")
+                    p_avg = p.get("average_composite_score") if p.get("average_composite_score") is not None else p.get("avg_score")
+                    p_sc = p.get("scored_kecamatan_count") if p.get("scored_kecamatan_count") is not None else p.get("scored")
+                    p_tot = p.get("total_kecamatan") if p.get("total_kecamatan") is not None else p.get("kecamatan")
+                    p_pop = p.get("total_population") if p.get("total_population") is not None else p.get("population", 0)
+                    p_src = p.get("population_source") or p.get("pop_source", "")
+                    lines.append(
+                        f"- {p_name} ({p_code}, {p_isl}): "
+                        f"rata-rata {p_avg:.2f}, {p_sc}/{p_tot} kecamatan terukur, "
+                        f"populasi {p_pop:,} jiwa ({p_src})"
+                    )
+            lines.append("")
+            continue
+
+        # Province summary tool output (single province or Papua group)
+        if out.get("tool") == "get_province_summary" or "top_5_kecamatan" in out or "provinces_matched" in out:
+            pname = out.get("province_name") or "Provinsi"
+            if out.get("is_province_group"):
+                lines.append(f"**Ringkasan {pname}:**")
+                if out.get("ambiguity_note"):
+                    lines.append(f"- **Catatan Pemekaran:** {out['ambiguity_note']}")
+                lines.append(f"- **Total Kecamatan:** {out.get('total_kecamatan', 0):,} ({out.get('scored_kecamatan_count', 0):,} terukur komposit, {out.get('insufficient_data_kecamatan_count', 0):,} Data tidak memadai)")
+                lines.append(f"- **Gerbang Lokal OSM (SD >= 1):** {out.get('locally_adequate_osm_count', 0):,} memadai, {out.get('locally_gated_osm_count', 0):,} tidak_memadai")
+                lines.append(f"- **Total Populasi:** {out.get('total_population', 0):,} jiwa ({out.get('population_source', '')})")
+                if out.get("coverage_note"):
+                    lines.append(f"- **Keterangan Cakupan:** {out['coverage_note']}")
+                for mp in out.get("provinces_matched") or []:
+                    lines.append(
+                        f"- {mp.get('province_name')} ({mp.get('province_code')}): {mp.get('total_kecamatan')} kecamatan "
+                        f"({mp.get('locally_adequate_osm_count')} OSM memadai, {mp.get('locally_gated_osm_count')} tidak_memadai, "
+                        f"{mp.get('scored_kecamatan_count')} terukur komposit), populasi {mp.get('total_population', 0):,} jiwa"
+                    )
+            else:
+                pcode = out.get("province_code") or ""
+                lines.append(f"**Profil Provinsi {pname} ({pcode}):**")
+                lines.append(f"- **Total Kecamatan:** {out.get('total_kecamatan', 0):,} ({out.get('scored_kecamatan_count', 0):,} terukur, {out.get('insufficient_data_kecamatan_count', 0):,} Data tidak memadai)")
+                lines.append(f"- **Gerbang Lokal OSM (SD >= 1):** {out.get('locally_adequate_osm_count', 0):,} memadai, {out.get('locally_gated_osm_count', 0):,} tidak_memadai")
+                lines.append(f"- **Total Populasi:** {out.get('total_population', 0):,} jiwa ({out.get('population_source', '')})")
+                avg_c = out.get("average_composite_score")
+                if avg_c is not None:
+                    lines.append(f"- **Rata-rata Skor Komposit Provinsi:** {avg_c:.2f}")
+                else:
+                    lines.append(f"- **Rata-rata Skor Komposit Provinsi:** Data tidak memadai")
+                if out.get("coverage_note"):
+                    lines.append(f"- **Catatan Cakupan:** {out['coverage_note']}")
+                p_avgs = out.get("pillar_averages") or {}
+                if p_avgs:
+                    lines.append("- **Rata-rata Pilar:**")
+                    for pk, pv in p_avgs.items():
+                        if isinstance(pv, dict):
+                            lbl = pv.get("label", pk)
+                            sc = pv.get("average_score")
+                            if sc is not None:
+                                lines.append(f"  * {lbl}: {sc:.2f} ({pv.get('scored_kecamatan_count', 0)} kecamatan)")
+                            else:
+                                lines.append(f"  * {lbl}: Data tidak memadai")
+                top5 = out.get("top_5_kecamatan") or []
+                if top5:
+                    lines.append("- **Lima Kecamatan Terukur Tertinggi:**")
+                    for item in top5:
+                        lines.append(f"  * #{item.get('rank')}: {item.get('district_name')} ({item.get('city_name')}) = {item.get('composite_score'):.2f}")
+                bot5 = out.get("bottom_5_kecamatan") or []
+                if bot5:
+                    lines.append("- **Lima Kecamatan Terukur Terendah:**")
+                    for item in bot5:
+                        lines.append(f"  * #{item.get('rank')}: {item.get('district_name')} ({item.get('city_name')}) = {item.get('composite_score'):.2f}")
+            lines.append("")
+            continue
+
+        # Rank districts tool output
+        if out.get("tool") == "rank_districts" or ("results" in out and "metric" in out and "order" in out):
+            scope_lbl = out.get("scope", "Indonesia")
+            order_lbl = "Tertinggi" if out.get("order") == "highest" else "Terendah"
+            metric_lbl = out.get("metric_label") or out.get("metric", "composite")
+            lines.append(f"**Peringkat Kecamatan {order_lbl} — {scope_lbl} ({metric_lbl}):**")
+            results = out.get("results") or []
+            if results:
+                for item in results:
+                    city = item.get("city_name") or ""
+                    prov = item.get("province_name") or ""
+                    loc = ", ".join(x for x in (city, prov) if x)
+                    lines.append(f"{item.get('rank')}. {item.get('district_name')} ({loc}) — **{item.get('score'):.2f}**")
+            elif out.get("note"):
+                lines.append(f"- {out['note']}")
+            lines.append("")
+            continue
+
+        # Compare provinces tool output
+        if out.get("tool") == "compare_provinces" or ("compared_count" in out and "provinces" in out):
+            lines.append("**Perbandingan Provinsi:**")
+            for p in out.get("provinces") or []:
+                avg_c = p.get("average_composite_score")
+                avg_str = f"{avg_c:.2f}" if avg_c is not None else "Data tidak memadai"
+                lines.append(
+                    f"- **{p.get('province_name')} ({p.get('province_code')}):** rata-rata skor {avg_str}, "
+                    f"{p.get('scored_kecamatan_count')}/{p.get('total_kecamatan')} kecamatan terukur, "
+                    f"{p.get('insufficient_data_kecamatan_count')} Data tidak memadai, "
+                    f"populasi {p.get('total_population', 0):,} jiwa ({p.get('population_source', '')})"
+                )
+            if out.get("note"):
+                lines.append(f"- **Catatan:** {out['note']}")
+            lines.append("")
+            continue
+
+        # Methodology tool output
+        if out.get("tool") == "get_methodology" or ("scoring_rules" in out and "standards_table" in out):
+            lines.append("**Metodologi & Standar SNI 03-1733-2004:**")
+            lines.append(f"- **Standar Acuan:** {out.get('standard_reference', 'SNI 03-1733-2004')}")
+            lines.append(f"- **Katalog Standar:** {out.get('total_standards_catalog', 16)} standar ({out.get('scored_standards_count', 7)} dinilai, {out.get('informational_standards_count', 9)} informasi)")
+            sr = out.get("scoring_rules") or {}
+            if sr.get("facility_compliance"):
+                lines.append(f"- **Kepatuhan Fasilitas:** {sr['facility_compliance']}")
+            if sr.get("composite_reweighting"):
+                lines.append(f"- **Pembobotan & Reweighting:** {sr['composite_reweighting']}")
+            dm = out.get("data_tidak_memadai_rule") or {}
+            if dm.get("local_sd_gate_rule"):
+                lines.append(f"- **Aturan Data Tidak Memadai:** {dm['local_sd_gate_rule']} {dm.get('null_handling', '')}")
+            lines.append("")
+            continue
+
+        # Regulations search tool output
+        if "markdown_summary" in out and "citations" in out:
+            if out.get("markdown_summary"):
+                lines.append(out["markdown_summary"])
+                lines.append("")
+            continue
+
         # Scorecard tool output
-        if "composite_score" in out or "composite_livability_score" in out:
+        if ("composite_score" in out or "composite_livability_score" in out) and ("district_name" in out or "district_code" in out or "name" in out):
             name = out.get("district_name") or out.get("name") or "Kecamatan"
             code = out.get("district_code") or out.get("kemendagri_code") or ""
             pop = out.get("population", 0)

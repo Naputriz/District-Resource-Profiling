@@ -3,7 +3,13 @@ Meta endpoints: health check and regulatory standards metadata.
 """
 
 import json
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
+from backend.app.core.cache import (
+    PUBLIC_CACHE_CONTROL,
+    cache_get_json,
+    cache_set_json,
+    standards_cache_key,
+)
 from backend.app.core.config import settings
 from backend.app.api.deps import get_db_cursor, get_redis_client
 
@@ -67,9 +73,8 @@ def health_check():
     }
 
 
-@router.get(f"{settings.API_V1_STR}/meta/standards", tags=["Regulatory Standards"])
-def get_regulatory_standards():
-    """Returns official standards across all 4 Pillars (SNI 03-1733-2004, SPM & Perda RDTR)."""
+def fetch_regulatory_standards_rows():
+    """Queries regulatory standards rows from PostgreSQL."""
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT facility_type, pillar, category, standard_name,
@@ -78,4 +83,26 @@ def get_regulatory_standards():
             FROM regulatory_standards
             ORDER BY pillar, facility_type;
         """)
-        return cur.fetchall()
+        return [dict(r) for r in cur.fetchall()]
+
+
+@router.get(f"{settings.API_V1_STR}/meta/standards", tags=["Regulatory Standards"])
+def get_regulatory_standards(response: Response):
+    """Returns official standards across all 4 Pillars (SNI 03-1733-2004, SPM & Perda RDTR)."""
+    cache_key = standards_cache_key(settings.POSTGRES_DB)
+    r_client = None
+    try:
+        r_client = get_redis_client()
+        if r_client:
+            cached = cache_get_json(r_client, cache_key)
+            if cached is not None:
+                response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+                return cached
+    except Exception:
+        r_client = None
+
+    rows = fetch_regulatory_standards_rows()
+    if r_client and rows:
+        cache_set_json(r_client, cache_key, rows, ttl=settings.REDIS_CACHE_TTL)
+    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+    return rows

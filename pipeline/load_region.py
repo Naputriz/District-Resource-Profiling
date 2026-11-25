@@ -39,6 +39,7 @@ if str(REPO_ROOT) not in sys.path:
 
 load_dotenv()
 
+from backend.app.core.cache import invalidate_pipeline_caches
 from backend.app.engine.spatial import calculate_utm_srid, calculate_utm_zone
 from backend.app.engine.standards_availability import (
     STANDARDS_AVAILABILITY_SPEC,
@@ -964,6 +965,19 @@ def load_province_to_db(
         conn.close()
 
 
+def invalidate_redis_cache_for_province(
+    r_client: Any,
+    province_code: str,
+    redis_db: int = 0,
+) -> int:
+    """Deletes stale Redis compliance/regions/agent keys for a loaded province."""
+    deleted = invalidate_pipeline_caches(r_client, province_code)
+    logger.info(
+        f"[{province_code}] Invalidated {deleted} stale Redis cache keys in db={redis_db}."
+    )
+    return deleted
+
+
 def compute_province_compliance_scores(
     conn,
     province_code: str,
@@ -1103,49 +1117,11 @@ def compute_province_compliance_scores(
 
         conn.commit()
 
-        # Cache province-scoped scorecards in Redis (do NOT overwrite DKI's legacy key)
+        # Invalidate stale Redis cache keys so the backend rebuilds them in its canonical shape
         try:
             r_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
             if r_client.ping():
-                cur.execute(
-                    """
-                    SELECT k.kemendagri_code, k.name, k.population, k.area_km2,
-                           s.health_score, s.education_score, s.livability_score,
-                           s.mobility_score, s.composite_livability_score, s.composite_note,
-                           s.metrics_payload, s.coverage
-                    FROM kecamatan k
-                    JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-                    JOIN provinces p ON p.id = c.province_id
-                    LEFT JOIN district_compliance_scores s ON s.district_id = k.id
-                    WHERE p.kemendagri_code = %s
-                    ORDER BY k.kemendagri_code;
-                    """,
-                    (province_code,),
-                )
-                scorecards = {}
-                for r in cur.fetchall():
-                    code, name, pop, area, h, e, l, m, comp, note, payload, cov = r
-                    entry = {
-                        "kemendagri_code": code,
-                        "name": name,
-                        "population": pop,
-                        "area_km2": float(area),
-                        "health_score": float(h) if h is not None else None,
-                        "education_score": float(e) if e is not None else None,
-                        "livability_score": float(l) if l is not None else None,
-                        "mobility_score": float(m) if m is not None else None,
-                        "composite_livability_score": float(comp) if comp is not None else None,
-                        "composite_note": note,
-                        "metrics": payload,
-                    }
-                    if cov is not None:
-                        entry["coverage"] = cov
-                    scorecards[code] = entry
-                r_client.setex(f"cache:compliance:scores:{province_code}", 86400, json.dumps(scorecards))
-                logger.info(
-                    f"[{province_code}] Cached {len(scorecards)} scorecards to Redis db={redis_db} "
-                    f"key 'cache:compliance:scores:{province_code}' (gated={gated_count})."
-                )
+                invalidate_redis_cache_for_province(r_client, province_code, redis_db=redis_db)
         except Exception as e:
             logger.warning(f"[{province_code}] Redis cache warning: {e}")
 

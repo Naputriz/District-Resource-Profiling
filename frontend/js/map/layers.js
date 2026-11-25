@@ -33,13 +33,15 @@ export function renderFacilityMarkers(facilities) {
     else if (f.pillar === "urban_livability") color = "#10b981";
     else if (f.pillar === "mobility_connectivity") color = "#06b6d4";
 
+    const isSatellite = state.activeBaseLayer === "Satelit";
     const marker = L.circleMarker([lat, lon], {
+      pane: "markerPane",
       radius: 6,
       fillColor: color,
-      color: "#fff",
-      weight: 1.5,
+      color: isSatellite ? "#ffffff" : "#0f172a",
+      weight: 1.8,
       opacity: 1,
-      fillOpacity: 0.9
+      fillOpacity: 0.92
     });
 
     const safeType = (f.facility_type || "").replace(/_/g, " ");
@@ -59,13 +61,15 @@ export function renderBufferLayer(bufData) {
   if (!state.bufferCirclesLayer || !bufData) return;
   state.bufferCirclesLayer.clearLayers();
 
+  const isSatellite = state.activeBaseLayer === "Satelit";
   L.geoJSON(bufData, {
     style: {
-      color: "#38bdf8",
-      weight: 0.8,
-      opacity: 0.35,
+      color: isSatellite ? "#38bdf8" : "#0284c7",
+      weight: 1.5,
+      opacity: 0.8,
       fillColor: "#38bdf8",
-      fillOpacity: 0.05
+      fillOpacity: 0.12,
+      dashArray: "4, 3"
     }
   }).addTo(state.bufferCirclesLayer);
 }
@@ -79,9 +83,10 @@ export function renderBlankSpotLayer(data) {
     L.geoJSON(data.blank_spot_geojson, {
       style: {
         color: "#dc2626",
-        weight: 2,
+        weight: 2.2,
+        opacity: 0.95,
         fillColor: "#ef4444",
-        fillOpacity: 0.5
+        fillOpacity: 0.42
       }
     }).bindTooltip(`Blank spot ${escapeHtml(data.facility_type)}: ${data.unserved_area_km2} km² tidak terlayani (${cov}% cakupan)`, { sticky: true }).addTo(state.blankSpotLayer);
 
@@ -101,9 +106,10 @@ export function styleSimulationLayer(code, delta) {
         state.map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 14 });
       }
       layer.setStyle({
-        color: delta < 0 ? "#f43f5e" : "#10b981",
+        color: delta < 0 ? "#e11d48" : "#059669",
         weight: 3.5,
-        fillOpacity: 0.5
+        opacity: 1,
+        fillOpacity: 0.35
       });
     }
   });
