@@ -100,7 +100,7 @@ def browser_page(live_server_url):
 
 
 def test_system_ui_overview_and_map(browser_page):
-    """DEMO.md §1: Peta seluruh Jakarta, status header, choropleth layer."""
+    """DEMO.md §1: Peta seluruh Jakarta, status header, street base + label pane + choropleth."""
     page, errors, url, _ = browser_page
     page.goto(url, wait_until="networkidle")
     page.wait_for_selector("#split-layout", timeout=10000)
@@ -109,6 +109,21 @@ def test_system_ui_overview_and_map(browser_page):
     # Header components check
     telemetry_strip = page.locator(".nav-telemetry-strip")
     assert telemetry_strip.is_visible()
+
+    # Default base should be Peta Jalan (World_Street_Map + Reference labels), never Esri Dark Gray
+    tile_urls = page.evaluate("""async () => {
+        const { state } = await import('/js/state.js');
+        const urls = [];
+        state.map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer && typeof layer._url === 'string') {
+                urls.push(layer._url);
+            }
+        });
+        return urls;
+    }""")
+    assert any("World_Street_Map" in u for u in tile_urls), f"Expected World_Street_Map in {tile_urls}"
+    assert any("World_Boundaries_and_Places" in u for u in tile_urls), f"Expected reference labels in {tile_urls}"
+    assert not any("World_Dark_Gray" in u for u in tile_urls), f"Unexpected Esri Dark Gray tiles in {tile_urls}"
 
     assert len(errors) == 0, f"Expected 0 console errors, got: {errors}"
 
@@ -598,5 +613,95 @@ def test_system_ui_map_indonesia_bounds_and_min_zoom(browser_page):
     restored_state = read_map_state()
     assert restored_state["minZoom"] >= 4
     assert restored_state["zoom"] >= restored_state["minZoom"]
+
+
+def test_system_ui_base_layers_switch_persist_and_label_pane(browser_page):
+    """
+    U1:
+    1. Top-right layer control has both 'Peta Jalan' (default) and 'Satelit'.
+    2. Custom label pane sits above overlayPane (400 < zIndex < 600, pointer-events: none)
+       and holds the label tile layer.
+    3. Switching to 'Satelit' loads Esri World_Imagery + reference labels, updates map
+       container background, and persists across reload via localStorage.
+    4. Zero console errors.
+    """
+    page, errors, url, _ = browser_page
+    page.goto(url, wait_until="networkidle")
+    page.wait_for_selector("#gis-map-canvas .leaflet-control-layers", timeout=10000)
+
+    base_labels = page.eval_on_selector_all(
+        ".leaflet-control-layers-base label",
+        "els => els.map(e => e.textContent.trim())",
+    )
+    assert "Peta Jalan" in base_labels and "Satelit" in base_labels, f"Unexpected base labels: {base_labels}"
+
+    def inspect_layers_and_panes():
+        return page.evaluate("""async () => {
+            const { state } = await import('/js/state.js');
+            const m = state.map;
+            const overlayPane = m.getPane('overlayPane');
+            const markerPane = m.getPane('markerPane');
+            const labelPane = m.getPane('mapLabels');
+            const tiles = [];
+            m.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    tiles.push({
+                        url: layer._url || '',
+                        pane: layer.options?.pane || 'tilePane',
+                        hasBounds: Boolean(layer.options && layer.options.bounds),
+                    });
+                }
+            });
+            const checkedLabel = document.querySelector('.leaflet-control-layers-base input:checked')?.parentElement?.textContent?.trim() || '';
+            const mapBg = window.getComputedStyle(document.getElementById('gis-map-canvas')).backgroundColor;
+            return {
+                overlayZ: overlayPane ? Number(window.getComputedStyle(overlayPane).zIndex) : null,
+                markerZ: markerPane ? Number(window.getComputedStyle(markerPane).zIndex) : null,
+                labelZ: labelPane ? Number(window.getComputedStyle(labelPane).zIndex) : null,
+                labelPointerEvents: labelPane ? window.getComputedStyle(labelPane).pointerEvents : null,
+                tiles,
+                checkedLabel,
+                mapBg,
+                storedBase: localStorage.getItem('drp_map_base_layer'),
+            };
+        }""")
+
+    street_state = inspect_layers_and_panes()
+    assert street_state["checkedLabel"] == "Peta Jalan"
+    assert street_state["labelZ"] is not None
+    assert street_state["overlayZ"] < street_state["labelZ"] < street_state["markerZ"]
+    assert street_state["labelPointerEvents"] == "none"
+    assert any("World_Street_Map" in t["url"] for t in street_state["tiles"])
+    assert any("World_Boundaries_and_Places" in t["url"] and t["pane"] == "mapLabels" for t in street_state["tiles"])
+    assert all(t["hasBounds"] for t in street_state["tiles"])
+    assert street_state["mapBg"] == "rgb(229, 227, 223)"
+
+    # Switch to Satelit
+    sat_label = page.locator(".leaflet-control-layers-base label", has_text="Satelit")
+    sat_label.click()
+    page.wait_for_function(
+        "localStorage.getItem('drp_map_base_layer') === 'Satelit'",
+        timeout=5000,
+    )
+    page.wait_for_timeout(300)
+
+    sat_state = inspect_layers_and_panes()
+    assert sat_state["checkedLabel"] == "Satelit"
+    assert sat_state["storedBase"] == "Satelit"
+    assert any("World_Imagery" in t["url"] for t in sat_state["tiles"])
+    assert any("World_Boundaries_and_Places" in t["url"] and t["pane"] == "mapLabels" for t in sat_state["tiles"])
+    assert any("World_Transportation" in t["url"] and t["pane"] == "mapLabels" for t in sat_state["tiles"])
+    assert all(t["hasBounds"] for t in sat_state["tiles"])
+    assert sat_state["mapBg"] != "rgb(229, 227, 223)"
+
+    # Reload and verify persistence
+    page.reload(wait_until="networkidle")
+    page.wait_for_selector("#gis-map-canvas .leaflet-control-layers", timeout=10000)
+
+    reloaded_state = inspect_layers_and_panes()
+    assert reloaded_state["checkedLabel"] == "Satelit"
+    assert reloaded_state["storedBase"] == "Satelit"
+    assert any("World_Imagery" in t["url"] for t in reloaded_state["tiles"])
+    assert len(errors) == 0, f"Expected 0 console errors, got: {errors}"
 
     assert len(errors) == 0, f"Map bounds UI test console errors: {errors}"

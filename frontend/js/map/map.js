@@ -27,6 +27,110 @@ import { syncSimulationDistrict, resetSimulationPanel } from "../panels/simulati
 
 const INDONESIA_BOUNDS = [[-11.5, 94.5], [6.5, 141.5]];
 const INDONESIA_BOUNDS_PAD = 0.05;
+const MAP_LABEL_PANE = "mapLabels";
+const BASE_LAYER_STORAGE_KEY = "drp_map_base_layer";
+const BASE_LAYER_STREET = "Peta Jalan";
+const BASE_LAYER_SATELLITE = "Satelit";
+
+let cachedInsufficientPattern = null;
+
+function loadStoredBaseLayer() {
+  try {
+    const saved = localStorage.getItem(BASE_LAYER_STORAGE_KEY);
+    if (saved === BASE_LAYER_STREET || saved === BASE_LAYER_SATELLITE) {
+      return saved;
+    }
+  } catch (_) {
+    // Ignore storage access errors (private mode / restricted storage)
+  }
+  return BASE_LAYER_STREET;
+}
+
+function saveStoredBaseLayer(name) {
+  try {
+    localStorage.setItem(BASE_LAYER_STORAGE_KEY, name);
+  } catch (_) {
+    // Ignore storage access errors
+  }
+}
+
+function applyBaseLayerTheme(baseName) {
+  const isSatellite = baseName === BASE_LAYER_SATELLITE;
+  state.activeBaseLayer = isSatellite ? BASE_LAYER_SATELLITE : BASE_LAYER_STREET;
+  const mapEl = document.getElementById("gis-map-canvas");
+  if (mapEl) {
+    mapEl.classList.toggle("map-base-satellite", isSatellite);
+    mapEl.classList.toggle("map-base-street", !isSatellite);
+  }
+}
+
+function getInsufficientDataFill() {
+  if (cachedInsufficientPattern) return cachedInsufficientPattern;
+  try {
+    const patternCanvas = document.createElement("canvas");
+    patternCanvas.width = 12;
+    patternCanvas.height = 12;
+    const ctx = patternCanvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#64748b";
+      ctx.fillRect(0, 0, 12, 12);
+
+      // Dual-tone 45deg hatch stays legible on both light street and dark satellite bases
+      ctx.strokeStyle = "rgba(241, 245, 249, 0.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-2, 10);
+      ctx.lineTo(10, -2);
+      ctx.moveTo(0, 12);
+      ctx.lineTo(12, 0);
+      ctx.moveTo(2, 14);
+      ctx.lineTo(14, 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-1, 11);
+      ctx.lineTo(11, -1);
+      ctx.moveTo(5, 13);
+      ctx.lineTo(13, 5);
+      ctx.stroke();
+
+      const pattern = ctx.createPattern(patternCanvas, "repeat");
+      if (pattern) {
+        cachedInsufficientPattern = pattern;
+        return cachedInsufficientPattern;
+      }
+    }
+  } catch (_) {
+    // Fallback to solid slate fill if canvas pattern is unavailable
+  }
+  return "#64748b";
+}
+
+function refreshOverlayLayerStyles() {
+  if (state.geojsonLayer) {
+    state.geojsonLayer.eachLayer(layer => {
+      const c = layer.feature && layer.feature.properties && layer.feature.properties.kemendagri_code;
+      if (c) layer.setStyle(getDistrictStyle(c));
+    });
+  }
+  const isSatellite = state.activeBaseLayer === BASE_LAYER_SATELLITE;
+  if (state.facilityMarkersLayer) {
+    state.facilityMarkersLayer.eachLayer(layer => {
+      if (typeof layer.setStyle === "function") {
+        layer.setStyle({ color: isSatellite ? "#ffffff" : "#0f172a" });
+      }
+    });
+  }
+  if (state.bufferCirclesLayer) {
+    state.bufferCirclesLayer.eachLayer(layer => {
+      if (typeof layer.setStyle === "function") {
+        layer.setStyle({ color: isSatellite ? "#38bdf8" : "#0284c7" });
+      }
+    });
+  }
+}
 
 function getPaddedIndonesiaBounds() {
   return L.latLngBounds(INDONESIA_BOUNDS).pad(INDONESIA_BOUNDS_PAD);
@@ -375,21 +479,77 @@ export function initLeafletMap() {
     mapResizeObserver.observe(mapCanvas);
   }
 
-  state.map.attributionControl.addAttribution("&copy; <a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>");
+  const labelPane = state.map.createPane(MAP_LABEL_PANE);
+  labelPane.style.zIndex = "450";
+  labelPane.style.pointerEvents = "none";
 
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 16,
-    bounds: indonesiaMaxBounds,
-    attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
-  }).addTo(state.map);
+  const streetBase = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 16,
+      bounds: indonesiaMaxBounds,
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, &copy; OpenStreetMap contributors, and the GIS User Community"
+    }
+  );
+  const streetLabels = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 16,
+      bounds: indonesiaMaxBounds,
+      pane: MAP_LABEL_PANE
+    }
+  );
+  const streetBaseGroup = L.layerGroup([streetBase, streetLabels]);
 
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 16,
-    bounds: indonesiaMaxBounds,
-    opacity: 0.75
+  const esriImagery = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 16,
+      bounds: indonesiaMaxBounds,
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+    }
+  );
+  const esriTransportation = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 16,
+      bounds: indonesiaMaxBounds,
+      pane: MAP_LABEL_PANE,
+      zIndex: 1
+    }
+  );
+  const esriLabels = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 16,
+      bounds: indonesiaMaxBounds,
+      pane: MAP_LABEL_PANE,
+      zIndex: 2
+    }
+  );
+  const satelliteBaseGroup = L.layerGroup([esriImagery, esriTransportation, esriLabels]);
+
+  const baseLayers = {
+    [BASE_LAYER_STREET]: streetBaseGroup,
+    [BASE_LAYER_SATELLITE]: satelliteBaseGroup
+  };
+  const initialBaseName = loadStoredBaseLayer();
+  applyBaseLayerTheme(initialBaseName);
+  baseLayers[initialBaseName].addTo(state.map);
+
+  L.control.layers(baseLayers, null, {
+    position: "topright",
+    collapsed: false
   }).addTo(state.map);
 
   L.control.zoom({ position: "topright" }).addTo(state.map);
+
+  state.map.on("baselayerchange", (e) => {
+    const nextName = e && e.name === BASE_LAYER_SATELLITE ? BASE_LAYER_SATELLITE : BASE_LAYER_STREET;
+    saveStoredBaseLayer(nextName);
+    applyBaseLayerTheme(nextName);
+    refreshOverlayLayerStyles();
+  });
 
   state.facilityMarkersLayer = L.layerGroup().addTo(state.map);
   state.bufferCirclesLayer = L.layerGroup().addTo(state.map);
@@ -517,6 +677,17 @@ export function addMapLegend() {
 }
 
 export function getDistrictStyle(code) {
+  const isSatellite = state.activeBaseLayer === BASE_LAYER_SATELLITE;
+  if (!state.districtByCode || state.districtByCode.size === 0) {
+    return {
+      fillColor: isSatellite ? "#1e293b" : "#94a3b8",
+      fillOpacity: 0.12,
+      weight: 1.2,
+      opacity: 0.75,
+      color: isSatellite ? "rgba(226, 232, 240, 0.75)" : "#334155",
+      dashArray: null
+    };
+  }
   const isSelected = state.selectedDistrict && state.selectedDistrict.kemendagri_code === code;
   const distInfo = state.districtByCode.get(code) || {};
   const rawScore = distInfo.composite_livability_score;
@@ -525,7 +696,7 @@ export function getDistrictStyle(code) {
     rawScore === undefined ||
     distInfo.score_status === "Data tidak memadai";
 
-  const color = isInsufficientData ? "#64748b" : getChoroplethColor(rawScore);
+  const fillColor = isInsufficientData ? getInsufficientDataFill() : getChoroplethColor(rawScore);
   const note = distInfo.composite_note || "";
   const hasLowCoverage =
     isInsufficientData ||
@@ -535,22 +706,35 @@ export function getDistrictStyle(code) {
 
   if (isSelected) {
     return {
-      fillColor: color,
-      fillOpacity: 0.55,
+      fillColor,
+      fillOpacity: isInsufficientData ? 0.34 : 0.30,
       weight: 3.5,
       opacity: 1,
-      color: "#38bdf8",
-      dashArray: isInsufficientData ? "4, 4" : (hasLowCoverage ? "4, 4" : null)
+      color: isSatellite ? "#38bdf8" : "#0284c7",
+      dashArray: (isInsufficientData || hasLowCoverage) ? "5, 4" : null
     };
   }
 
   const hasSelection = !!state.selectedDistrict;
+  if (hasSelection) {
+    return {
+      fillColor,
+      fillOpacity: 0.14,
+      weight: 0.8,
+      opacity: 0.4,
+      color: isSatellite ? "rgba(226, 232, 240, 0.35)" : "rgba(51, 65, 85, 0.35)",
+      dashArray: (isInsufficientData || hasLowCoverage) ? "4, 4" : null
+    };
+  }
+
   return {
-    fillColor: color,
-    fillOpacity: hasSelection ? 0.14 : (isInsufficientData ? 0.35 : 0.45),
-    weight: isInsufficientData ? 1.4 : (hasLowCoverage ? 1.5 : 1),
-    opacity: hasSelection ? 0.45 : 0.85,
-    color: isInsufficientData ? "#94a3b8" : (hasLowCoverage ? "#fbbf24" : "rgba(255, 255, 255, 0.4)"),
+    fillColor,
+    fillOpacity: isInsufficientData ? 0.42 : 0.44,
+    weight: isInsufficientData ? 1.2 : (hasLowCoverage ? 1.4 : 1),
+    opacity: isInsufficientData ? 0.78 : (hasLowCoverage ? 0.85 : 0.6),
+    color: isInsufficientData
+      ? (isSatellite ? "#cbd5e1" : "#475569")
+      : (hasLowCoverage ? (isSatellite ? "#fbbf24" : "#d97706") : (isSatellite ? "rgba(226, 232, 240, 0.65)" : "#334155")),
     dashArray: (isInsufficientData || hasLowCoverage) ? "4, 4" : null
   };
 }
@@ -615,7 +799,9 @@ export function renderDistrictChoropleth(geojsonData) {
       layer.on("mouseover", () => {
         const isSelected = state.selectedDistrict && state.selectedDistrict.kemendagri_code === code;
         if (!isSelected) {
-          layer.setStyle({ weight: 2.5, color: "#38bdf8", fillOpacity: 0.38 });
+          const isSat = state.activeBaseLayer === BASE_LAYER_SATELLITE;
+          const hoverOpacity = state.selectedDistrict ? 0.28 : 0.54;
+          layer.setStyle({ weight: 2.5, color: isSat ? "#38bdf8" : "#0284c7", fillOpacity: hoverOpacity });
         }
       });
 
@@ -724,7 +910,10 @@ function clearSelectionAndPanels() {
   resetScorecardPanel();
 }
 
+let activeProvinceSwitchId = 0;
+
 export async function switchProvince(provinceCode, { updateUrl = true, fitBbox = true } = {}) {
+  const switchId = ++activeProvinceSwitchId;
   const code = String(provinceCode || "31").trim();
   const regionConfig =
     (state.regions || []).find(r => r.province_code === code && r.status === "Active") ||
@@ -747,27 +936,43 @@ export async function switchProvince(provinceCode, { updateUrl = true, fitBbox =
   }
 
   clearSelectionAndPanels();
-
-  const data = await fetchDistricts(resolvedCode);
-  let districtList = data.districts || [];
-  if (typeof districtList === "object" && !Array.isArray(districtList)) {
-    districtList = Object.values(districtList);
-  }
-  state.districts = districtList;
+  state.districts = [];
   state.districtByCode = new Map();
-  districtList.forEach(d => {
-    if (d.kemendagri_code) state.districtByCode.set(d.kemendagri_code, d);
-  });
 
-  updateRegionTexts(regionConfig, districtList);
-
-  const geojsonUrl = regionConfig?.geojson_url || "/data/boundaries/jakarta_44_kecamatan.geojson";
-  const geojsonData = await fetchBoundariesGeoJSON(geojsonUrl);
-  renderDistrictChoropleth(geojsonData);
-
+  // Fit map to target province immediately so basemap tiles start fetching alongside API/GeoJSON
   if (regionConfig && state.map) {
     fitMapToRegion(regionConfig, { preferBbox: fitBbox || resolvedCode !== "31" });
   }
+
+  const geojsonUrl = regionConfig?.geojson_url || "/data/boundaries/jakarta_44_kecamatan.geojson";
+  let geojsonRendered = false;
+
+  // Fetch GeoJSON boundaries and district compliance list in parallel; render outline as soon as GeoJSON arrives
+  const geojsonTask = fetchBoundariesGeoJSON(geojsonUrl).then((geojsonData) => {
+    if (switchId !== activeProvinceSwitchId) return;
+    renderDistrictChoropleth(geojsonData);
+    geojsonRendered = true;
+  });
+
+  const districtsTask = fetchDistricts(resolvedCode).then((data) => {
+    if (switchId !== activeProvinceSwitchId) return;
+    let districtList = data.districts || [];
+    if (typeof districtList === "object" && !Array.isArray(districtList)) {
+      districtList = Object.values(districtList);
+    }
+    state.districts = districtList;
+    state.districtByCode = new Map();
+    districtList.forEach(d => {
+      if (d.kemendagri_code) state.districtByCode.set(d.kemendagri_code, d);
+    });
+
+    updateRegionTexts(regionConfig, districtList);
+    if (geojsonRendered) {
+      refreshOverlayLayerStyles();
+    }
+  });
+
+  await Promise.all([geojsonTask, districtsTask]);
 }
 
 export async function loadAllDistricts() {
