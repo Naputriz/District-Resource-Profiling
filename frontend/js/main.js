@@ -29,10 +29,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSimulationControls();
   initAuth();
 
-  await loadStandardsMetadata();
-  await loadHealthStatus();
-  await loadAllDistricts();
-  await loadWatchdogTelemetry();
+  await Promise.allSettled([
+    loadAllDistricts(),
+    loadStandardsMetadata(),
+    loadHealthStatus(),
+    loadWatchdogTelemetry(),
+  ]);
 
   setInterval(loadWatchdogTelemetry, WATCHDOG_POLL_INTERVAL_MS);
   setInterval(loadHealthStatus, HEALTH_POLL_INTERVAL_MS);

@@ -34,6 +34,9 @@ def force_offline_unit(monkeypatch):
 
     with patch("backend.app.core.auth.get_redis_client", return_value=None), \
          patch("backend.app.api.deps.get_redis_client", return_value=None), \
+         patch("backend.app.core.cache.get_redis_client", return_value=None), \
+         patch("backend.app.api.routers.districts.get_redis_client", return_value=None), \
+         patch("backend.app.api.routers.regions.get_redis_client", return_value=None), \
          patch("backend.app.api.routers.meta.get_redis_client", return_value=None), \
          patch("backend.app.api.routers.meta.get_db_cursor", side_effect=mock_db), \
          patch("backend.app.api.routers.regions.get_db_cursor", side_effect=mock_regions_db), \

@@ -5,7 +5,48 @@
  * Supports JWT authentication via sessionStorage (drp_auth_token).
  */
 
-import { API_BASE } from "./config.js";
+import { API_BASE, withAppVersion } from "./config.js";
+
+// In-memory session caches & in-flight GET request deduplication
+const provinceDistrictsCache = new Map();
+const geojsonCache = new Map();
+const districtDetailCache = new Map();
+const inflightGetRequests = new Map();
+let regionsCache = null;
+let standardsCache = null;
+
+export function clearSessionCaches() {
+  provinceDistrictsCache.clear();
+  geojsonCache.clear();
+  districtDetailCache.clear();
+  inflightGetRequests.clear();
+  regionsCache = null;
+  standardsCache = null;
+}
+
+export function getSessionCacheStats() {
+  return {
+    provinces: provinceDistrictsCache.size,
+    geojson: geojsonCache.size,
+    districtDetails: districtDetailCache.size,
+    inflight: inflightGetRequests.size,
+    hasRegions: Boolean(regionsCache),
+    hasStandards: Boolean(standardsCache),
+  };
+}
+
+function dedupedGetJson(url, endpointName) {
+  if (inflightGetRequests.has(url)) {
+    return inflightGetRequests.get(url);
+  }
+  const reqPromise = fetch(url)
+    .then((res) => handleResponse(res, endpointName))
+    .finally(() => {
+      inflightGetRequests.delete(url);
+    });
+  inflightGetRequests.set(url, reqPromise);
+  return reqPromise;
+}
 
 export function getAuthToken() {
   return sessionStorage.getItem("drp_auth_token");
@@ -68,50 +109,90 @@ async function handleResponse(response, endpointName) {
 }
 
 export async function fetchStandardsMetadata() {
-  const res = await fetch(`${API_BASE}/api/v1/meta/standards`);
-  return handleResponse(res, "meta/standards");
+  if (standardsCache) return standardsCache;
+  const data = await dedupedGetJson(`${API_BASE}/api/v1/meta/standards`, "meta/standards");
+  standardsCache = data;
+  return data;
 }
 
 export async function fetchHealthStatus() {
-  const res = await fetch(`${API_BASE}/health`);
-  return handleResponse(res, "health");
+  return dedupedGetJson(`${API_BASE}/health`, "health");
 }
 
 export async function fetchRegions() {
-  const res = await fetch(`${API_BASE}/api/v1/regions`);
-  return handleResponse(res, "regions");
+  if (regionsCache) return regionsCache;
+  const data = await dedupedGetJson(`${API_BASE}/api/v1/regions`, "regions");
+  regionsCache = data;
+  return data;
 }
 
 export async function fetchRegionDetail(provinceCode) {
-  const res = await fetch(`${API_BASE}/api/v1/regions/${provinceCode}`);
-  return handleResponse(res, `regions/${provinceCode}`);
+  return dedupedGetJson(
+    `${API_BASE}/api/v1/regions/${encodeURIComponent(provinceCode)}`,
+    `regions/${provinceCode}`
+  );
 }
 
 export async function fetchDistricts(provinceCode = null) {
+  const cacheKey = provinceCode ? String(provinceCode).trim() : "__default__";
+  if (provinceDistrictsCache.has(cacheKey)) {
+    return provinceDistrictsCache.get(cacheKey);
+  }
   let url = `${API_BASE}/api/v1/districts`;
   if (provinceCode) {
     url += `?province_code=${encodeURIComponent(provinceCode)}`;
   }
-  const res = await fetch(url);
-  return handleResponse(res, "districts");
+  const data = await dedupedGetJson(url, "districts");
+  provinceDistrictsCache.set(cacheKey, data);
+  if (data && data.province_code) {
+    provinceDistrictsCache.set(String(data.province_code).trim(), data);
+  }
+  return data;
 }
 
 export async function fetchBoundariesGeoJSON(geojsonUrl = null) {
-  const targetUrl = geojsonUrl || "/data/boundaries/jakarta_44_kecamatan.geojson";
-  const geoRes = await fetch(targetUrl).catch(() => null);
-  if (geoRes && geoRes.ok) {
-    return geoRes.json();
+  const baseUrl = geojsonUrl || "/data/boundaries/jakarta_44_kecamatan.geojson";
+  const targetUrl = withAppVersion(baseUrl);
+  if (geojsonCache.has(targetUrl)) {
+    return geojsonCache.get(targetUrl);
   }
-  throw new Error(`API error [boundaries] failed to load GeoJSON from ${targetUrl}`);
+  if (inflightGetRequests.has(targetUrl)) {
+    return inflightGetRequests.get(targetUrl);
+  }
+  const reqPromise = fetch(targetUrl)
+    .then(async (geoRes) => {
+      if (!geoRes || !geoRes.ok) {
+        throw new Error(`API error [boundaries] failed to load GeoJSON from ${targetUrl}`);
+      }
+      const data = await geoRes.json();
+      geojsonCache.set(targetUrl, data);
+      return data;
+    })
+    .finally(() => {
+      inflightGetRequests.delete(targetUrl);
+    });
+  inflightGetRequests.set(targetUrl, reqPromise);
+  return reqPromise;
 }
 
 export async function fetchDistrictDetail(districtCode, provinceCode = null) {
+  const provKey = provinceCode ? String(provinceCode).trim() : "";
+  const codeKey = String(districtCode || "").trim();
+  const cacheKey = `${provKey}:${codeKey}`;
+  if (districtDetailCache.has(cacheKey)) {
+    return districtDetailCache.get(cacheKey);
+  }
   let url = `${API_BASE}/api/v1/districts/${encodeURIComponent(districtCode)}`;
   if (provinceCode) {
     url += `?province_code=${encodeURIComponent(provinceCode)}`;
   }
-  const res = await fetch(url);
-  return handleResponse(res, `districts/${districtCode}`);
+  const data = await dedupedGetJson(url, `districts/${districtCode}`);
+  districtDetailCache.set(cacheKey, data);
+  if (data && data.kemendagri_code) {
+    const resolvedProv = String(data.province_code || provKey).trim();
+    districtDetailCache.set(`${resolvedProv}:${data.kemendagri_code}`, data);
+  }
+  return data;
 }
 
 export async function fetchDistrictFacilities(districtCode, pillar = null, provinceCode = null) {
@@ -122,8 +203,7 @@ export async function fetchDistrictFacilities(districtCode, pillar = null, provi
   if (provinceCode) {
     url += `&province_code=${encodeURIComponent(provinceCode)}`;
   }
-  const res = await fetch(url);
-  return handleResponse(res, "facilities");
+  return dedupedGetJson(url, "facilities");
 }
 
 export async function fetchBlankSpots(
@@ -137,8 +217,7 @@ export async function fetchBlankSpots(
   if (provinceCode) {
     url += `&province_code=${encodeURIComponent(provinceCode)}`;
   }
-  const res = await fetch(url);
-  return handleResponse(res, "spatial/blank-spots");
+  return dedupedGetJson(url, "spatial/blank-spots");
 }
 
 export async function fetchBuffers(
@@ -152,8 +231,7 @@ export async function fetchBuffers(
   if (provinceCode) {
     url += `&province_code=${encodeURIComponent(provinceCode)}`;
   }
-  const res = await fetch(url);
-  return handleResponse(res, "spatial/buffers");
+  return dedupedGetJson(url, "spatial/buffers");
 }
 
 export async function postChatMessage(payload) {
@@ -202,8 +280,7 @@ export async function postSuperblockSimulation(payload) {
 }
 
 export async function fetchWatchdogTelemetry() {
-  const res = await fetch(`${API_BASE}/api/v1/watchdog/telemetry`);
-  return handleResponse(res, "watchdog/telemetry");
+  return dedupedGetJson(`${API_BASE}/api/v1/watchdog/telemetry`, "watchdog/telemetry");
 }
 
 // === Auth API calls (TODO-4) ===

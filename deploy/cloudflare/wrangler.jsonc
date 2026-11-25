@@ -2,6 +2,9 @@
   "name": "drp",
   "main": "worker.js",
   "compatibility_date": "2026-11-01",
+  "vars": {
+    "DATA_VERSION": "20261125-1"
+  },
   "assets": { "directory": "../../frontend", "binding": "ASSETS", "not_found_handling": "none" },
   "routes": [{ "pattern": "drp.digilabui.cloud", "custom_domain": true }],
   "workers_dev": true

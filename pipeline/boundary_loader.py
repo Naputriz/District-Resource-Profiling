@@ -14,6 +14,7 @@ import os
 import json
 import logging
 import math
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -28,6 +29,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from backend.app.core.cache import invalidate_pipeline_caches
+
 DATA_DIR = BASE_DIR / "data"
 REGIONS_DIR = DATA_DIR / "regions"
 
@@ -515,52 +522,17 @@ class DistrictDataIngestionPipeline:
             logger.info(f"Computed and saved compliance scorecards for all {computed} districts.")
         return computed
 
-    def sync_to_redis_cache(self, conn):
-        """Caches full district scorecards and GeoJSON features into Redis for low-latency queries."""
+    def sync_to_redis_cache(self, conn=None) -> int:
+        """Invalidates stale Redis cache keys so the backend rebuilds them in its canonical shape."""
         if not self.redis_client:
-            logger.warning("Redis client not active. Skipping cache sync.")
-            return
+            logger.warning("Redis client not active. Skipping cache invalidation.")
+            return 0
 
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT 
-                    k.kemendagri_code, k.name, k.population, k.area_km2,
-                    s.health_score, s.education_score, s.livability_score,
-                    s.mobility_score, s.composite_livability_score, s.composite_note,
-                    s.metrics_payload, s.coverage
-                FROM kecamatan k
-                JOIN kabupaten_kota c ON c.id = k.kabupaten_kota_id
-                JOIN provinces p ON p.id = c.province_id
-                JOIN district_compliance_scores s ON s.district_id = k.id
-                WHERE p.kemendagri_code = %s;
-            """, (self.province_code,))
-            rows = cur.fetchall()
-
-            scorecards = {}
-            for r in rows:
-                code, name, pop, area, h, e, l, m, comp, note, payload, cov = r
-                entry = {
-                    "kemendagri_code": code,
-                    "name": name,
-                    "population": pop,
-                    "area_km2": float(area),
-                    "health_score": float(h) if h is not None else None,
-                    "education_score": float(e) if e is not None else None,
-                    "livability_score": float(l) if l is not None else None,
-                    "mobility_score": float(m) if m is not None else None,
-                    "composite_livability_score": float(comp) if comp is not None else None,
-                    "composite_note": note,
-                    "metrics": payload
-                }
-                if cov is not None:
-                    entry["coverage"] = cov
-                scorecards[code] = entry
-
-            # Cache with 24h TTL (86400s) - province scoped key per TODO-3 and legacy key
-            cache_key_scoped = f"cache:compliance:scores:{self.province_code}"
-            self.redis_client.setex(cache_key_scoped, 86400, json.dumps(scorecards))
-            self.redis_client.setex("cache:compliance:scores", 86400, json.dumps(scorecards))
-            logger.info(f"Cached {len(scorecards)} district compliance scorecards into Redis keys '{cache_key_scoped}' and 'cache:compliance:scores' (TTL 24h).")
+        deleted = invalidate_pipeline_caches(self.redis_client, self.province_code)
+        logger.info(
+            f"[{self.province_code}] Invalidated {deleted} stale Redis cache keys."
+        )
+        return deleted
 
     def run_all(self):
         """Executes full ingestion, validation, scoring, and caching cycle."""

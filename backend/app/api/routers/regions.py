@@ -7,10 +7,18 @@ population source, and runtime Active/Staging/Planned status computed from ACTIV
 import logging
 import time
 from typing import List, Dict, Any, Optional, Tuple
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
-from backend.app.api.deps import get_db_cursor
+from backend.app.api.deps import get_db_cursor, get_redis_client
+from backend.app.core.cache import (
+    PUBLIC_CACHE_CONTROL,
+    cache_get_json,
+    cache_set_json,
+    invalidate_regions_cache,
+    regions_list_cache_key,
+    regions_stats_cache_key,
+)
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -889,10 +897,14 @@ REGIONS_CATALOG: Dict[str, Dict[str, Any]] = {
 
 
 def clear_regions_cache() -> None:
-    """Clears the in-process DB stats cache (useful in tests)."""
+    """Clears the in-process DB stats cache and Redis region caches (useful in tests)."""
     _DB_STATS_CACHE["ts"] = 0.0
     _DB_STATS_CACHE["db_name"] = None
     _DB_STATS_CACHE["data"] = None
+    try:
+        invalidate_regions_cache(get_redis_client(), settings.POSTGRES_DB)
+    except Exception:
+        pass
 
 
 def get_region_meta(province_code: Optional[str]) -> Dict[str, Any]:
@@ -937,6 +949,20 @@ def _get_db_province_stats(force_refresh: bool = False) -> Optional[Dict[str, Di
     ):
         return _DB_STATS_CACHE["data"]
 
+    r_client = None
+    stats_key = regions_stats_cache_key(db_name)
+    if not force_refresh:
+        try:
+            r_client = get_redis_client()
+            cached_stats = cache_get_json(r_client, stats_key)
+            if isinstance(cached_stats, dict):
+                _DB_STATS_CACHE["ts"] = now
+                _DB_STATS_CACHE["db_name"] = db_name
+                _DB_STATS_CACHE["data"] = cached_stats
+                return cached_stats
+        except Exception:
+            r_client = None
+
     try:
         with get_db_cursor() as cur:
             cur.execute(
@@ -971,6 +997,13 @@ def _get_db_province_stats(force_refresh: bool = False) -> Optional[Dict[str, Di
     _DB_STATS_CACHE["ts"] = now
     _DB_STATS_CACHE["db_name"] = db_name
     _DB_STATS_CACHE["data"] = stats
+    if r_client is None:
+        try:
+            r_client = get_redis_client()
+        except Exception:
+            r_client = None
+    if r_client and stats:
+        cache_set_json(r_client, stats_key, stats, ttl=settings.REDIS_CACHE_TTL)
     return stats
 
 
@@ -1039,23 +1072,48 @@ def _build_region_entry(
     return entry
 
 
+def build_regions_payload() -> List[Dict[str, Any]]:
+    """Builds JSON-serializable region list payload using DB stats and ACTIVE_PROVINCES."""
+    db_stats = _get_db_province_stats()
+    active_list = settings.active_provinces
+    entries: List[Dict[str, Any]] = []
+    for code, base in REGIONS_CATALOG.items():
+        entry = _build_region_entry(code, base, db_stats, active_list)
+        if entry.get("coverage_summary") is not None and hasattr(entry["coverage_summary"], "model_dump"):
+            entry["coverage_summary"] = entry["coverage_summary"].model_dump()
+        entries.append(entry)
+    return entries
+
+
 @router.get(
     f"{settings.API_V1_STR}/regions",
     response_model=List[RegionInfo],
     tags=["Multi-Region Support"],
 )
-def list_regions():
+def list_regions(response: Response):
     """
     Returns list of supported provinces with runtime availability status
     ('Active', 'Staging', or 'Planned'), map center/zoom, bounding box,
     UTM SRID, data sources, population source, and DB coverage summary.
     """
-    db_stats = _get_db_province_stats()
     active_list = settings.active_provinces
-    return [
-        _build_region_entry(code, base, db_stats, active_list)
-        for code, base in REGIONS_CATALOG.items()
-    ]
+    cache_key = regions_list_cache_key(settings.POSTGRES_DB, active_list)
+    r_client = None
+    try:
+        r_client = get_redis_client()
+        if r_client:
+            cached = cache_get_json(r_client, cache_key)
+            if isinstance(cached, list) and cached:
+                response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+                return cached
+    except Exception:
+        r_client = None
+
+    entries = build_regions_payload()
+    if r_client and entries:
+        cache_set_json(r_client, cache_key, entries, ttl=settings.REDIS_CACHE_TTL)
+    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+    return entries
 
 
 @router.get(
@@ -1063,7 +1121,7 @@ def list_regions():
     response_model=RegionInfo,
     tags=["Multi-Region Support"],
 )
-def get_region_detail(province_code: str):
+def get_region_detail(province_code: str, response: Response):
     """
     Returns configuration and status for a specific active province.
     Returns 404 with explanatory message if province is not Active.
@@ -1086,4 +1144,5 @@ def get_region_detail(province_code: str):
             detail="Data wilayah ini belum tersedia (rencana v1.1)",
         )
 
+    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
     return entry

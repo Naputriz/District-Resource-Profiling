@@ -1,0 +1,14 @@
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/js/*
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: public, max-age=300
+
+/data/boundaries/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

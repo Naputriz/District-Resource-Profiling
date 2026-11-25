@@ -9,14 +9,17 @@ Provides:
 - Full health observability for PostGIS and Redis.
 """
 
+import asyncio
 import os
 import logging
+import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
+from backend.app.core.cache import warm_startup_caches
 from backend.app.core.config import settings
 from backend.app.core.db import init_db_pool, close_db_pool
 from backend.app.core.auth import decode_access_token
@@ -46,9 +49,20 @@ async def lifespan(app: FastAPI):
             "SECURITY WARNING: API_KEY is not set in environment. "
             "API authentication for POST routes is disabled."
         )
-    yield
-    # Shutdown: Close Pools
-    close_db_pool()
+    warmup_cancel = threading.Event()
+    warmup_task = asyncio.create_task(asyncio.to_thread(warm_startup_caches, warmup_cancel))
+    try:
+        yield
+    finally:
+        # Shutdown: Stop background warmup cleanly before closing pools
+        warmup_cancel.set()
+        if not warmup_task.done():
+            warmup_task.cancel()
+        try:
+            await warmup_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        close_db_pool()
 
 
 app = FastAPI(
@@ -57,6 +71,7 @@ app = FastAPI(
     description="Deterministic Spatial Compliance & What-If Scenario Simulation Engine (DKI Jakarta)",
     lifespan=lifespan,
 )
+
 
 # Optional API Key Authentication Middleware (§13.1C & TODO-4)
 @app.middleware("http")
@@ -88,6 +103,24 @@ async def optional_api_key_middleware(request: Request, call_next):
             content={"detail": "Unauthorized: Invalid or missing X-API-Key header"},
         )
     return await call_next(request)
+
+
+@app.middleware("http")
+async def static_asset_cache_headers_middleware(request: Request, call_next):
+    path = request.url.path
+    if path in ("/_headers", "/.assetsignore"):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    response = await call_next(request)
+    if request.method in ("GET", "HEAD") and response.status_code == 200:
+        if path in ("/", "/index.html") or path.startswith("/js/"):
+            response.headers.setdefault("Cache-Control", "no-cache")
+        elif path.startswith("/css/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=300")
+        elif path.startswith("/data/boundaries/"):
+            response.headers.setdefault(
+                "Cache-Control", "public, max-age=86400, stale-while-revalidate=604800"
+            )
+    return response
 
 
 # CORS Middleware
